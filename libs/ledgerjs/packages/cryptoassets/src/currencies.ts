@@ -311,9 +311,9 @@ export const cryptocurrenciesById: Record<CryptoCurrencyId, CryptoCurrency> = {
     coinType: CoinType.BANANO,
     name: "Banano",
     managerAppName: "Banano",
-    ticker: "BANANO",
+    ticker: "BAN",
     scheme: "banano",
-    color: "#000000",
+    color: "#FBDD11",
     family: "nano",
     units: [
       {
@@ -322,7 +322,12 @@ export const cryptocurrenciesById: Record<CryptoCurrencyId, CryptoCurrency> = {
         magnitude: 8,
       },
     ],
-    explorerViews: [],
+    explorerViews: [
+      {
+        "address": "https://creeper.banano.cc/account/$address",
+        "tx": "https://creeper.banano.cc/block/$hash"
+      }
+    ],
   },
   bitcoin: {
     type: "CryptoCurrency",
@@ -1769,9 +1774,9 @@ export const cryptocurrenciesById: Record<CryptoCurrencyId, CryptoCurrency> = {
     coinType: CoinType.NANO,
     name: "Nano",
     managerAppName: "Nano",
-    ticker: "NANO",
+    ticker: "XNO",
     scheme: "nano",
-    color: "#4E8FB6",
+    color: "#209CE9",
     family: "nano",
     units: [
       {
@@ -1782,11 +1787,12 @@ export const cryptocurrenciesById: Record<CryptoCurrencyId, CryptoCurrency> = {
     ],
     explorerViews: [
       {
-        tx: "https://nanolooker.com/block/$hash",
-        address: "https://nanolooker.com/account/$address",
+        address: "https://blocklattice.io/account/$address",
+        tx: "https://blocklattice.io/block/$hash",
       },
       {
-        tx: "https://nanoexplorer.io/blocks/$hash",
+        address: "https://nanexplorer.com/nano/account/$address",
+        tx: "https://nanexplorer.com/nano/block/$hash",
       },
     ],
   },
