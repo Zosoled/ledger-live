@@ -1,4 +1,4 @@
-import EventEmitter from "events";
+import { EventEmitter } from "events";
 import type { DeviceModel } from "@ledgerhq/devices";
 import {
   TransportRaceCondition,
