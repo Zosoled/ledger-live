@@ -5,7 +5,7 @@ import styled, { useTheme } from "styled-components";
 import { useSelector } from "react-redux";
 import { walletSyncQrCodePinCodeSelector } from "~/renderer/reducers/walletSync";
 import TrackPage from "~/renderer/analytics/TrackPage";
-import { AnalyticsPage } from "../../hooks/useWalletSyncAnalytics";
+import { AnalyticsPage } from "../../hooks/useLedgerSyncAnalytics";
 
 export default function PinCodeStep() {
   const { t } = useTranslation();
@@ -36,6 +36,7 @@ export default function PinCodeStep() {
             backgroundColor={colors.opacityDefault.c05}
             alignItems="center"
             justifyContent="center"
+            data-testid={`pin-code-digit-${index}`}
           >
             <Text fontSize={14} variant="body" fontWeight="medium" color="neutral.c100">
               {digit}

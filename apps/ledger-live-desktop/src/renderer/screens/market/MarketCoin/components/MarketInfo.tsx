@@ -126,6 +126,7 @@ function MarketInfo({
   const athText = useDateFormatted(athDateD, dayAndHourFormat);
   const atlText = useDateFormatted(atlDateD, dayAndHourFormat);
 
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const currentPriceChangePercentage = priceChangePercentage?.[range as KeysPriceChange];
 
   return (
@@ -135,10 +136,10 @@ function MarketInfo({
         <Line>
           <Label>{t("market.marketList.price")}</Label>
           <ColumnRight>
-            <LoadingLabel loading={loading}>
+            <LoadingLabel loading={loading} data-testid="market-price-stats-price">
               {counterValueFormatter({ value: price, currency: counterCurrency, locale })}
             </LoadingLabel>
-            <LoadingLabel loading={loading}>
+            <LoadingLabel loading={loading} data-testid="market-price-stats-variation">
               {currentPriceChangePercentage ? (
                 <FormattedVal
                   isPercent
@@ -155,13 +156,13 @@ function MarketInfo({
         </Line>
         <Line>
           <Label>{t("market.detailsPage.tradingVolume")}</Label>
-          <LoadingLabel loading={loading}>
+          <LoadingLabel loading={loading} data-testid="market-price-stats-trading-volume">
             {counterValueFormatter({ value: totalVolume, currency: counterCurrency, locale })}
           </LoadingLabel>
         </Line>
         <Line>
           <Label>{t("market.detailsPage.24hLowHight")}</Label>
-          <LoadingLabel loading={loading}>
+          <LoadingLabel loading={loading} data-testid="market-price-stats-low-hight">
             {counterValueFormatter({ value: low24h, currency: counterCurrency, locale })}
             {" / "}
             {counterValueFormatter({ value: high24h, currency: counterCurrency, locale })}
@@ -170,10 +171,14 @@ function MarketInfo({
         <Line>
           <Label>{t("market.detailsPage.allTimeHigh")}</Label>
           <ColumnRight>
-            <LoadingLabel loading={loading}>
+            <LoadingLabel loading={loading} data-testid="market-price-stats-ath">
               {counterValueFormatter({ value: ath, currency: counterCurrency, locale })}
             </LoadingLabel>
-            <LoadingLabel color="neutral.c80" loading={loading}>
+            <LoadingLabel
+              color="neutral.c80"
+              loading={loading}
+              data-testid="market-price-stats-ath-date"
+            >
               {athText || "-"}
             </LoadingLabel>
           </ColumnRight>
@@ -181,10 +186,14 @@ function MarketInfo({
         <Line>
           <Label>{t("market.detailsPage.allTimeLow")}</Label>
           <ColumnRight>
-            <LoadingLabel loading={loading}>
+            <LoadingLabel loading={loading} data-testid="market-price-stats-atl">
               {counterValueFormatter({ value: atl, currency: counterCurrency, locale })}
             </LoadingLabel>
-            <LoadingLabel color="neutral.c80" loading={loading}>
+            <LoadingLabel
+              color="neutral.c80"
+              loading={loading}
+              data-testid="market-price-stats-atl-date"
+            >
               {atlText || "-"}
             </LoadingLabel>
           </ColumnRight>
@@ -195,7 +204,7 @@ function MarketInfo({
           <Title>{t("market.marketList.marketCap")}</Title>
           <Line>
             <Label>{t("market.marketList.marketCap")}</Label>
-            <LoadingLabel loading={loading}>
+            <LoadingLabel loading={loading} data-testid="market-cap">
               {counterValueFormatter({
                 value: marketcap,
                 currency: counterCurrency,
@@ -206,7 +215,7 @@ function MarketInfo({
           </Line>
           <Line>
             <Label>{t("market.detailsPage.marketCapRank")}</Label>
-            <LoadingLabel loading={loading}>
+            <LoadingLabel loading={loading} data-testid="market-cap-rank">
               {marketcapRank !== undefined
                 ? `#${counterValueFormatter({
                     value: marketcapRank,
@@ -217,7 +226,7 @@ function MarketInfo({
           </Line>
           <Line>
             <Label>{t("market.detailsPage.marketCapDominance")}</Label>
-            <LoadingLabel loading={loading}>
+            <LoadingLabel loading={loading} data-testid="market-cap-dominance">
               {marketCapChangePercentage24h ? (
                 <FormattedVal
                   isPercent
@@ -236,7 +245,7 @@ function MarketInfo({
           <Title>{t("market.detailsPage.supply")}</Title>
           <Line>
             <Label>{t("market.detailsPage.circulatingSupply")}</Label>
-            <LoadingLabel loading={loading}>
+            <LoadingLabel loading={loading} data-testid="market-circulating-supply">
               {counterValueFormatter({
                 value: circulatingSupply,
                 locale,
@@ -246,7 +255,7 @@ function MarketInfo({
           </Line>
           <Line>
             <Label>{t("market.detailsPage.totalSupply")}</Label>
-            <LoadingLabel loading={loading}>
+            <LoadingLabel loading={loading} data-testid="market-total-supply">
               {counterValueFormatter({
                 value: totalSupply,
                 locale,
@@ -256,7 +265,7 @@ function MarketInfo({
           </Line>
           <Line>
             <Label>{t("market.detailsPage.maxSupply")}</Label>
-            <LoadingLabel loading={loading}>
+            <LoadingLabel loading={loading} data-testid="market-max-supply">
               {counterValueFormatter({
                 value: maxSupply,
                 locale,

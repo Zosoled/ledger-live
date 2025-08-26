@@ -3,6 +3,7 @@ import { ScreenName } from "~/const";
 
 export type CustomErrorNavigatorParamList = {
   [ScreenName.CustomErrorScreen]: {
-    error?: SwapLiveError;
+    error?: SwapLiveError | Error;
+    displayError?: boolean;
   };
 };

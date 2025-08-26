@@ -1,5 +1,5 @@
-import BigNumber from "bignumber.js";
 import { NetworkDown } from "@ledgerhq/errors";
+import BigNumber from "bignumber.js";
 import { getServerInfos } from "../network";
 import { NetworkInfo } from "../types";
 import { parseAPIValue } from "./common";
@@ -17,7 +17,7 @@ const remapError = (error: Error) => {
 
 export async function estimateFees(
   networkInfo?: NetworkInfo | null,
-): Promise<{ networkInfo: NetworkInfo; fee: bigint }> {
+): Promise<{ networkInfo: NetworkInfo; fees: bigint }> {
   if (!networkInfo) {
     try {
       const info = await getServerInfos();
@@ -35,5 +35,5 @@ export async function estimateFees(
     }
   }
 
-  return { networkInfo, fee: BigInt(networkInfo.serverFee.toString()) };
+  return { networkInfo, fees: BigInt(networkInfo.serverFee.toString()) };
 }

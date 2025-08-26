@@ -77,7 +77,7 @@ const BackdropPressable = Animated.createAnimatedComponent(styled(Pressable)`
   background-color: rgba(0, 0, 0, 0.7);
 `);
 
-const DURATION_MS = Config.MOCK ? 50 : 400;
+const DURATION_MS = Config.DETOX ? 50 : 400;
 const Y_AMPLITUDE = 90;
 
 const animParams = { duration: DURATION_MS };
@@ -106,13 +106,16 @@ export function TransferTabIcon() {
     pointerEvents: openAnimValue.value === 1 ? ("auto" as const) : ("none" as const),
   }));
 
-  const translateYStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY: interpolate(openAnimValue.value, [0, 1, 2], [Y_AMPLITUDE, 0, Y_AMPLITUDE]),
-      },
-    ],
-  }));
+  const translateYStyle = useAnimatedStyle(
+    () => ({
+      transform: [
+        {
+          translateY: interpolate(openAnimValue.value, [0, 1, 2], [Y_AMPLITUDE, 0, Y_AMPLITUDE]),
+        },
+      ],
+    }),
+    [openAnimValue],
+  );
 
   /**
    * openAnimValue.value:
@@ -127,9 +130,12 @@ export function TransferTabIcon() {
     progress: interpolate(openAnimValue.value, [0, 1, 2], [0, 0.5, 1]),
   }));
 
-  const opacityStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(openAnimValue.value, [0, 1, 2], [0, 1, 0]),
-  }));
+  const opacityStyle = useAnimatedStyle(
+    () => ({
+      opacity: interpolate(openAnimValue.value, [0, 1, 2], [0, 1, 0]),
+    }),
+    [openAnimValue],
+  );
 
   const readOnlyModeEnabled = useSelector(readOnlyModeEnabledSelector);
 
@@ -199,7 +205,7 @@ export function TransferTabIcon() {
     screenHeight -
     bottomInset -
     topInset -
-    (isExperimental || Config.MOCK ? ExperimentalHeaderHeight : 0);
+    (isExperimental || Config.DETOX ? ExperimentalHeaderHeight : 0);
 
   return (
     <>
@@ -213,8 +219,8 @@ export function TransferTabIcon() {
               maxHeight: drawerHeight,
               paddingBottom: bottomInset + 16 + MAIN_BUTTON_SIZE + MAIN_BUTTON_BOTTOM,
             },
-            Config.MOCK ? {} : opacityStyle,
-            Config.MOCK ? {} : translateYStyle,
+            Config.DETOX ? {} : opacityStyle,
+            Config.DETOX ? {} : translateYStyle,
           ]}
         >
           <TransferDrawer onClose={closeModal} />

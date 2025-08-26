@@ -5,6 +5,7 @@ export type {
   OsuFirmware,
   FirmwareUpdateContextEntity,
 } from "./managerApi/entities/FirmwareUpdateContextEntity";
+export type { ReinstallConfigArgs } from "./commands/entities/ReinstallConfigEntity";
 export type { ManagerApiRepository } from "./managerApi/repositories/ManagerApiRepository";
 export { HttpManagerApiRepository } from "./managerApi/repositories/HttpManagerApiRepository";
 export { StubManagerApiRepository } from "./managerApi/repositories/StubManagerApiRepository";
@@ -36,7 +37,12 @@ export {
 export { isEditDeviceNameSupported } from "./capabilities/isEditDeviceNameSupported";
 export { isSyncOnboardingSupported } from "./capabilities/isSyncOnboardingSupported";
 export { supportedDeviceModelIds } from "./capabilities/isCustomLockScreenSupported";
+export { isCharonSupported } from "./commands/use-cases/isCharonSupported";
 // src/customLockScreen/
 export * from "./customLockScreen/screenSpecs";
 // src/firmwareUpdate/
 export { shouldForceFirmwareUpdate } from "./firmwareUpdate/shouldForceFirmwareUpdate";
+// errors
+export * from "./errors";
+// src/commands/consent/
+export { reinstallConfigurationConsent } from "./commands/use-cases/consent/reinstallConfigurationConsent";

@@ -10,6 +10,7 @@ export const SWAP_VERSION = "2.35";
 const SWAP_TRACKING_PROPERTIES = {
   swapVersion: SWAP_VERSION,
   flow: "swap",
+  live_app: "swap",
 };
 
 export const useGetSwapTrackingProperties = () => {
@@ -71,6 +72,7 @@ export function transformToBigNumbers(obj: TransformableObject): TransformableOb
   for (const key in obj) {
     if (Object.prototype.hasOwnProperty.call(obj, key)) {
       const value = obj[key];
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       if (typeof value === "string" && !isNaN(value as unknown as number)) {
         transformedObj[key] = new BigNumber(value);
       } else if (typeof value === "object") {

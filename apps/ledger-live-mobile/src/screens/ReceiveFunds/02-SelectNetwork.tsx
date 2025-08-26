@@ -4,23 +4,23 @@ import { StyleSheet, FlatList, Linking } from "react-native";
 import type { CryptoCurrency, TokenCurrency } from "@ledgerhq/types-cryptoassets";
 import { findCryptoCurrencyById } from "@ledgerhq/live-common/currencies/index";
 import { useCurrenciesByMarketcap } from "@ledgerhq/live-common/currencies/hooks";
-
-import { BannerCard, Flex, Text } from "@ledgerhq/native-ui";
+import { Flex, Text } from "@ledgerhq/native-ui";
 import { useDispatch, useSelector } from "react-redux";
-import { ScreenName } from "~/const";
+import { NavigatorName, ScreenName } from "~/const";
 import { track, TrackScreen } from "~/analytics";
 import { flattenAccountsSelector } from "~/reducers/accounts";
 import { ReceiveFundsStackParamList } from "~/components/RootNavigator/types/ReceiveFundsNavigator";
 import { StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
-import { ChartNetworkMedium } from "@ledgerhq/native-ui/assets/icons";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import * as Animatable from "react-native-animatable";
 import { setCloseNetworkBanner } from "~/actions/settings";
 import { hasClosedNetworkBannerSelector } from "~/reducers/settings";
 import BigCurrencyRow from "~/components/BigCurrencyRow";
 import { findAccountByCurrency } from "~/logic/deposit";
 import { AccountLike } from "@ledgerhq/types-live";
 import { urls } from "~/utils/urls";
+import { AddAccountContexts } from "LLM/features/Accounts/screens/AddAccount/enums";
+import NetworkBanner from "LLM/features/AssetSelection/components/NetworkBanner";
+import useBannerAnimation from "LLM/features/AssetSelection/screens/SelectNetwork/useBannerAnimation";
+import Animated from "react-native-reanimated";
 
 type CryptoWithAccounts = { crypto: CryptoCurrency; accounts: AccountLike[] };
 
@@ -29,9 +29,6 @@ type Props = {
 } & StackNavigatorProps<ReceiveFundsStackParamList, ScreenName.DepositSelectNetwork>;
 
 const keyExtractor = (elem: CryptoWithAccounts) => elem.crypto.id;
-
-const AnimatedView = Animatable.View;
-
 export default function SelectNetwork({ navigation, route }: Props) {
   const provider = route?.params?.provider;
   const filterCurrencyIds = route?.params?.filterCurrencyIds;
@@ -48,6 +45,8 @@ export default function SelectNetwork({ navigation, route }: Props) {
 
   const hasClosedNetworkBanner = useSelector(hasClosedNetworkBannerSelector);
   const [displayBanner, setBanner] = useState(!hasClosedNetworkBanner);
+
+  const { onBannerLayout, animatedStyle } = useBannerAnimation({ displayBanner });
 
   const { t } = useTranslation();
 
@@ -87,6 +86,19 @@ export default function SelectNetwork({ navigation, route }: Props) {
     [accounts, sortedCryptoCurrencies],
   );
 
+  const goToDeviceSelection = useCallback(
+    (currency: CryptoCurrency) => {
+      navigation.replace(NavigatorName.DeviceSelection, {
+        screen: ScreenName.SelectDevice,
+        params: {
+          currency,
+          context: AddAccountContexts.ReceiveFunds,
+        },
+      });
+    },
+    [navigation],
+  );
+
   const onPressItem = useCallback(
     (currency: CryptoCurrency | TokenCurrency) => {
       track("network_clicked", {
@@ -122,19 +134,14 @@ export default function SelectNetwork({ navigation, route }: Props) {
           });
         } else {
           // if we didn't find any account of the parent currency we add and create one
-          navigation.navigate(ScreenName.ReceiveAddAccountSelectDevice, {
-            currency: cryptoToSend.parentCurrency,
-            createTokenAccount: true,
-          });
+          goToDeviceSelection(cryptoToSend.parentCurrency);
         }
       } else {
         // else we create a currency account
-        navigation.navigate(ScreenName.ReceiveAddAccountSelectDevice, {
-          currency: cryptoToSend,
-        });
+        goToDeviceSelection(cryptoToSend);
       }
     },
-    [accounts, navigation, provider],
+    [accounts, navigation, provider, goToDeviceSelection],
   );
 
   const hideBanner = useCallback(() => {
@@ -197,39 +204,12 @@ export default function SelectNetwork({ navigation, route }: Props) {
           keyboardDismissMode="on-drag"
         />
       </Flex>
-      {displayBanner ? (
-        <AnimatedView animation="fadeInUp" delay={50} duration={300}>
-          <NetworkBanner hideBanner={hideBanner} onPress={clickLearn} />
-        </AnimatedView>
-      ) : (
-        <AnimatedView animation="fadeOutDown" delay={50} duration={300}>
-          <NetworkBanner hideBanner={hideBanner} onPress={clickLearn} />
-        </AnimatedView>
-      )}
+      <Animated.View style={[animatedStyle]}>
+        <NetworkBanner hideBanner={hideBanner} onLayout={onBannerLayout} onPress={clickLearn} />
+      </Animated.View>
     </>
   );
 }
-
-type BannerProps = {
-  hideBanner: () => void;
-  onPress: () => void;
-};
-
-const NetworkBanner = ({ onPress, hideBanner }: BannerProps) => {
-  const { t } = useTranslation();
-  const insets = useSafeAreaInsets();
-  return (
-    <Flex pb={insets.bottom + 2} px={6} mb={6}>
-      <BannerCard
-        typeOfRightIcon="close"
-        title={t("transfer.receive.selectNetwork.bannerTitle")}
-        LeftElement={<ChartNetworkMedium />}
-        onPressDismiss={hideBanner}
-        onPress={onPress}
-      />
-    </Flex>
-  );
-};
 
 const styles = StyleSheet.create({
   list: {

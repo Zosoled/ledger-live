@@ -7,13 +7,20 @@ import type {
   NftPayload,
 } from "../actions/types";
 import { NftStateActionTypes } from "../actions/types";
+import { SupportedBlockchain } from "@ledgerhq/live-nft/supported";
+import { getEnv } from "@ledgerhq/live-env";
+
+const SUPPORTED_NFT_CURRENCIES = getEnv("NFT_CURRENCIES");
 
 export const INITIAL_STATE: NftState = {
   filterDrawerVisible: false,
-  galleryChainFilters: {
-    ethereum: true,
-    polygon: true,
-  },
+  galleryChainFilters: SUPPORTED_NFT_CURRENCIES.reduce(
+    (filters, chain) => {
+      filters[chain as SupportedBlockchain] = true;
+      return filters;
+    },
+    {} as Record<SupportedBlockchain, boolean>,
+  ),
 };
 
 const handlers: ReducerMap<NftState, NftPayload> = {

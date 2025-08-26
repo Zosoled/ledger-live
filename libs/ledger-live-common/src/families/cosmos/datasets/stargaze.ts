@@ -1,6 +1,6 @@
 import { CurrenciesData } from "@ledgerhq/types-live";
 import type { Transaction } from "../types";
-import { fromTransactionRaw } from "../transaction";
+import { fromTransactionRaw } from "@ledgerhq/coin-cosmos/transaction";
 import BigNumber from "bignumber.js";
 
 const dataset: CurrenciesData<Transaction> = {
@@ -21,6 +21,7 @@ const dataset: CurrenciesData<Transaction> = {
   accounts: [
     {
       FIXME_tests: ["balance is sum of ops"],
+      // implementations: ["js"],
       raw: {
         id: "js:2:stargaze:stars1gyauvl44q2apn3u3aujm36q8zrj74vrypyf2yc:",
         seedIdentifier: "03d5e0ebb3f1ae2afe87e5d5a24b5029a59cc12f8fd1056840091b2f0b97e54e83",
@@ -37,8 +38,8 @@ const dataset: CurrenciesData<Transaction> = {
         pendingOperations: [],
         currencyId: "stargaze",
         lastSyncDate: "2023-06-12T13:27:26.351Z",
-        balance: "2000000",
-        spendableBalance: "2000000",
+        balance: "2000004",
+        spendableBalance: "2000004",
         balanceHistoryCache: {
           HOUR: { balances: [0], latestDate: 1686574800000 },
           DAY: { balances: [0], latestDate: 1686520800000 },

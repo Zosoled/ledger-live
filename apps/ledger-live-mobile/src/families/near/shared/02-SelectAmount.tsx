@@ -18,7 +18,6 @@ import { formatCurrencyUnit } from "@ledgerhq/live-common/currencies/index";
 import { useTheme } from "styled-components/native";
 import { accountScreenSelector } from "~/reducers/accounts";
 import Button from "~/components/Button";
-import CurrencyInput from "~/components/CurrencyInput";
 import LText from "~/components/LText";
 import Check from "~/icons/Check";
 import KeyboardView from "~/components/KeyboardView";
@@ -31,6 +30,9 @@ import { NearUnstakingFlowParamList } from "../UnstakingFlow/types";
 import { NearWithdrawingFlowParamList } from "../WithdrawingFlow/types";
 import { useSettings } from "~/hooks";
 import { useAccountUnit } from "~/hooks/useAccountUnit";
+import NotEnoughFundFeesAlert from "../../shared/StakingErrors/NotEnoughFundFeesAlert";
+import { NotEnoughBalance } from "@ledgerhq/errors";
+import AmountInput from "~/screens/SendFunds/AmountInput";
 
 type Props =
   | StackNavigatorProps<NearStakingFlowParamList, ScreenName.NearStakingAmount>
@@ -92,6 +94,8 @@ function StakingAmount({ navigation, route }: Props) {
     behaviorParam = "padding";
   }
 
+  const errorDuringUnstaking = error instanceof NotEnoughBalance && transaction.mode === "unstake";
+
   return (
     <View
       style={[
@@ -104,14 +108,15 @@ function StakingAmount({ navigation, route }: Props) {
       <KeyboardView behavior={behaviorParam}>
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
           <View style={styles.container}>
-            <View style={styles.main}>
-              <CurrencyInput
-                unit={unit}
-                value={value}
+            <View style={styles.amountWrapper}>
+              <AmountInput
+                editable={true}
+                account={account}
                 onChange={onChange}
-                inputStyle={styles.inputStyle}
-                hasError={!!error}
-                hasWarning={!!warning}
+                value={value}
+                error={error}
+                warning={warning}
+                testID="near-delegation-amount-input"
               />
               <LText
                 style={[styles.fieldStatus]}
@@ -158,6 +163,7 @@ function StakingAmount({ navigation, route }: Props) {
                 },
               ]}
             >
+              {errorDuringUnstaking && <NotEnoughFundFeesAlert account={account} />}
               {remaining.isZero() && (
                 <View style={styles.labelContainer}>
                   <Check size={16} color={colors.success.c50} />
@@ -190,6 +196,7 @@ function StakingAmount({ navigation, route }: Props) {
                 onPress={onNext}
                 title={<Trans i18nKey="near.staking.flow.steps.amount.cta" />}
                 type="primary"
+                testID="near-delegation-amount-continue"
               />
             </View>
           </View>
@@ -241,7 +248,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     alignSelf: "stretch",
-    padding: 8,
+    paddingVertical: 8,
   },
   labelContainer: {
     width: "100%",
@@ -266,6 +273,9 @@ const styles = StyleSheet.create({
   fieldStatus: {
     fontSize: 14,
     textAlign: "center",
+  },
+  amountWrapper: {
+    flex: 1,
   },
 });
 

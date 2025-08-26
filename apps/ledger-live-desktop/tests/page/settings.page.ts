@@ -1,4 +1,6 @@
 import { AppPage } from "tests/page/abstractClasses";
+import { step } from "tests/misc/reporters/step";
+import { expect } from "@playwright/test";
 
 export class SettingsPage extends AppPage {
   private accountsTab = this.page.getByTestId("settings-accounts-tab");
@@ -7,6 +9,7 @@ export class SettingsPage extends AppPage {
   readonly experimentalTab = this.page.getByTestId("settings-experimental-tab");
   private developerTab = this.page.getByTestId("settings-developer-tab");
   private experimentalDevModeToggle = this.page.getByTestId("MANAGER_DEV_MODE-button");
+
   readonly counterValueSelector = this.page.locator(
     "[data-testid='setting-countervalue-dropDown'] .select__value-container",
   );
@@ -25,18 +28,22 @@ export class SettingsPage extends AppPage {
   readonly exportLocalManifestButton = this.page.getByTestId("settings-export-local-manifest");
   readonly createLocalManifestButton = this.page.getByTestId("create-local-manifest");
 
+  @step("Go to Settings Accounts tab")
   async goToAccountsTab() {
     await this.accountsTab.click();
   }
 
+  @step("Go to Settings About tab")
   async goToAboutTab() {
     await this.aboutTab.click();
   }
 
+  @step("Go to Settings Help tab")
   async goToHelpTab() {
     await this.helpTab.click();
   }
 
+  @step("Go to Settings Experimental tab")
   async goToExperimentalTab() {
     await this.experimentalTab.click();
   }
@@ -50,10 +57,16 @@ export class SettingsPage extends AppPage {
     await this.experimentalDevModeToggle.click();
   }
 
-  async changeCounterValue() {
+  @step("Change counter value to $0")
+  async changeCounterValue(currency: string) {
     await this.counterValueSelector.click();
-    await this.counterValueSearchBar.fill("euro");
+    await this.counterValueSearchBar.fill(currency);
     await this.counterValueropdownChoiceEuro.click();
+  }
+
+  @step("Expect counter value to be $0")
+  async expectCounterValue(currency: string) {
+    expect(this.counterValueSelector).toHaveText(currency);
   }
 
   async changeTheme() {

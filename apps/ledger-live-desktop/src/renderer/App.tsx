@@ -5,6 +5,7 @@ import { HashRouter as Router } from "react-router-dom";
 import { NftMetadataProvider } from "@ledgerhq/live-nft-react";
 import { getCurrencyBridge } from "@ledgerhq/live-common/bridge/index";
 import { getFeature } from "@ledgerhq/live-common/featureFlags/index";
+import { DeviceManagementKitProvider } from "@ledgerhq/live-dmk-desktop";
 import "./global.css";
 import "tippy.js/dist/tippy.css";
 import "tippy.js/animations/shift-away.css";
@@ -17,8 +18,8 @@ import ThrowBlock from "~/renderer/components/ThrowBlock";
 import LiveStyleSheetManager from "~/renderer/styles/LiveStyleSheetManager";
 import { FirebaseRemoteConfigProvider } from "~/renderer/components/FirebaseRemoteConfig";
 import { FirebaseFeatureFlagsProvider } from "~/renderer/components/FirebaseFeatureFlags";
-import CountervaluesProvider from "~/renderer/components/CountervaluesProvider";
-import { CountervaluesMarketcap } from "@ledgerhq/live-countervalues-react";
+import { CountervaluesBridgedProvider } from "~/renderer/components/CountervaluesProvider";
+import { CountervaluesMarketcapBridgedProvider } from "~/renderer/components/CountervaluesMarketcapProvider";
 import DrawerProvider from "~/renderer/drawers/Provider";
 import Default from "./Default";
 import { AnnouncementProviderWrapper } from "~/renderer/components/AnnouncementProviderWrapper";
@@ -32,6 +33,7 @@ import { StorylyProvider } from "~/storyly/StorylyProvider";
 import { CounterValuesStateRaw } from "@ledgerhq/live-countervalues/types";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { AppDataStorageProvider } from "~/renderer/hooks/storage-provider/useAppDataStorage";
 import { allowDebugReactQuerySelector } from "./reducers/settings";
 
 const reloadApp = (event: KeyboardEvent) => {
@@ -77,30 +79,34 @@ const InnerApp = ({ initialCountervalues }: { initialCountervalues: CounterValue
           <FirebaseFeatureFlagsProvider getFeature={getFeature}>
             <ConnectEnvsToSentry />
             <UpdaterProvider>
-              <CountervaluesMarketcap>
-                <CountervaluesProvider initialState={initialCountervalues}>
-                  <ToastProvider>
-                    <AnnouncementProviderWrapper>
-                      <Router>
-                        <PostOnboardingProviderWrapped>
-                          <PlatformAppProviderWrapper>
-                            <DrawerProvider>
-                              <NftMetadataProvider getCurrencyBridge={getCurrencyBridge}>
-                                <StorylyProvider>
-                                  <QueryClientProvider client={queryClient}>
-                                    <Default />
-                                    <ReactQueryDevtoolsProvider />
-                                  </QueryClientProvider>
-                                </StorylyProvider>
-                              </NftMetadataProvider>
-                            </DrawerProvider>
-                          </PlatformAppProviderWrapper>
-                        </PostOnboardingProviderWrapped>
-                      </Router>
-                    </AnnouncementProviderWrapper>
-                  </ToastProvider>
-                </CountervaluesProvider>
-              </CountervaluesMarketcap>
+              <AppDataStorageProvider>
+                <DeviceManagementKitProvider>
+                  <CountervaluesMarketcapBridgedProvider>
+                    <CountervaluesBridgedProvider initialState={initialCountervalues}>
+                      <ToastProvider>
+                        <AnnouncementProviderWrapper>
+                          <Router>
+                            <PostOnboardingProviderWrapped>
+                              <PlatformAppProviderWrapper>
+                                <DrawerProvider>
+                                  <NftMetadataProvider getCurrencyBridge={getCurrencyBridge}>
+                                    <StorylyProvider>
+                                      <QueryClientProvider client={queryClient}>
+                                        <Default />
+                                        <ReactQueryDevtoolsProvider />
+                                      </QueryClientProvider>
+                                    </StorylyProvider>
+                                  </NftMetadataProvider>
+                                </DrawerProvider>
+                              </PlatformAppProviderWrapper>
+                            </PostOnboardingProviderWrapped>
+                          </Router>
+                        </AnnouncementProviderWrapper>
+                      </ToastProvider>
+                    </CountervaluesBridgedProvider>
+                  </CountervaluesMarketcapBridgedProvider>
+                </DeviceManagementKitProvider>
+              </AppDataStorageProvider>
             </UpdaterProvider>
           </FirebaseFeatureFlagsProvider>
         </FirebaseRemoteConfigProvider>

@@ -22,8 +22,9 @@ import DelegationContainer from "../DelegationContainer";
 import { StepProps } from "../types";
 import { useAccountUnit } from "~/renderer/hooks/useAccountUnit";
 import { useAccountName } from "~/renderer/reducers/wallet";
+import ErrorBanner from "~/renderer/components/ErrorBanner";
 
-const urlDelegationHelp = "https://support.ledger.com/hc/en-us/articles/360010653260";
+const urlDelegationHelp = "https://support.ledger.com/article/360010653260-zd?redirect=false";
 
 const Container = styled(Box)`
   width: 148px;
@@ -47,7 +48,7 @@ const Placeholder = styled(Box)`
   height: 14px;
 `;
 
-const StepSummary = ({ account, transaction, eventType, transitionTo }: StepProps) => {
+const StepSummary = ({ account, transaction, eventType, transitionTo, status }: StepProps) => {
   invariant(
     account && transaction && transaction.family === "tezos",
     "step summary requires account and transaction settled",
@@ -122,7 +123,12 @@ const StepSummary = ({ account, transaction, eventType, transitionTo }: StepProp
               <Container my={1}>
                 <BakerImage size={32} baker={baker} />
                 <Ellipsis>
-                  <Text ff="Inter|SemiBold" color="palette.text.shade100" fontSize={3}>
+                  <Text
+                    data-testid="validator-name-tezos"
+                    ff="Inter|SemiBold"
+                    color="palette.text.shade100"
+                    fontSize={3}
+                  >
                     {getBakerName(baker, transaction.recipient)}
                   </Text>
                 </Ellipsis>
@@ -201,6 +207,7 @@ const StepSummary = ({ account, transaction, eventType, transitionTo }: StepProp
           <WarnBox>
             <Trans i18nKey="delegation.flow.steps.summary.termsAndPrivacy" />
           </WarnBox>
+          {status.errors.sender && <ErrorBanner error={status.errors.sender} />}
         </Box>
       ) : null}
     </Box>
@@ -224,7 +231,7 @@ export const StepSummaryFooter = ({
   const canNext = !bridgePending && !anyError;
   return (
     <Box horizontal alignItems="center" flow={2} grow>
-      {!anyError ? (
+      {!anyError || anyError === status.errors.sender ? (
         <AccountFooter parentAccount={parentAccount} account={account} status={status} />
       ) : (
         <Box grow>

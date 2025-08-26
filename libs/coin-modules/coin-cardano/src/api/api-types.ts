@@ -30,15 +30,31 @@ export type StakeDelegationCertificate = {
   stakeCredential: StakeCredential;
 };
 
+export type StakeRegConway = {
+  index: number;
+  stakeHex: string;
+  deposit: string;
+};
+
+export type StakeDeRegConway = {
+  index: number;
+  stakeHex: string;
+  deposit: string;
+};
+
 export type TransactionCertificate =
   | StakeKeyRegistrationCertificate
   | StakeKeyDeRegistrationCertificate
-  | StakeDelegationCertificate;
+  | StakeDelegationCertificate
+  | StakeRegConway
+  | StakeDeRegConway;
 
 export type TransactionCertificates = {
   stakeRegistrations: Array<StakeKeyRegistrationCertificate>;
   stakeDeRegistrations: Array<StakeKeyDeRegistrationCertificate>;
   stakeDelegations: Array<StakeDelegationCertificate>;
+  stakeRegsConway?: Array<StakeRegConway>;
+  stakeDeRegsConway?: Array<StakeDeRegConway>;
 };
 
 export type APITransaction = {
@@ -67,6 +83,7 @@ export type APITransaction = {
   };
   withdrawals?: Array<{
     stakeCredential: StakeCredential;
+    stakeHex: string;
     amount: string;
   }>;
 };
@@ -76,19 +93,24 @@ export type APINetworkInfo = {
 };
 
 export type APIDelegation = {
+  deposit: string;
+  stakeHex: string;
   status: boolean;
-  stakeCredential: {
-    key: string;
-    type: string;
-  };
   stake: string;
   rewardsAvailable: string;
   rewardsWithdrawn: string;
-  poolInfo: {
-    poolId: string;
-    name: string;
-    ticker: string;
-  };
+  poolInfo:
+    | {
+        poolId: string;
+        name: string | undefined;
+        ticker: string | undefined;
+      }
+    | undefined;
+  dRepInfo:
+    | {
+        hex: string;
+      }
+    | undefined;
 };
 
 export type StakePool = {

@@ -1,4 +1,4 @@
-import buildConConfig, { type CurrencyConfig } from "@ledgerhq/coin-framework/config";
+import buildCoinConfig, { type CurrencyConfig } from "@ledgerhq/coin-framework/config";
 
 export type TezosConfig = {
   baker: {
@@ -13,6 +13,7 @@ export type TezosConfig = {
   };
   fees: {
     minGasLimit: number;
+    minRevealGasLimit: number;
     minStorageLimit: number;
     minFees: number;
     minEstimatedFees: number;
@@ -21,6 +22,6 @@ export type TezosConfig = {
 
 export type TezosCoinConfig = CurrencyConfig & TezosConfig;
 
-const coinConfig = buildConConfig<TezosCoinConfig>();
+const coinConfig = buildCoinConfig<TezosCoinConfig>();
 
 export default coinConfig;

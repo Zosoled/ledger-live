@@ -3,6 +3,7 @@ import {
   ServiceStatusSummary,
   Incident,
 } from "@ledgerhq/live-common/notifications/ServiceStatusProvider/types";
+
 const statuses = {
   page: {
     id: "767c5rcj7z12",
@@ -343,21 +344,6 @@ const statuses = {
       only_show_if_degraded: false,
     },
     {
-      id: "44xfftm0ztkq",
-      name: "Pivx (PIVX)",
-      status: "operational",
-      created_at: "2020-06-22T17:55:04.800+02:00",
-      updated_at: "2021-01-14T22:42:40.068+01:00",
-      position: 14,
-      description: null,
-      showcase: true,
-      start_date: null,
-      group_id: "rn7ny8423ghs",
-      page_id: "767c5rcj7z12",
-      group: false,
-      only_show_if_degraded: false,
-    },
-    {
       id: "t40n3pwhqqbq",
       name: "Qtum (QTUM)",
       status: "operational",
@@ -478,6 +464,7 @@ const statuses = {
       only_show_if_degraded: false,
     },
   ],
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   incidents: [] as Incident[],
   scheduled_maintenances: [],
   status: {
@@ -485,6 +472,7 @@ const statuses = {
     description: "All Systems Operational",
   },
 };
+
 const mockedIncidents: Incident[] = [
   {
     created_at: "2021-02-22T17:58:18.792+02:00",

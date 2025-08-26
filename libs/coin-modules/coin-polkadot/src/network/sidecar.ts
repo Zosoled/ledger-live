@@ -1,5 +1,4 @@
 import { BigNumber } from "bignumber.js";
-import querystring from "querystring";
 import { TypeRegistry } from "@polkadot/types";
 import { Extrinsics } from "@polkadot/types/metadata/decorate/types";
 import network from "@ledgerhq/live-network";
@@ -23,11 +22,11 @@ import type {
   SidecarTransactionBroadcast,
   SidecarPaymentInfo,
   SidecarRuntimeSpec,
-  SidecarConstants,
   BlockInfo,
-} from "./sidecar.types";
+} from "./types";
 import { createRegistryAndExtrinsics } from "./common";
 import node from "./node";
+import { log } from "@ledgerhq/logs";
 
 /**
  * Returns the full indexer url for en route endpoint.
@@ -117,14 +116,7 @@ const fetchControllerAddr = async (addr: string): Promise<string | null> => {
  * @returns {SidecarStakingInfo}
  */
 const fetchStakingInfo = async (addr: string): Promise<SidecarStakingInfo> => {
-  //LIVE-13136: commented for the time being
-  // return node.fetchStakingInfo(addr);
-  const {
-    data,
-  }: {
-    data: SidecarStakingInfo;
-  } = await callSidecar(`/accounts/${addr}/staking-info`);
-  return data;
+  return node.fetchStakingInfo(addr);
 };
 
 /**
@@ -135,14 +127,7 @@ const fetchStakingInfo = async (addr: string): Promise<SidecarStakingInfo> => {
  * @returns {Object}
  */
 const fetchConstants = async (): Promise<Record<string, any>> => {
-  //LIVE-13136: commented for the time being
-  // return node.fetchConstants();
-  const {
-    data,
-  }: {
-    data: SidecarConstants;
-  } = await callSidecar(`/runtime/constants`);
-  return data.consts;
+  return node.fetchConstants();
 };
 
 /**
@@ -192,24 +177,7 @@ const fetchValidators = async (
   status: SidecarValidatorsParamStatus = "all",
   addresses?: SidecarValidatorsParamAddresses,
 ): Promise<SidecarValidators> => {
-  //LIVE-13136: commented for the time being
-  // return node.fetchValidators(status, addresses);
-  let params = {};
-
-  if (status) {
-    params = { ...params, status };
-  }
-
-  if (addresses && addresses.length) {
-    params = { ...params, addresses: addresses.join(",") };
-  }
-
-  const {
-    data,
-  }: {
-    data: SidecarValidators;
-  } = await callSidecar(`/validators?${querystring.stringify(params)}`);
-  return data;
+  return await node.fetchValidators(status, addresses);
 };
 
 /**
@@ -328,7 +296,12 @@ export const getAccount = async (addr: string) => {
   const stakingInfo = await getStakingInfo(addr);
   const nominations = await getNominations(addr);
 
-  return { ...balances, ...stakingInfo, nominations };
+  const account = { ...balances, ...stakingInfo, nominations };
+  account.balance = account.balance
+    .plus(account.lockedBalance.minus(account.unlockingBalance))
+    .plus(account.unlockingBalance.minus(account.unlockedBalance));
+
+  return account;
 };
 
 /**
@@ -339,24 +312,13 @@ export const getAccount = async (addr: string) => {
  */
 export const getBalances = async (addr: string) => {
   const balanceInfo = await fetchBalanceInfo(addr);
-  // Locked is the highest value among locks
-  const totalLocked = balanceInfo.locks.reduce((total, lock) => {
-    const amount = new BigNumber(lock.amount);
 
-    if (amount.gt(total)) {
-      return amount;
-    }
-
-    return total;
-  }, new BigNumber(0));
-  const balance = new BigNumber(balanceInfo.free);
-  const spendableBalance = totalLocked.gt(balance) ? new BigNumber(0) : balance.minus(totalLocked);
   return {
     blockHeight: Number(balanceInfo.at.height),
-    balance,
-    spendableBalance,
+    balance: new BigNumber(balanceInfo.free),
+    spendableBalance: new BigNumber(balanceInfo.transferable || "0"),
     nonce: Number(balanceInfo.nonce),
-    lockedBalance: new BigNumber(totalLocked),
+    lockedBalance: new BigNumber(balanceInfo.reserved || "0"),
   };
 };
 
@@ -432,17 +394,23 @@ export const getStakingInfo = async (addr: string) => {
  * @returns {PolkadotNomination[}
  */
 const getNominations = async (addr: string): Promise<PolkadotNomination[]> => {
-  const nominations = await node.fetchNominations(addr);
+  try {
+    const nominations = await node.fetchNominations(addr);
 
-  if (!nominations) {
+    if (!nominations) {
+      return [];
+    }
+    return nominations.targets.map<PolkadotNomination>(nomination => ({
+      address: nomination.address,
+      value: new BigNumber(nomination.value || 0),
+      status: nomination.status,
+    }));
+  } catch (error) {
+    log("polkadot", `failed to fetch nominations ${addr}`, {
+      error,
+    });
     return [];
   }
-
-  return nominations.targets.map<PolkadotNomination>(nomination => ({
-    address: nomination.address,
-    value: new BigNumber(nomination.value || 0),
-    status: nomination.status,
-  }));
 };
 
 /**

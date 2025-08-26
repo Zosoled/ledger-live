@@ -1,7 +1,7 @@
 import React, { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans } from "react-i18next";
 import {
-  Animated,
+  Animated as RNAnimated,
   View,
   TouchableOpacity,
   PanResponder,
@@ -9,25 +9,28 @@ import {
   StyleProp,
   ViewStyle,
   LayoutChangeEvent,
+  TextStyle,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { listTokenTypesForCryptoCurrency } from "@ledgerhq/live-common/currencies/index";
 import { Account } from "@ledgerhq/types-live";
 import { FlexBoxProps } from "@ledgerhq/native-ui/components/Layout/Flex/index";
 import { Flex, Text } from "@ledgerhq/native-ui";
 import Swipeable from "react-native-gesture-handler/Swipeable";
 
-import { StackNavigationProp } from "@react-navigation/stack";
-import { ScreenName } from "~/const";
+import { NavigatorName, ScreenName } from "~/const";
 import { track } from "~/analytics";
-import AccountCard from "./AccountCard";
 import CheckBox from "./CheckBox";
-import swipedAccountSubject from "~/screens/AddAccounts/swipedAccountSubject";
+import swipedAccountSubject from "~/types/subject";
 import Button from "./Button";
 import TouchHintCircle from "./TouchHintCircle";
 import Touchable from "./Touchable";
 import { AccountSettingsNavigatorParamList } from "./RootNavigator/types/AccountSettingsNavigator";
-import { AddAccountsNavigatorParamList } from "./RootNavigator/types/AddAccountsNavigator";
+import AccountItem from "LLM/features/Accounts/components/AccountsListView/components/AccountItem";
+import { BaseComposite, StackNavigatorProps } from "./RootNavigator/types/helpers";
+import Animated from "react-native-reanimated";
+import { useTheme } from "styled-components/native";
+import useItemAnimation from "LLM/features/Accounts/components/AccountsListView/components/AnimatedAccountItem/useItemAnimation";
+import { TextVariants } from "@ledgerhq/native-ui/styles/theme";
 
 const selectAllHitSlop = {
   top: 16,
@@ -39,7 +42,7 @@ const selectAllHitSlop = {
 type Props = FlexBoxProps & {
   accounts: Account[];
   onPressAccount?: (_: Account) => void;
-  onSelectAll?: (_: Account[]) => void;
+  onSelectAll?: (_: Account[], autoSelect?: boolean) => void;
   onUnselectAll?: (_: Account[]) => void;
   selectedIds: string[];
   isDisabled?: boolean;
@@ -52,6 +55,33 @@ type Props = FlexBoxProps & {
   onAccountNameChange?: (name: string, changedAccount: Account) => void;
   useFullBalance?: boolean;
 };
+
+type NavigationProps = BaseComposite<
+  StackNavigatorProps<AccountSettingsNavigatorParamList, ScreenName.EditAccountName>
+>["navigation"];
+
+const getStyles = (space?: number[]) => ({
+  selectableAccount: {
+    marginTop: space?.[6],
+    marginX: 6,
+    paddingX: space?.[6],
+    paddingY: space?.[6],
+    columnGap: space?.[4],
+    borderRadius: space?.[4],
+    backgroundColor: "opacityDefault.c05",
+  },
+  header: {
+    paddingX: 16,
+    paddingBottom: 0,
+  },
+  headerText: {
+    variant: "paragraph" as TextVariants,
+    textTransform: undefined as TextStyle["textTransform"],
+  },
+  selectAllText: {
+    getColor: (areAllSelected: boolean) => (areAllSelected ? "neutral.c80" : "constant.purple"),
+  },
+});
 
 const SelectableAccountsList = ({
   accounts,
@@ -69,10 +99,7 @@ const SelectableAccountsList = ({
   useFullBalance,
   ...props
 }: Props) => {
-  const navigation =
-    useNavigation<
-      StackNavigationProp<AccountSettingsNavigatorParamList | AddAccountsNavigatorParamList>
-    >();
+  const navigation = useNavigation<NavigationProps>();
 
   const onSelectAll = useCallback(() => {
     track("SelectAllAccounts");
@@ -85,6 +112,34 @@ const SelectableAccountsList = ({
   }, [accounts, onUnselectAllProp]);
 
   const areAllSelected = accounts.every(a => selectedIds.indexOf(a.id) > -1);
+
+  const renderSelectableAccount = useCallback(
+    ({ item, index }: { index: number; item: Account }) => (
+      <SelectableAccount
+        navigation={navigation}
+        showHint={!index && showHint}
+        rowIndex={index}
+        listIndex={listIndex}
+        account={item}
+        onAccountNameChange={onAccountNameChange}
+        isSelected={forceSelected || selectedIds.indexOf(item.id) > -1}
+        isDisabled={isDisabled}
+        onPress={onPressAccount}
+        useFullBalance={useFullBalance}
+      />
+    ),
+    [
+      navigation,
+      showHint,
+      listIndex,
+      selectedIds,
+      forceSelected,
+      isDisabled,
+      onAccountNameChange,
+      onPressAccount,
+      useFullBalance,
+    ],
+  );
 
   return (
     <Flex marginBottom={7} {...props}>
@@ -99,21 +154,12 @@ const SelectableAccountsList = ({
       <FlatList
         data={accounts}
         keyExtractor={(item, index) => item.id + index}
-        renderItem={({ item, index }) => (
-          <SelectableAccount
-            navigation={navigation}
-            showHint={!index && showHint}
-            rowIndex={index}
-            listIndex={listIndex}
-            account={item}
-            onAccountNameChange={onAccountNameChange}
-            isSelected={forceSelected || selectedIds.indexOf(item.id) > -1}
-            isDisabled={isDisabled}
-            onPress={onPressAccount}
-            useFullBalance={useFullBalance}
-          />
+        renderItem={renderSelectableAccount}
+        ListEmptyComponent={() => (
+          <Flex height="100%" flexDirection="row" justifyContent="center">
+            {emptyState || null}
+          </Flex>
         )}
-        ListEmptyComponent={() => <>{emptyState || null}</>}
       />
     </Flex>
   );
@@ -127,9 +173,7 @@ type SelectableAccountProps = {
   showHint: boolean;
   rowIndex: number;
   listIndex: number;
-  navigation: StackNavigationProp<
-    AccountSettingsNavigatorParamList | AddAccountsNavigatorParamList
-  >;
+  navigation: NavigationProps;
   onAccountNameChange?: (name: string, changedAccount: Account) => void;
   useFullBalance?: boolean;
 };
@@ -147,6 +191,7 @@ const SelectableAccount = ({
   useFullBalance,
 }: SelectableAccountProps) => {
   const [stopAnimation, setStopAnimation] = useState<boolean>(false);
+  const { space } = useTheme();
 
   const swipeableRow = useRef<Swipeable>(null);
 
@@ -206,16 +251,20 @@ const SelectableAccount = ({
     if (!onAccountNameChange) return;
 
     swipedAccountSubject.next({ row: -1, list: -1 });
-    navigation.navigate(ScreenName.EditAccountName, {
-      onAccountNameChange,
-      account,
+
+    navigation.navigate(NavigatorName.AccountSettings, {
+      screen: ScreenName.EditAccountName,
+      params: {
+        onAccountNameChange,
+        account,
+      },
     });
   }, [account, navigation, onAccountNameChange]);
 
   const renderLeftActions = useCallback(
     (
-      progress: Animated.AnimatedInterpolation<number>,
-      dragX: Animated.AnimatedInterpolation<number>,
+      progress: RNAnimated.AnimatedInterpolation<number>,
+      dragX: RNAnimated.AnimatedInterpolation<number>,
     ) => {
       const translateX = dragX.interpolate({
         inputRange: [0, 1000],
@@ -224,7 +273,7 @@ const SelectableAccount = ({
 
       return (
         <Flex width="auto" flexDirection="row" alignItems="center" justifyContent="center" ml={2}>
-          <Animated.View style={[{ transform: [{ translateX }] }]} onLayout={setLayout}>
+          <RNAnimated.View style={[{ transform: [{ translateX }] }]} onLayout={setLayout}>
             <Button
               event="EditAccountNameFromSlideAction"
               type="primary"
@@ -233,57 +282,42 @@ const SelectableAccount = ({
               paddingLeft={0}
               paddingRight={0}
             />
-          </Animated.View>
+          </RNAnimated.View>
         </Flex>
       );
     },
     [editNameButtonWidth, setLayout, editAccountName],
   );
 
-  const subAccountCount = account.subAccounts && account.subAccounts.length;
-  const isToken = listTokenTypesForCryptoCurrency(account.currency).length > 0;
+  const { animatedStyle, startAnimation } = useItemAnimation();
+  const styles = getStyles(space);
+
+  useEffect(() => {
+    startAnimation();
+  }, [startAnimation]);
 
   const inner = (
-    <Flex
-      marginTop={3}
-      marginBottom={3}
-      marginLeft={6}
-      marginRight={6}
-      paddingLeft={6}
-      paddingRight={6}
-      paddingTop={3}
-      paddingBottom={3}
-      flexDirection="row"
-      alignItems="center"
-      borderRadius={4}
-      opacity={isDisabled ? 0.4 : 1}
-      backgroundColor="neutral.c30"
-    >
-      <Flex flex={1}>
-        <AccountCard
-          useFullBalance={useFullBalance}
-          account={account}
-          AccountSubTitle={
-            subAccountCount && !isDisabled ? (
-              <Flex marginTop={2}>
-                <Text fontWeight="semiBold" variant="small" color="pillActiveForeground">
-                  <Trans
-                    i18nKey={`selectableAccountsList.${isToken ? "tokenCount" : "subaccountCount"}`}
-                    count={subAccountCount}
-                    values={{ count: subAccountCount }}
-                  />
-                </Text>
-              </Flex>
-            ) : null
-          }
-        />
-      </Flex>
-      {!isDisabled && (
-        <Flex marginLeft={4}>
-          <CheckBox onChange={handlePress} isChecked={!!isSelected} />
+    <Animated.View style={[animatedStyle]}>
+      <Flex
+        {...styles.selectableAccount}
+        flexDirection="row"
+        alignItems="center"
+        opacity={isDisabled ? 0.4 : 1}
+      >
+        <Flex flex={1} flexDirection="row" alignItems="center">
+          <AccountItem
+            account={account as Account}
+            balance={useFullBalance ? account.balance : account.spendableBalance}
+          />
         </Flex>
-      )}
-    </Flex>
+
+        {!isDisabled && (
+          <Flex marginLeft={0}>
+            <CheckBox onChange={handlePress} isChecked={!!isSelected} />
+          </Flex>
+        )}
+      </Flex>
+    </Animated.View>
   );
 
   if (isDisabled) return inner;
@@ -317,25 +351,31 @@ type HeaderProps = {
 
 const Header = ({ text, areAllSelected, onSelectAll, onUnselectAll }: HeaderProps) => {
   const shouldDisplaySelectAll = !!onSelectAll && !!onUnselectAll;
+  const styles = getStyles();
 
   return (
-    <Flex paddingX={16} flexDirection="row" alignItems="center" paddingBottom={8}>
+    <Flex {...styles.header} flexDirection="row" alignItems="center">
       <Text
+        {...styles.headerText}
         fontWeight="semiBold"
-        flexGrow={1}
-        variant="small"
-        textTransform="uppercase"
+        flexShrink={1}
         color="neutral.c70"
+        numberOfLines={1}
       >
         {text}
       </Text>
       {shouldDisplaySelectAll && (
-        <Flex flexShrink={1}>
+        <Flex flexGrow={1} alignItems="flex-end">
           <TouchableOpacity
             onPress={areAllSelected ? onUnselectAll : onSelectAll}
             hitSlop={selectAllHitSlop}
           >
-            <Text fontSize={14} color="neutral.c70">
+            <Text
+              fontSize={14}
+              color={styles.selectAllText.getColor(areAllSelected)}
+              testID={`add-accounts-${areAllSelected ? "deselect" : "select"}-all`}
+              numberOfLines={1}
+            >
               {areAllSelected ? (
                 <Trans i18nKey="selectableAccountsList.deselectAll" />
               ) : (

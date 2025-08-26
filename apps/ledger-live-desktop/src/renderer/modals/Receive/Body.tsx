@@ -6,10 +6,10 @@ import { Trans, withTranslation } from "react-i18next";
 import { createStructuredSelector } from "reselect";
 import { SyncSkipUnderPriority } from "@ledgerhq/live-common/bridge/react/index";
 import Track from "~/renderer/analytics/Track";
-import { Account, AccountLike, SubAccount } from "@ledgerhq/types-live";
+import { Account, AccountLike, TokenAccount } from "@ledgerhq/types-live";
 import { TokenCurrency } from "@ledgerhq/types-cryptoassets";
 import { Device } from "@ledgerhq/live-common/hw/actions/types";
-import { getAccountCurrency } from "@ledgerhq/live-common/account/helpers";
+import { getAccountCurrency, getMainAccount } from "@ledgerhq/live-common/account/helpers";
 import { getCurrentDevice } from "~/renderer/reducers/devices";
 import { accountsSelector } from "~/renderer/reducers/accounts";
 import { closeModal } from "~/renderer/actions/modals";
@@ -19,6 +19,9 @@ import StepConnectDevice, { StepConnectDeviceFooter } from "./steps/StepConnectD
 import StepWarning, { StepWarningFooter } from "./steps/StepWarning";
 import StepReceiveFunds from "./steps/StepReceiveFunds";
 import StepReceiveStakingFlow, { StepReceiveStakingFooter } from "./steps/StepReceiveStakingFlow";
+import { isAddressSanctioned } from "@ledgerhq/coin-framework/sanction/index";
+import { AddressesSanctionedError } from "@ledgerhq/coin-framework/sanction/errors";
+import { getReceiveFlowError } from "@ledgerhq/live-common/account/index";
 
 export type StepId = "warning" | "account" | "device" | "receive" | "stakingFlow";
 
@@ -28,11 +31,12 @@ export type Data = {
   startWithWarning?: boolean;
   receiveTokenMode?: boolean;
   receiveNFTMode?: boolean;
+  receiveOrdinalMode?: boolean;
   eventType?: string;
   isFromPostOnboardingEntryPoint?: boolean;
 };
 
-type OwnProps = {
+export type OwnProps = {
   stepId: StepId;
   onClose?: () => void | undefined;
   onChangeStepId: (a: StepId) => void;
@@ -41,7 +45,7 @@ type OwnProps = {
   onChangeAddressVerified: (isAddressVerified?: boolean | null, err?: Error | null) => void;
   params: Data;
 };
-type StateProps = {
+export type StateProps = {
   t: TFunction;
   accounts: Account[];
   device: Device | undefined | null;
@@ -58,6 +62,7 @@ export type StepProps = {
   token: TokenCurrency | undefined | null;
   receiveTokenMode: boolean;
   receiveNFTMode: boolean;
+  receiveOrdinalMode: boolean;
   closeModal: () => void;
   isAddressVerified: boolean | undefined | null;
   verifyAddressError: Error | undefined | null;
@@ -70,6 +75,7 @@ export type StepProps = {
   onClose: () => void;
   currencyName: string | undefined | null;
   isFromPostOnboardingEntryPoint?: boolean;
+  accountError?: Error;
 };
 export type St = Step<StepId, StepProps>;
 const createSteps = (): Array<St> => [
@@ -131,14 +137,37 @@ const Body = ({
   const [token, setToken] = useState(null);
   const [hideBreadcrumb, setHideBreadcrumb] = useState<boolean | undefined>(false);
   const [title, setTitle] = useState("");
+  const [accountError, setAccountError] = useState<Error | undefined>(undefined);
   const currency = getAccountCurrency(account);
   const currencyName = currency ? currency.name : undefined;
+  const computeAccountError = useCallback(
+    async (account: Account | TokenAccount, parentAccount?: Account | null) => {
+      const mainAccount = getMainAccount(account, parentAccount);
+      const addressSanctioned = await isAddressSanctioned(
+        mainAccount.currency,
+        mainAccount.freshAddress,
+      );
+
+      if (addressSanctioned) {
+        setAccountError(
+          new AddressesSanctionedError("AddressesSanctionedError", {
+            addresses: [mainAccount.freshAddress],
+          }),
+        );
+      } else {
+        const error = account ? getReceiveFlowError(account, parentAccount) : undefined;
+        setAccountError(error);
+      }
+    },
+    [],
+  );
   const handleChangeAccount = useCallback(
-    (account: Account | SubAccount, parentAccount?: Account | null) => {
+    async (account: Account | TokenAccount, parentAccount?: Account | null) => {
       setAccount(account);
       setParentAccount(parentAccount);
+      computeAccountError(account, parentAccount);
     },
-    [setParentAccount, setAccount],
+    [setParentAccount, setAccount, computeAccountError],
   );
   const handleCloseModal = useCallback(() => {
     closeModal("MODAL_RECEIVE");
@@ -195,6 +224,13 @@ const Body = ({
         setTitle(t("receive.title"));
     }
   }, [steps, stepId, t, currency.name]);
+  useEffect(() => {
+    if (account) {
+      computeAccountError(account, parentAccount);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const errorSteps = verifyAddressError ? [2] : [];
   const stepperProps = {
     title,
@@ -208,6 +244,7 @@ const Body = ({
     disabledSteps,
     receiveTokenMode: !!params.receiveTokenMode,
     receiveNFTMode: !!params.receiveNFTMode,
+    receiveOrdinalMode: !!params.receiveOrdinalMode,
     hideBreadcrumb,
     token,
     isAddressVerified,
@@ -223,6 +260,7 @@ const Body = ({
     onClose: handleCloseModal,
     currencyName,
     isFromPostOnboardingEntryPoint: !!params.isFromPostOnboardingEntryPoint,
+    accountError: accountError,
   };
   return (
     <Stepper {...stepperProps}>

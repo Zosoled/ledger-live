@@ -3,28 +3,31 @@ import { Success } from "../../components/Success";
 import { useTranslation } from "react-i18next";
 import { BaseComposite, StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
 import { WalletSyncNavigatorStackParamList } from "~/components/RootNavigator/types/WalletSyncNavigator";
-
-import { NavigatorName, ScreenName } from "~/const";
+import { ScreenName } from "~/const";
+import { AnalyticsButton, AnalyticsFlow, AnalyticsPage } from "../../hooks/useLedgerSyncAnalytics";
+import { track } from "~/analytics";
+import { useClose } from "../../hooks/useClose";
 
 type Props = BaseComposite<
   StackNavigatorProps<WalletSyncNavigatorStackParamList, ScreenName.WalletSyncSuccess>
 >;
 
-export function ActivationSuccess({ navigation, route }: Props) {
+export function ActivationSuccess({ route }: Props) {
   const { t } = useTranslation();
-
   const { created } = route.params;
   const title = created ? "walletSync.success.activation" : "walletSync.success.sync";
-  const desc = created ? "walletSync.success.activationDesc" : "walletSync.success.syncDesc";
+  const desc = created ? "" : "walletSync.success.syncDesc";
+  const page = created ? AnalyticsPage.BackupCreationSuccess : AnalyticsPage.SyncSuccess;
 
-  function syncAnother(): void {
-    navigation.navigate(ScreenName.WalletSyncActivationProcess);
-  }
+  const close = useClose();
 
-  function close(): void {
-    navigation.navigate(NavigatorName.Settings, {
-      screen: ScreenName.GeneralSettings,
+  function onClose(): void {
+    track("button_clicked", {
+      button: AnalyticsButton.Close,
+      page,
+      flow: AnalyticsFlow.LedgerSync,
     });
+    close();
   }
 
   return (
@@ -32,13 +35,11 @@ export function ActivationSuccess({ navigation, route }: Props) {
       title={t(title)}
       desc={t(desc)}
       mainButton={{
-        label: t("walletSync.success.syncAnother"),
-        onPress: syncAnother,
-      }}
-      secondaryButton={{
         label: t("walletSync.success.close"),
-        onPress: close,
+        onPress: onClose,
+        testID: "walletsync-activation-success-close",
       }}
+      analyticsPage={page}
     />
   );
 }

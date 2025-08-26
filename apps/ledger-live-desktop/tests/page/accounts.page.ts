@@ -1,4 +1,3 @@
-import { expect } from "@playwright/test";
 import { step } from "tests/misc/reporters/step";
 import { AppPage } from "tests/page/abstractClasses";
 
@@ -11,7 +10,6 @@ export class AccountsPage extends AppPage {
   private contextMenuEdit = this.page.getByTestId("accounts-context-menu-edit");
   private settingsDeleteButton = this.page.getByTestId("account-settings-delete-button");
   private settingsConfirmButton = this.page.getByTestId("modal-confirm-button");
-  private accountListNumber = this.page.locator(`[data-testid^="account-component-"]`);
 
   async openAddAccountModal() {
     await this.addAccountButton.click();
@@ -20,12 +18,6 @@ export class AccountsPage extends AppPage {
   @step("Open Account $0")
   async navigateToAccountByName(accountName: string) {
     await this.accountComponent(accountName).click();
-  }
-
-  @step("Check $0 account was deleted ")
-  async expectAccountAbsence(accountName: string) {
-    expect(this.firstAccount).not.toBe(accountName);
-    expect(await this.getAccountsName()).not.toContain(accountName);
   }
 
   /**
@@ -40,18 +32,5 @@ export class AccountsPage extends AppPage {
 
   async countAccounts(): Promise<number> {
     return await this.page.locator(".accounts-account-row-item-content").count();
-  }
-
-  async getAccountsName() {
-    const accountElements = await this.accountListNumber.all();
-    const accountNames = [];
-    for (const element of accountElements) {
-      let accountName = await element.getAttribute("data-testid");
-      if (accountName) {
-        accountName = accountName.replace("account-component-", "");
-        accountNames.push(accountName);
-      }
-    }
-    return accountNames;
   }
 }

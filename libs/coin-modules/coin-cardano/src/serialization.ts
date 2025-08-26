@@ -115,6 +115,10 @@ function toProtocolParamsRaw({
   collateralPercent,
   priceSteps,
   priceMem,
+  maxTxSize,
+  maxValueSize,
+  utxoCostPerByte,
+  minFeeRefScriptCostPerByte,
   languageView,
 }: ProtocolParams): ProtocolParamsRaw {
   return {
@@ -125,6 +129,10 @@ function toProtocolParamsRaw({
     collateralPercent,
     priceSteps,
     priceMem,
+    maxTxSize,
+    maxValueSize,
+    utxoCostPerByte,
+    minFeeRefScriptCostPerByte,
     languageView,
   };
 }
@@ -137,6 +145,10 @@ function fromProtocolParamsRaw({
   collateralPercent,
   priceSteps,
   priceMem,
+  maxTxSize,
+  maxValueSize,
+  utxoCostPerByte,
+  minFeeRefScriptCostPerByte,
   languageView,
 }: ProtocolParamsRaw): ProtocolParams {
   return {
@@ -147,38 +159,50 @@ function fromProtocolParamsRaw({
     collateralPercent,
     priceSteps,
     priceMem,
+    maxTxSize,
+    maxValueSize,
+    utxoCostPerByte,
+    minFeeRefScriptCostPerByte,
     languageView,
   };
 }
 
 function toDelegationRaw({
   status,
+  deposit,
   poolId,
   ticker,
   name,
+  dRepHex,
   rewards,
 }: CardanoDelegation): CardanoDelegationRaw {
   return {
     status,
+    deposit,
     poolId,
     ticker,
     name,
+    dRepHex,
     rewards: rewards.toString(),
   };
 }
 
 function fromDelegationRaw({
   status,
+  deposit,
   poolId,
   ticker,
   name,
+  dRepHex,
   rewards,
 }: CardanoDelegationRaw): CardanoDelegation {
   return {
     status,
+    deposit,
     poolId,
     ticker,
     name,
+    dRepHex,
     rewards: new BigNumber(rewards),
   };
 }

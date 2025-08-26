@@ -1,5 +1,5 @@
 import React from "react";
-import Animated, { Extrapolate, interpolate, useAnimatedStyle } from "react-native-reanimated";
+import Animated, { Extrapolation, interpolate, useAnimatedStyle } from "react-native-reanimated";
 import { useTheme } from "styled-components/native";
 import CurrencyGradient from "./CurrencyGradient";
 
@@ -17,13 +17,13 @@ function BackgroundGradient({
       currentPositionY.value,
       [graphCardEndPosition - 40, graphCardEndPosition + 40],
       [1, 0],
-      Extrapolate.CLAMP,
+      Extrapolation.CLAMP,
     );
 
     return {
       opacity,
     };
-  }, [graphCardEndPosition]);
+  }, [currentPositionY.value, graphCardEndPosition]);
 
   const { colors } = useTheme();
 

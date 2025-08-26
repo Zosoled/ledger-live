@@ -24,6 +24,7 @@ import DeviceAppStorage from "./DeviceAppStorage";
 import NanoS from "~/images/devices/NanoS";
 import Stax from "~/images/devices/Stax";
 import Europa from "~/images/devices/Europa";
+import Apex from "~/images/devices/Apex";
 import NanoX from "~/images/devices/NanoX";
 
 import DeviceName from "./DeviceName";
@@ -40,6 +41,7 @@ const illustrations = {
   blue: NanoS,
   stax: Stax,
   europa: Europa,
+  apex: Apex,
 };
 
 type Props = PropsWithChildren<{
@@ -100,6 +102,12 @@ const DeviceCard = ({
   const closeAppsModal = useCallback(() => {
     setAppsModalOpen(false);
   }, [setAppsModalOpen]);
+
+  useEffect(() => {
+    if (state?.currentError?.error) {
+      closeAppsModal();
+    }
+  }, [state.currentError, closeAppsModal]);
 
   const isLocalizationSupported = useMemo<boolean>(
     () =>
@@ -194,7 +202,6 @@ const DeviceCard = ({
         uninstallQueue={state.uninstallQueue}
         deviceInfo={deviceInfo}
       />
-
       {appList.length > 0 && (
         <Flex mx={6} mb={6}>
           <Button size="small" type="color" onPress={openAppsModal}>
@@ -202,7 +209,6 @@ const DeviceCard = ({
           </Button>
         </Flex>
       )}
-
       <InstalledAppsModal
         isOpen={appsModalOpen}
         onClose={closeAppsModal}

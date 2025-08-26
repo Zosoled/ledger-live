@@ -20,7 +20,6 @@ import {
   canNominate,
   isFirstBond,
   hasMinimumBondBalance,
-  getMinimumBalance,
 } from "../bridge/utils";
 import { DeviceModelId } from "@ledgerhq/devices";
 import { acceptTransaction } from "./bot-deviceActions";
@@ -62,7 +61,8 @@ const polkadot: AppSpec<Transaction> = {
   mutations: [
     {
       name: "send 50%~",
-      maxRun: 4,
+      feature: "send",
+      maxRun: 1,
       testDestination: genericTestDestination,
       transaction: ({ account, siblings, bridge }) => {
         invariant((account as PolkadotAccount).polkadotResources, "polkadot resource");
@@ -82,16 +82,6 @@ const polkadot: AppSpec<Transaction> = {
           amount = EXISTENTIAL_DEPOSIT;
         }
 
-        const minimumBalanceExistential = getMinimumBalance(account);
-        const leftover = account.spendableBalance.minus(amount.plus(POLKADOT_MIN_SAFE));
-        if (
-          minimumBalanceExistential.gt(0) &&
-          leftover.lt(minimumBalanceExistential) &&
-          leftover.gt(0)
-        ) {
-          throw new Error("risk of PolkadotDoMaxSendInstead");
-        }
-
         return {
           transaction: bridge.createTransaction(account),
           updates: [
@@ -107,6 +97,7 @@ const polkadot: AppSpec<Transaction> = {
     },
     {
       name: "send max",
+      feature: "sendMax",
       maxRun: 1,
       testDestination: genericTestDestination,
       transaction: ({ account, siblings, bridge }) => {
@@ -133,6 +124,7 @@ const polkadot: AppSpec<Transaction> = {
     },
     {
       name: "bond - bondExtra",
+      feature: "staking",
       maxRun: 1,
       transaction: ({ siblings, account, bridge }) => {
         expectSiblingsHaveSpendablePartGreaterThan(siblings, 0.5);
@@ -181,7 +173,8 @@ const polkadot: AppSpec<Transaction> = {
     },
     {
       name: "unbond",
-      maxRun: 2,
+      feature: "staking",
+      maxRun: 1,
       transaction: ({ account, bridge }) => {
         const { polkadotResources } = account as PolkadotAccount;
         invariant(polkadotResources, "polkadot");
@@ -205,6 +198,7 @@ const polkadot: AppSpec<Transaction> = {
     },
     {
       name: "rebond",
+      feature: "staking",
       maxRun: 1,
       transaction: ({ account, bridge }) => {
         const { polkadotResources } = account as PolkadotAccount;
@@ -230,6 +224,7 @@ const polkadot: AppSpec<Transaction> = {
     },
     {
       name: "nominate",
+      feature: "staking",
       maxRun: 1,
       transaction: ({ account, bridge }) => {
         invariant((account as PolkadotAccount).polkadotResources, "polkadot");
@@ -255,7 +250,8 @@ const polkadot: AppSpec<Transaction> = {
     },
     {
       name: "withdraw",
-      maxRun: 2,
+      feature: "staking",
+      maxRun: 1,
       transaction: ({ account, bridge }) => {
         const { polkadotResources } = account as PolkadotAccount;
         invariant(polkadotResources, "polkadot");

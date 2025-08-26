@@ -217,7 +217,7 @@ export const getStakingPositions = async (
   const activeDelegatedStakeBalance = await account.getActiveDelegatedStakeBalance();
 
   const stakingPositions = await Promise.all(
-    activeDelegatedStakeBalance.stakedValidators.map(async ({ validatorId, amount: rawTotal }) => {
+    activeDelegatedStakeBalance.stakedValidators.map(async ({ validatorId }) => {
       const contract = new nearAPI.Contract(account, validatorId, {
         viewMethods: [
           "get_account_staked_balance",
@@ -248,12 +248,10 @@ export const getStakingPositions = async (
         available = unstaked;
         pending = new BigNumber(0);
       }
-      let rewards = new BigNumber(0);
 
       const staked = new BigNumber(rawStaked);
       available = new BigNumber(available);
       pending = new BigNumber(pending);
-      rewards = new BigNumber(rawTotal || "0").minus(staked);
 
       const stakingThreshold = getYoctoThreshold();
 
@@ -271,7 +269,6 @@ export const getStakingPositions = async (
         staked,
         available,
         pending,
-        rewards: rewards.gt(0) ? rewards : new BigNumber(0),
         validatorId,
       };
     }),
@@ -292,7 +289,7 @@ export const getValidators = makeLRUCache(
     const currencyConfig = getCoinConfig();
     const { data } = await network({
       method: "POST",
-      url: currencyConfig.infra.API_NEAR_PUBLIC_NODE,
+      url: currencyConfig.infra.API_NEAR_PRIVATE_NODE,
       data: {
         jsonrpc: "2.0",
         id: "id",
@@ -312,7 +309,7 @@ export const getCommission = makeLRUCache(
     const currencyConfig = getCoinConfig();
     const { data } = await network({
       method: "POST",
-      url: currencyConfig.infra.API_NEAR_PUBLIC_NODE,
+      url: currencyConfig.infra.API_NEAR_PRIVATE_NODE,
       data: {
         jsonrpc: "2.0",
         id: "id",

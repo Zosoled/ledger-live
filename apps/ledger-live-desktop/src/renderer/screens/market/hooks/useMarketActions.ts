@@ -1,8 +1,7 @@
 import { CurrencyData } from "@ledgerhq/live-common/market/utils/types";
-import { useCallback } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useCallback, useMemo } from "react";
+import { useSelector } from "react-redux";
 import { useHistory } from "react-router-dom";
-import { openModal } from "~/renderer/actions/modals";
 import { setTrackingSource } from "~/renderer/analytics/TrackPage";
 import { track } from "~/renderer/analytics/segment";
 import { stakeDefaultTrack } from "../../stake/constants";
@@ -12,7 +11,12 @@ import { accountsSelector } from "~/renderer/reducers/accounts";
 import { flattenAccounts } from "@ledgerhq/live-common/account/index";
 import { getAvailableAccountsById } from "@ledgerhq/live-common/exchange/swap/utils/index";
 import { useRampCatalog } from "@ledgerhq/live-common/platform/providers/RampCatalogProvider/useRampCatalog";
-import useFeature from "@ledgerhq/live-common/featureFlags/useFeature";
+import { isAvailableOnBuy, isAvailableOnSwap } from "../utils";
+import { useStake } from "LLD/hooks/useStake";
+import { ModularDrawerLocation } from "LLD/features/ModularDrawer";
+import { useOpenAssetFlow } from "LLD/features/ModularDrawer/hooks/useOpenAssetFlow";
+import { Account } from "@ledgerhq/types-live";
+import { setDrawer } from "~/renderer/drawers/Provider";
 
 export enum Page {
   Market = "Page Market",
@@ -26,7 +30,6 @@ type MarketActionsProps = {
 };
 
 export const useMarketActions = ({ currency, page, currenciesAll }: MarketActionsProps) => {
-  const dispatch = useDispatch();
   const history = useHistory();
 
   const startStakeFlow = useStakeFlow();
@@ -38,17 +41,31 @@ export const useMarketActions = ({ currency, page, currenciesAll }: MarketAction
 
   const { isCurrencyAvailable } = useRampCatalog();
 
+  const currenciesForSwapAllSet = useMemo(() => new Set(currenciesAll), [currenciesAll]);
+
   const internalCurrency = currency?.internalCurrency;
 
+  const onAccountSelected = useCallback(
+    (account: Account) => {
+      setDrawer();
+      history.push({
+        pathname: "/swap",
+        state: {
+          defaultAccount: account,
+        },
+      });
+    },
+    [history],
+  );
+
+  const { openAddAccountFlow } = useOpenAssetFlow(
+    { location: ModularDrawerLocation.ADD_ACCOUNT },
+    "market",
+  );
+
   const openAddAccounts = useCallback(() => {
-    if (internalCurrency)
-      dispatch(
-        openModal("MODAL_ADD_ACCOUNTS", {
-          currency: internalCurrency,
-          preventSkippingCurrencySelection: true,
-        }),
-      );
-  }, [internalCurrency, dispatch]);
+    if (internalCurrency) openAddAccountFlow(internalCurrency, true, onAccountSelected);
+  }, [internalCurrency, onAccountSelected, openAddAccountFlow]);
 
   const onBuy = useCallback(
     (e: React.SyntheticEvent<HTMLButtonElement>) => {
@@ -100,10 +117,12 @@ export const useMarketActions = ({ currency, page, currenciesAll }: MarketAction
           state: {
             defaultCurrency: internalCurrency,
             defaultAccount,
+            defaultAmountFrom: "0",
             defaultParentAccount:
               "parentId" in defaultAccount && defaultAccount.parentId
                 ? flattenedAccounts.find(a => a.id === defaultAccount.parentId)
                 : null,
+            from: history.location.pathname,
           },
         });
       }
@@ -126,7 +145,7 @@ export const useMarketActions = ({ currency, page, currenciesAll }: MarketAction
 
       track("button_clicked2", {
         button: "stake",
-        currency: currency?.ticker,
+        currency: internalCurrency ? internalCurrency.ticker : currency?.ticker,
         page,
         ...stakeDefaultTrack,
       });
@@ -134,25 +153,20 @@ export const useMarketActions = ({ currency, page, currenciesAll }: MarketAction
       startStakeFlow({
         currencies: internalCurrency ? [internalCurrency.id] : undefined,
         source: page,
+        returnTo: history.location.pathname,
       });
     },
-    [internalCurrency, currency?.ticker, page, startStakeFlow],
+    [internalCurrency, currency?.ticker, page, startStakeFlow, history.location.pathname],
   );
 
-  const availableOnBuy =
-    !!internalCurrency &&
-    !!internalCurrency?.id &&
-    isCurrencyAvailable(internalCurrency.id, "onRamp");
+  const availableOnBuy = isAvailableOnBuy(currency, isCurrencyAvailable);
+  const availableOnSwap = isAvailableOnSwap(currency, currenciesForSwapAllSet);
 
-  const availableOnSwap = !!internalCurrency && currenciesAll?.includes(internalCurrency.id);
-  const stakeProgramsFeatureFlag = useFeature("stakePrograms");
-  const listFlag = stakeProgramsFeatureFlag?.params?.list ?? [];
-  const stakeProgramsEnabled = stakeProgramsFeatureFlag?.enabled ?? false;
-  const availableOnStake =
-    stakeProgramsEnabled && listFlag.includes(currency?.internalCurrency?.id || "");
+  const { getCanStakeCurrency } = useStake();
+
+  const availableOnStake = !!internalCurrency?.id && getCanStakeCurrency(internalCurrency?.id);
 
   return {
-    openAddAccounts,
     onBuy,
     onSwap,
     onStake,

@@ -9,7 +9,8 @@ import { withV3StyleProvider } from "~/renderer/styles/StyleProviderV3";
 import { getCurrentDevice } from "~/renderer/reducers/devices";
 import OnboardingNavHeader from "../Onboarding/OnboardingNavHeader";
 import { DeviceModelId } from "@ledgerhq/devices";
-import { OnboardingContext, UseCase } from "../Onboarding";
+import { OnboardingContext } from "../Onboarding";
+import { OnboardingUseCase } from "../Onboarding/OnboardingUseCase";
 import { ScreenId } from "../Onboarding/Screens/Tutorial";
 import { withDevice } from "@ledgerhq/live-common/hw/deviceAccess";
 import { getVersion } from "@ledgerhq/live-common/device/use-cases/getVersionUseCase";
@@ -65,6 +66,8 @@ const RecoverRestore = () => {
             seedPhraseType: SeedPhraseType.TwentyFour,
             currentOnboardingStep: OnboardingStep.NewDevice,
             currentSeedWordIndex: 0,
+            charonSupported: false,
+            charonStatus: null,
           });
         } else {
           setError(error);
@@ -100,7 +103,7 @@ const RecoverRestore = () => {
         case DeviceModelId.nanoSP:
           setDeviceModelId(currentDevice.modelId);
           history.push({
-            pathname: `/onboarding/${UseCase.recover}/${ScreenId.pairMyNano}`,
+            pathname: `/onboarding/${OnboardingUseCase.recover}/${ScreenId.pairMyNano}`,
             state: {
               fromRecover: true,
             },

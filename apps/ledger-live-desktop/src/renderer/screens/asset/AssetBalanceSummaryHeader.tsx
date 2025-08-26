@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo } from "react";
-import { useDispatch } from "react-redux";
+import { getAccountSpendableBalance } from "@ledgerhq/live-common/account/index";
+import { useDispatch, useSelector } from "react-redux";
 import { Currency, CryptoCurrency, TokenCurrency, Unit } from "@ledgerhq/types-cryptoassets";
 
 import { setCountervalueFirst } from "~/renderer/actions/settings";
@@ -17,11 +18,13 @@ import { setTrackingSource } from "~/renderer/analytics/TrackPage";
 import { useHistory } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useRampCatalog } from "@ledgerhq/live-common/platform/providers/RampCatalogProvider/useRampCatalog";
-import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
 import useStakeFlow from "~/renderer/screens/stake";
 import { stakeDefaultTrack } from "~/renderer/screens/stake/constants";
-import { BalanceHistoryWithCountervalue, ValueChange } from "@ledgerhq/types-live";
+import { AccountLike, BalanceHistoryWithCountervalue, ValueChange } from "@ledgerhq/types-live";
 import { useFetchCurrencyAll } from "@ledgerhq/live-common/exchange/swap/hooks/index";
+import { flattenAccountsSelector } from "~/renderer/reducers/accounts";
+import { useGetStakeLabelLocaleBased } from "~/renderer/hooks/useGetStakeLabelLocaleBased";
+import { useStake } from "LLD/hooks/useStake";
 type Props = {
   isAvailable: boolean;
   cryptoChange: ValueChange;
@@ -31,6 +34,7 @@ type Props = {
   countervalueFirst: boolean;
   currency: CryptoCurrency | TokenCurrency;
   unit: Unit;
+  account: AccountLike;
 };
 export default function AssetBalanceSummaryHeader({
   counterValue,
@@ -41,12 +45,14 @@ export default function AssetBalanceSummaryHeader({
   countervalueFirst,
   currency,
   unit,
+  account,
 }: Props) {
   const { data: currenciesAll } = useFetchCurrencyAll();
   const swapDefaultTrack = useGetSwapTrackingProperties();
   const dispatch = useDispatch();
   const { t } = useTranslation();
   const history = useHistory();
+  const flattenAccounts = useSelector(flattenAccountsSelector);
 
   const cvUnit = counterValue.units[0];
   const data = useMemo(
@@ -69,6 +75,13 @@ export default function AssetBalanceSummaryHeader({
       data.reverse();
     }
   }, [countervalueFirst, data]);
+
+  const parentAccount = useMemo(() => {
+    if (account.type === "TokenAccount") {
+      return flattenAccounts.find(a => a.id === account.parentId);
+    }
+  }, [account, flattenAccounts]);
+
   const primaryKey = data[0].unit.code;
   const secondaryKey = data[1].unit.code;
   const { isCurrencyAvailable } = useRampCatalog();
@@ -76,10 +89,12 @@ export default function AssetBalanceSummaryHeader({
   const availableOnBuy = !!currency && isCurrencyAvailable(currency.id, "onRamp");
 
   const startStakeFlow = useStakeFlow();
-  const stakeProgramsFeatureFlag = useFeature("stakePrograms");
-  const listFlag = stakeProgramsFeatureFlag?.params?.list ?? [];
-  const stakeProgramsEnabled = stakeProgramsFeatureFlag?.enabled ?? false;
-  const availableOnStake = stakeProgramsEnabled && currency && listFlag.includes(currency?.id);
+  const { getCanStakeCurrency } = useStake();
+  const balance = getAccountSpendableBalance(account);
+  const isZeroBalance = balance.isZero();
+
+  const availableOnStake = getCanStakeCurrency(currency?.id);
+  const earnStakeLabelCoin = useGetStakeLabelLocaleBased();
 
   const availableOnSwap = currenciesAll.includes(currency.id);
 
@@ -105,10 +120,14 @@ export default function AssetBalanceSummaryHeader({
     history.push({
       pathname: "/swap",
       state: {
+        defaultAccount: account,
+        defaultParentAccount: parentAccount,
         defaultCurrency: currency,
+        defaultAmountFrom: "0",
+        from: history.location.pathname,
       },
     });
-  }, [currency, history, swapDefaultTrack]);
+  }, [currency, swapDefaultTrack, history, account, parentAccount]);
 
   const onStake = useCallback(() => {
     track("button_clicked2", {
@@ -120,8 +139,9 @@ export default function AssetBalanceSummaryHeader({
     setTrackingSource("Page Asset");
     startStakeFlow({
       currencies: currency ? [currency.id] : undefined,
+      alwaysShowNoFunds: isZeroBalance,
     });
-  }, [currency, startStakeFlow]);
+  }, [currency, isZeroBalance, startStakeFlow]);
 
   return (
     <Box flow={5}>
@@ -193,7 +213,7 @@ export default function AssetBalanceSummaryHeader({
 
         {availableOnStake && (
           <Button variant="color" onClick={onStake} buttonTestId="asset-page-stake-button">
-            {t("accounts.contextMenu.stake")}
+            {earnStakeLabelCoin}
           </Button>
         )}
       </Box>

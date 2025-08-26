@@ -4,6 +4,8 @@
   },
   "common" : {
     "cancel" : "إلغاء",
+    "copy" : "نسخ",
+    "copied" : "تم النسخ",
     "apply" : "تقديم",
     "seeAll" : "رؤية الكل",
     "seeAllWithNumber" : "رؤية الكل ({{number}})",
@@ -98,7 +100,10 @@
     "patterns" : {
       "id" : "مُعرّف {{ value }}",
       "times" : "x{{ value }}"
-    }
+    },
+    "quote" : "عرض أسعار",
+    "tryAgain" : "إعادة المحاولة",
+    "ldmkEnabled" : "تم تمكين نقل LDMK"
   },
   "errors" : {
     "ReplacementTransactionUnderpriced" : {
@@ -282,12 +287,124 @@
       "description" : "يرجى إعادة المحاولة."
     },
     "DisconnectedDevice" : {
-      "title" : "الجهاز غير متصل",
-      "description" : "Ledger Live غير قادر على الاتصال بجهازك. يُرجى إعادة المحاولة."
+      "title" : "انقطع اتصال الجهاز",
+      "description" : "Ledger Live لم يتمكن من الاتصال بجهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
     },
     "DisconnectedDeviceDuringOperation" : {
-      "title" : "الجهاز غير متصل",
-      "description" : "Ledger Live غير قادر على الاتصال بجهازك. يُرجى إعادة المحاولة."
+      "title" : "انقطع اتصال الجهاز",
+      "description" : "Ledger Live لم يتمكن من الاتصال بجهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "DeviceDisconnectedWhileSendingError" : {
+      "title" : "انقطع اتصال الجهاز",
+      "description" : "Ledger Live لم يتمكن من الاتصال بجهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "DisconnectError" : {
+      "title" : "انقطع اتصال الجهاز",
+      "description" : "Ledger Live لم يتمكن من الاتصال بجهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "DeviceSessionNotFound" : {
+      "title" : "انقطع اتصال الجهاز",
+      "description" : "Ledger Live لم يتمكن من الاتصال بجهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "ReconnectionFailedError" : {
+      "title" : "انقطع اتصال الجهاز",
+      "description" : "Ledger Live لم يتمكن من الاتصال بجهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "DeviceDisconnectedBeforeSendingApdu" : {
+      "title" : "انقطع اتصال الجهاز",
+      "description" : "Ledger Live لم يتمكن من الاتصال بجهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "TransportNotSupportedError" : {
+      "title" : "خطأ في طريقة الاتصال",
+      "description" : "حدثت مشكلة في طريقة اتصال الجهاز المستخدمة. يُرجى المحاولة عن طريق طريقة اتصال مختلفة أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "TransportAlreadyExistsError" : {
+      "title" : "خطأ في طريقة الاتصال",
+      "description" : "حدثت مشكلة في طريقة اتصال الجهاز المستخدمة. يُرجى المحاولة عن طريق طريقة اتصال مختلفة أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "NoTransportProvidedError" : {
+      "title" : "خطأ في طريقة الاتصال",
+      "description" : "حدثت مشكلة في طريقة اتصال الجهاز المستخدمة. يُرجى المحاولة عن طريق طريقة اتصال مختلفة أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "NoAccessibleDeviceError" : {
+      "title" : "خطأ في طريقة الاتصال",
+      "description" : "حدثت مشكلة في طريقة اتصال الجهاز المستخدمة. يُرجى المحاولة عن طريق طريقة اتصال مختلفة أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "ConnectionOpeningError" : {
+      "title" : "خطأ في طريقة الاتصال",
+      "description" : "حدثت مشكلة في طريقة اتصال الجهاز المستخدمة. يُرجى المحاولة عن طريق طريقة اتصال مختلفة أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "DeviceNotInitializedError" : {
+      "title" : "لم تتم تهيئة الجهاز",
+      "description" : "جهازك غير مُستعد للاستخدام. يُرجى اتباع تعليمات الإعداد والمحاولة مرةً أخرى بمجرد التهيئة."
+    },
+    "DeviceNotOnboardedError" : {
+      "title" : "لم تتم تهيئة الجهاز",
+      "description" : "جهازك غير مُستعد للاستخدام. يُرجى اتباع تعليمات الإعداد والمحاولة مرةً أخرى بمجرد التهيئة."
+    },
+    "DeviceLockedError" : {
+      "title" : "الجهاز مقفل",
+      "description" : "جهازك مقفل. يُرجى إلغاء قفله والمحاولة مرةً أخرى."
+    },
+    "OutOfMemoryDAError" : {
+      "title" : "لا توجد ذاكرة كافية",
+      "description" : "ليس لدى جهازك ذاكرة كافية. يُرجى إلغاء تثبيت بعض التطبيقات والمحاولة مرةً أخرى."
+    },
+    "UnsupportedFirmwareDAError" : {
+      "title" : "نظام التشغيل غير مدعوم",
+      "description" : "نظام تشغيل جهازك غير مدعوم. يُرجى تحديثه من خلال Ledger Live، أو التواصل مع دعم Ledger للمساعدة إذا واجهتك صعوبات."
+    },
+    "InvalidBatteryStatusTypeError" : {
+      "title" : "خطأ في البطارية",
+      "description" : "حدث خطأ ما. يُرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "InvalidBatteryDataError" : {
+      "title" : "خطأ في البطارية",
+      "description" : "خطأ في حالة البطارية. يُرجى التواصل مع دعم Ledger."
+    },
+    "InvalidStatusWordError" : {
+      "title" : "خطأ في اتصال الجهاز",
+      "description" : "حدث خطأ ما. يُرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "InvalidResponseFormatError" : {
+      "title" : "خطأ في اتصال الجهاز",
+      "description" : "حدث خطأ ما. يُرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "UnknownDAError" : {
+      "title" : "خطأ في اتصال الجهاز",
+      "description" : "حدث خطأ ما. يُرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "DeviceNotRecognizedError" : {
+      "title" : "لم يتم التعرف على الجهاز",
+      "description" : "Ledger Live لم يتمكن من التعرف على جهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "DeviceAlreadyDiscoveredError" : {
+      "title" : "لم يتم التعرف على الجهاز",
+      "description" : "Ledger Live لم يتمكن من التعرف على جهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "UnknownDeviceError" : {
+      "title" : "لم يتم التعرف على الجهاز",
+      "description" : "Ledger Live لم يتمكن من التعرف على جهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "ReceiverApduError" : {
+      "title" : "خطأ في الاتصال",
+      "description" : "هناك مشكلة في تبادل المعلومات مع جهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "FramerApduError" : {
+      "title" : "خطأ في الاتصال",
+      "description" : "هناك مشكلة في تبادل المعلومات مع جهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "SendApduTimeoutError" : {
+      "title" : "خطأ في الاتصال",
+      "description" : "هناك مشكلة في تبادل المعلومات مع جهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "AlreadySendingApduError" : {
+      "title" : "خطأ في الاتصال",
+      "description" : "هناك مشكلة في تبادل المعلومات مع جهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
+    },
+    "UnknownDeviceExchangeError" : {
+      "title" : "خطأ في الاتصال",
+      "description" : "هناك مشكلة في تبادل المعلومات مع جهازك. يُرجى المحاولة مرةً أخرى أو التواصل مع دعم Ledger إذا استمرت المشكلة."
     },
     "CasperInvalidTransferId" : {
       "title" : "مُعرّف التحويل يجب أن يكون رقماً موجباً أصغر من {{maxTransferId}}"
@@ -313,6 +430,20 @@
     "Error" : {
       "title" : "{{message}}",
       "description" : "حدث خطأ ما. يرجى إعادة المحاولة. إذا استمرت المشكلة، يرجى حفظ سجلاتك باستخدام الزر أدناه وتقديمها إلى فريق دعم Ledger."
+    },
+    "TransactionBroadcastError" : {
+      "title" : "بثّ معاملة غير ناجح",
+      "description" : "فشل بثّ معاملتك على شبكة {{network}}. {{coin}} خاصتك لم يتم تحويلها وبقيت في حسابك.",
+      "needHelp" : "بحاجة إلى مساعدة؟",
+      "helpCenter" : {
+        "title" : "مركز الدعم",
+        "desc" : "قم بزيارة مركز الدعم لدينا أو تواصل معنا عبر الأداة من أجل المساعدة.",
+        "cta" : "احصل على مساعدة"
+      },
+      "technical" : {
+        "title" : "خطأ تقني",
+        "cta" : "حفظ السجلات"
+      }
     },
     "FeeEstimationFailed" : {
       "title" : "عذراً، فشل تقدير الرسوم",
@@ -461,17 +592,17 @@
       "title" : "عفوًا، لم يتم العثور على أي حساب",
       "description" : "حدث خطأ ما في حساب العنوان. يرجى إعادة المحاولة مرة أخرى. إذا استمرت المشكلة، يرجى حفظ سجلاتك باستخدام الزر أدناه وتقديمها إلى فريق دعم Ledger."
     },
-    "ElrondDecimalsLimitReached" : {
+    "MultiversXDecimalsLimitReached" : {
       "title" : "تم الوصول إلى الحد الأقصى من الكسور العشرية",
       "description" : "يُرجى التأكد من أن المبلغ المُقدَّم به 18 كسراً عشرياً."
     },
-    "ElrondMinDelegatedAmountError" : {
+    "MultiversXMinDelegatedAmountError" : {
       "title" : "يجب أن يكون المبلغ المفوض على الأقل {{formattedAmount}}"
     },
-    "ElrondMinUndelegatedAmountError" : {
+    "MultiversXMinUndelegatedAmountError" : {
       "title" : "يجب أن يكون المبلغ غير المفوض على الأقل {{formattedAmount}}"
     },
-    "ElrondDelegationBelowMinimumError" : {
+    "MultiversXDelegationBelowMinimumError" : {
       "title" : "لا يمكن أن يكون التفويض المتبقي أقل من {{formattedAmount}}"
     },
     "NotEnoughVTHO" : {
@@ -490,9 +621,44 @@
       "title" : "لا يوجد ما يكفي من EGLD لدفع رسوم المعاملة",
       "description" : "يُرجى إرسال بعض EGLD إلى حسابك للدفع مقابل المعاملات."
     },
+    "NotEnoughToStake" : {
+      "title" : "ستحتاج على الأقل إلى {{currency}} {{minStake}} لتنشيط حصتك",
+      "description" : "ستحتاج على الأقل إلى {{currency}} {{minStake}} لتنشيط حصتك"
+    },
     "NotEnoughBalance" : {
       "title" : "عفواً، الأموال المتوفرة غير كافية",
       "description" : "يرجى التأكد من أن الحساب به أموال كافية."
+    },
+    "UnstakeNotEnoughStakedBalanceLeft" : {
+      "title" : "إذا ألغيت تكديس أكثر من {{maxAmount}}، فإن إجمالي حصتك البالغ {{totalAmount}} سيتم إلغاء تكديسه",
+      "description" : "إذا ألغيت تكديس أكثر من {{maxAmount}}، فإن إجمالي حصتك البالغ {{totalAmount}} سيتم إلغاء تكديسه"
+    },
+    "RestakeNotEnoughStakedBalanceLeft" : {
+      "title" : "إذا أعدت تكديس أكثر من {{maxAmount}}، فإن إجمالي حصتك البالغ {{totalAmount}} سيتم إلغاء تكديسه",
+      "description" : "إذا أعدت تكديس أكثر من {{maxAmount}}، فإن إجمالي حصتك البالغ {{totalAmount}} سيتم إلغاء تكديسه"
+    },
+    "NotEnoughToRestake" : {
+      "title" : "لا يمكنك إعادة تكديس أقل من {{minAmount}}",
+      "description" : "لا يمكنك إعادة تكديس أقل من {{minAmount}}."
+    },
+    "NotEnoughToUnstake" : {
+      "title" : "لا يمكنك إلغاء تكديس أقل من {{minAmount}}",
+      "description" : "لا يمكنك إلغاء تكديس أقل من {{minAmount}}."
+    },
+    "NotEnoughBalanceFees" : {
+      "title" : "عذراً، الأموال غير كافية لتغطية الرسوم",
+      "description" : "يرجى التأكد من أن الحساب به أموال كافية."
+    },
+    "NotEnoughBalanceForUnstaking" : {
+      "message" : "رصيدك المتاح (غير المُكدّس) هو حالياً {{currentBalance}} وهو غير كافٍ لدفع رسوم الشبكة لإلغاء تكديس {{assetName}} خاصتك. ",
+      "oneCta" : "<cta1>{{cta1Label}}</cta1> {{assetName}} في حسابك.",
+      "twoCtas" : "<cta1>{{cta1Label}}</cta1> أو <cta2>{{cta2Label}}</cta2> {{assetName}} في حسابك.",
+      "threeCtas" : "<cta1>{{cta1Label}}</cta1> أو <cta2>{{cta2Label}}</cta2> أو <cta3>{{cta3Label}}</cta3> {{assetName}} في حسابك.",
+      "ctas" : {
+        "buy" : "شراء",
+        "swap" : "مبادلة",
+        "deposit" : "إيداع"
+      }
     },
     "NotEnoughBalanceSwap" : {
       "title" : "عذراً، الرصيد غير كافٍ شاملاً رسوم الشبكة. قم بتعديل المبلغ أو تحقق من الرصيد.",
@@ -735,9 +901,6 @@
     "PolkadotAllFundsWarning" : {
       "title" : "تأكد أن لديك رصيد كافي متبقي لرسوم المعاملات المستقبلية"
     },
-    "PolkadotDoMaxSendInstead" : {
-      "title" : "لا يمكن للرصيد أن يقل عن {{minimumBalance}} أرسل الحد الأقصى الى حساب خالي."
-    },
     "PolkadotBondMinimumAmount" : {
       "title" : "يجب عليك تقييد على الأقل {{minimumBondAmount}}."
     },
@@ -764,6 +927,30 @@
     "SolanaAccountNotFunded" : {
       "title" : "الحساب غير ممول"
     },
+    "SolanaTokenAccountHoldsAnotherToken" : {
+      "title" : "حساب رمز التوكن المرتبط هذا يحتفظ برمز توكن آخر"
+    },
+    "SolanaTokenAccountWarning" : {
+      "title" : "هذا ليس عنوان محفظة عادي لكنه حساب رمز توكن مرتبط. تابع فقط إذا كنت تعلم ماذا تفعل"
+    },
+    "SolanaTokenAccountNotAllowed" : {
+      "title" : "هذا حساب رمز توكن. أدخِل عنوان محفظة عادي"
+    },
+    "SolanaMintAccountNotAllowed" : {
+      "title" : "هذا عنوان رمز توكن. أدخِل عنوان محفظة عادي"
+    },
+    "SolanaAssociatedTokenAccountWillBeFunded" : {
+      "title" : "سيتمّ تمويل الحساب"
+    },
+    "SolanaTokenAccountFrozen" : {
+      "title" : "تمّ تجميد رموز أصول الحساب"
+    },
+    "SolanaTokenAccounNotInitialized" : {
+      "title" : "الحساب لم تتم تهيئته"
+    },
+    "SolanaTokenRecipientIsSenderATA" : {
+      "title" : "عنوان المستلم هو نفسه عنوان مرسل رمز التوكن"
+    },
     "SolanaAddressOfEd25519" : {
       "title" : "العنوان خارج منحنى ed25519"
     },
@@ -779,6 +966,13 @@
     "SolanaTxConfirmationTimeout" : {
       "title" : "ربما تكون معاملتك قد فشلت. يُرجى الانتظار لحظة ثم تحقق من سجل المعاملات قبل المحاولة مرة أخرى."
     },
+    "SolanaRecipientMemoIsRequired" : {
+      "title" : "الملاحظة (تسمية الوجهة) مطلوبة من أجل عنوان المستلم"
+    },
+    "SolanaTokenNonTransferable" : {
+      "title" : "رمز التوكن غير قابل للتحويل",
+      "description" : "رموز التوكن تلك هي ”soul-bound (رموز مرتبطة بالروح)“ ولا يمكن تحويلها"
+    },
     "CardanoMinAmountError" : {
       "title" : "الحد الأدنى للمبلغ القابل للإرسال هو {{amount}} ADA"
     },
@@ -787,6 +981,18 @@
     },
     "CardanoStakeKeyDepositError" : {
       "title" : "تأكد أن لديك {{depositAmount}} ADA متاح للإيداع"
+    },
+    "CardanoFeeHigh" : {
+      "title" : "رسوم الشبكة مرتفعة بشكل غير طبيعي.",
+      "description" : "رسوم الشبكة مرتفعة على غير العادة يُرجى التحقق مرةً أخرى من معاملتك."
+    },
+    "CardanoFeeTooHigh" : {
+      "title" : "رسوم الشبكة مرتفعة بشكل غير طبيعي.",
+      "description" : "معاملات ADA غير متاحة مؤقتاً. يُرجى إعادة مزامنة حسابك والمحاولة مجدداً أو تواصل مع الدعم إذا كنت بحاجة للمساعدة."
+    },
+    "CardanoInvalidProtoParams" : {
+      "title" : "مُعلّمات بروتوكول كاردانو (Cardano) غير صالحة",
+      "description" : "معاملات ADA غير متاحة مؤقتاً. يُرجى إعادة مزامنة حسابك والمحاولة مجدداً أو تواصل مع الدعم إذا كنت بحاجة للمساعدة."
     },
     "StacksMemoTooLong" : {
       "title" : "الملاحظة (تسمية الوجهة) طويلة جداً"
@@ -892,6 +1098,9 @@
     "NearStakingThresholdNotMet" : {
       "title" : "يجب أن يكون المبلغ على الأقل {{threshold}}"
     },
+    "PinNotSet" : {
+      "title" : "لم يتم إعداد كود PIN"
+    },
     "PriorityFeeTooLow" : {
       "title" : "رسوم الأولوية أقل من القيمة الموصى بها"
     },
@@ -919,16 +1128,87 @@
     "InvalidMemoICP" : {
       "title" : "الملاحظة يجب أن تكون رقماً"
     },
+    "InvalidRecipientForTokenTransfer" : {
+      "title" : "المستلم لتحويل رمز التوكن غير صالح، أنواع الحساب المدعومة لتحويل رموز التوكن: [f0, f4, 0x]"
+    },
+    "FilecoinFeeEstimationFailed" : {
+      "title" : "عذراً، فشل تقدير الرسوم",
+      "description" : "فشل تقدير الرسوم على الشبكة. تحقق من المُدخلات، من المرجح أن تفشل المعاملة"
+    },
     "FirmwareNotRecognized" : {
       "title" : "مزوّد غير صالح",
       "description" : "يجب عليك تغيير إعداد \"My Ledger Provider (مزوّد جهازي Ledger)\". لتغييره، افتح \"Settings (إعدادات)\" في Ledger Live، واختر \"Experimental features (الميزات التجريبية)\"، ثم اختر مزوّداً آخر."
+    },
+    "GasLessThanEstimate" : {
+      "title" : "قد يكون هذا منخفضاً جداً. يرجى زيادته"
     },
     "SequenceNumberError" : {
       "title" : "خطأ في رقم التسلسل",
       "description" : "يُرجى إغلاق النافذة وإعادة المحاولة لاحقاً"
     },
+    "TonCommentInvalid" : {
+      "title" : "التعليق يجب ألا يتعدى 120 حرفاً بدون حروف خاصة"
+    },
     "TezosUnrevealedAccount" : {
       "title" : "المبادلة غير متوفرة: الإرسال/التفويض الأولي مطلوب مع حساب Tezos أو زوج الاستبدال."
+    },
+    "CustomError" : {
+      "title" : "عذراً، حاول مرة أخرى.",
+      "description" : "لم يتمكن الخادم من معالجة طلبك. يرجى إعادة المحاولة مرة أخرى لاحقاً أو التواصل مع دعم Ledger.",
+      "errorCode" : "الكود: {{errorCode}}",
+      "errorMessage" : "{{errorMessage}}"
+    },
+    "TrustchainEjected" : {
+      "title" : "لم تعد متزامناً بعد الآن"
+    },
+    "TrustchainNotAllowed" : {
+      "title" : "أنت لم تعد متزامناً بعد الآن",
+      "description" : "يرجى إعادة المحاولة مرةً أخرى أو التواصل مع دعم Ledger."
+    },
+    "TrustchainNotFound" : {
+      "title" : "حدث خطأ ما أثناء جلب بياناتك",
+      "description" : "يرجى إعادة المحاولة مرةً أخرى أو التواصل مع دعم Ledger."
+    },
+    "TonExcessFee" : {
+      "title" : "إنها تشمل تحويل رمز توكن. ستدفع 0.1 TON كرسوم، وأي فائض سيُعاد إليك."
+    },
+    "TonNotEnoughBalanceInParentAccount" : {
+      "title" : "لا توجد أموال كافية في الحساب الرئيسي (TON) لحساب الرسوم. الحد الأدنى المطلوب للرصيد هو 0.1 TON."
+    },
+    "TonMinimumRequired" : {
+      "title" : "الأموال المتوفرة غير كافية. الحد الأدنى المطلوب للرصيد هو 0.2 TON."
+    },
+    "BackupAppDataError" : {
+      "title" : "خطأ أثناء النسخ الاحتياطي لبيانات التطبيق"
+    },
+    "RestoreAppDataError" : {
+      "title" : "خطأ في استعادة بيانات التطبيق"
+    },
+    "DeleteAppDataError" : {
+      "title" : "خطأ في حذف بيانات التطبيق"
+    },
+    "ScannedNewImportQrCode" : {
+      "title" : "مطلوب التحديث",
+      "description" : "لمزامنة تطبيقاتك، يُرجى التأكد من أن كليهما مُحدّث إلى أحدث إصدار."
+    },
+    "AppManifestUnknownError" : {
+      "title" : "لم يتم العثور على تطبيق Swap Live"
+    },
+    "AppManifestNotFoundError" : {
+      "title" : "فشل تحميل تطبيق Swap Live"
+    },
+    "InvalidMemoMina" : {
+      "title" : "نص علامة الملاحظة (تسمية الوجهة) لا يمكن أن يكون أطول من 32 حرفاً"
+    },
+    "AccountCreationFeeWarning" : {
+      "title" : "هذه المعاملة ستُكلّف رسوم إنشاء حساب بقيمة {{fee}}"
+    },
+    "AmountTooSmall" : {
+      "title" : "الحد الأدنى للمبلغ المطلوب لهذه المعاملة هو {{amount}}"
+    },
+    "AddressesSanctionedError" : {
+      "title" : "إبقاؤك آمناً",
+      "description" : "هذه المعاملة تتضمن عنوان محفظة خاضع لعقوبات ولا يمكن معالجتها.\n-- {{addresses}}"
     }
   },
   "crash" : {
@@ -959,6 +1239,32 @@
     "openSettings" : "افتح إعدادات الموقع",
     "tryEnablingAgain" : "حاول تمكين الموقع مرة أخرى",
     "noInfos" : "Ledger لا تقوم بالوصول إلى معلومات موقعك."
+  },
+  "earn" : {
+    "deposit" : {
+      "protocolInfoModal" : {
+        "title" : "لاختيار بروتوكول، إليك بعض الأشياء الواجب أخذها في الاعتبار:",
+        "items" : {
+          "protocol" : {
+            "highlighted" : "البروتوكول",
+            "description" : " هو منصة تسمح لك بالحصول على مكافآت باستخدام أصولك المشفرة المودعة من أجل الإقراض أو السيولة أو التكديس."
+          },
+          "apy" : {
+            "highlighted" : "المردود المئوي السنوي (APY)",
+            "description" : " هو مقدار الفائدة التي يمكنك كسبها خلال عام واحد. المردود المئوي السنوي (APY) الأعلى يعني إيرادات أعلى."
+          },
+          "tvl" : {
+            "highlighted" : "إجمالي القيمة المُقفلة (TVL)",
+            "description" : " هو إجمالي النقود المودعة في البروتوكول بواسطة المستخدمين الآخرين. إجمالي القيمة المُقفلة الأعلى يعني أن البروتوكول يثق فيه عدد أكبر من الأشخاص."
+          },
+          "strategy" : {
+            "highlighted" : "الاستراتيجية",
+            "description0" : " هي الطريقة التي يستخدمها بروتوكول لتوليد المكافآت من أجلك.",
+            "description1" : "على سبيل المثال، إذا استخدم بروتوكول الإقراض كاستراتيجية له، فإنه يقرض عملاتك المستقرة المودعة للمقترضين. عندها تكسب فائدةً تختلف بناءً على الطلب."
+          }
+        }
+      }
+    }
   },
   "permissions" : {
     "open" : "فتح تصريحات التطبيق",
@@ -995,6 +1301,11 @@
       "fast" : "سريع",
       "custom" : "مُخصّص",
       "blockCount" : "{{blockCount}} كتل"
+    },
+    "estimatedTime" : {
+      "slow" : "≈ 2-3 دقائق",
+      "medium" : "≈ 30 ثانية",
+      "fast" : "≈ 15 ثانية"
     }
   },
   "signout" : {
@@ -1195,21 +1506,21 @@
       "desc" : "منتجاتنا هي محافظ الأجهزة الوحيدة المعتمدة في السوق لأمانها من قِبل الهيئات الوطنية لأمن نظم المعلومات."
     },
     "title" : "أنت بحاجة إلى جهاز Ledger",
-    "desc" : "من أجل أمانك، Ledger Live يعمل فقط مع جهاز. أنت بحاجة إلى جهاز لتتمكن من المتابعة.",
+    "desc" : "من أجل أمانك،\n Ledger Live يعمل فقط مع جهاز Ledger.",
     "cta" : "اشترِ محفظتك Ledger الآن",
-    "footer" : "أنا أمتلك جهاز بالفعل، لنعده الآن",
-    "bannerTitle" : "حافظ على أصولك المشفرة وNFTs آمنة",
-    "bannerTitle2" : "ستحتاج إلى Nano للتداول",
-    "bannerSubtitle" : "بجهاز Ledger",
-    "bannerButtonTitle" : "اكتشف Nano",
-    "bannerButtonTitle2" : "اشترِ جهاز",
-    "setupCta" : "أنا أمتلك جهاز بالفعل، لنعده الآن"
+    "footer" : "لديّ جهاز Ledger بالفعل، لنعده",
+    "bannerTitle" : "مستوى عالي التطور من الأمان لأصولك المشفرة ورموزك غير القابلة للاستبدال",
+    "bannerTitle2" : "ستحتاج إلى جهاز Ledger لتكون قادراً على التداول",
+    "bannerSubtitle" : "بواسطة Ledger Flex",
+    "bannerButtonTitle" : "اكتشف Flex",
+    "bannerButtonTitle2" : "شراء Ledger",
+    "setupCta" : "لديّ جهاز Ledger بالفعل، لنعده"
   },
   "postBuyDeviceSetupNanoWall" : {
-    "title" : "هل استلمت جهازك؟",
-    "desc" : "بمجرد أن تستلم جهازك، يُمكنك البدء في إعداده من خلال Ledger Live!",
-    "cta" : "إعداد جهازي",
-    "bannerTitle" : "هل استلمت جهازك؟",
+    "title" : "هل حصلت على جهازك Ledger بعد؟",
+    "desc" : "بمجرد أن يكون لديك جهازك Ledger، قم بإعداده للوصول إلى كل ميزات تطبيق Ledger Live.",
+    "cta" : "إعداد جهازي Ledger",
+    "bannerTitle" : "تلقيت جهازك Ledger؟",
     "bannerCta" : "ابدأ الإعداد",
     "continue" : "متابعة"
   },
@@ -1235,8 +1546,8 @@
   },
   "postBuyDevice" : {
     "headerTitle" : "تم الشراء بنجاح",
-    "title" : "تهانينا",
-    "desc" : "طلبك قيد المعالجة.\nستستلم Ledger خاصتك قريباً. يرجى أن تتحقق من تأكيد طلبك في بريدك الإلكتروني."
+    "title" : "شكراً على ثقتك في Ledger",
+    "desc" : "طلبك قيد المعالجة.\nيُرجى أن تتحقق من بريدك الإلكتروني للعثور على تأكيد طلبك."
   },
   "discover" : {
     "title" : "اكتشف",
@@ -1343,10 +1654,10 @@
     },
     "welcomeBackStep" : {
       "title" : "مرحباً بك مجدداً",
-      "subtitle" : "اختر كيف تريد الوصول إلى محفظتك:",
+      "subtitle" : "أخبرنا كيف تفضّل الوصول إلى محفظتك:",
       "connect" : "توصيل جهازك Ledger",
       "sync" : "المزامنة مع Ledger Live لسطح المكتب",
-      "walletSync" : "المزامنة مع تطبيق Ledger Live آخر"
+      "walletSync" : "استخدام مزامنة Ledger"
     },
     "discoverLive" : {
       "exploreWithoutADevice" : "استكشف بدون جهاز",
@@ -1986,7 +2297,7 @@
     }
   },
   "earlySecurityCheck" : {
-    "title" : "اختبار الأصالة والتحقق من تحديث نظام التشغيل",
+    "title" : "اختبار أصالة Ledger",
     "idle" : {
       "learnMore" : "تعرّف على المزيد حول اختبار الأصالة",
       "checkCta" : "تحقق من {{ productName }}"
@@ -2022,11 +2333,11 @@
     "genuineCheckStep" : {
       "learnMore" : "تعرّف على المزيد حول اختبار الأصالة",
       "inactive" : {
-        "title" : "اختبار الأصالة",
+        "title" : "اختبار أصالة Ledger",
         "description" : "هذا يتأكد من أن جهازك {{productName}} هو جهاز Ledger أصلي."
       },
       "active" : {
-        "title" : "اختبار الأصالة",
+        "title" : "اختبار أصالة Ledger",
         "description" : "هذا يتأكد من أن جهازك {{productName}} هو جهاز Ledger أصلي."
       },
       "completed" : {
@@ -2034,23 +2345,23 @@
         "description" : ""
       },
       "refused" : {
-        "title" : "اختبار الأصالة تم رفضه",
+        "title" : "اختبار أصالة Ledger تم رفضه",
         "description" : "اختبار الأصالة إلزامي لمتابعة إعداد جهازك {{productName}} باستخدام تطبيق Ledger Live.",
         "cta" : "استئناف الفحص"
       },
       "error" : {
-        "title" : "اختبار الأصالة",
+        "title" : "اختبار أصالة Ledger",
         "description" : "اختبار الأصالة يتأكد من أن {{productName}} الخاص بك هو جهاز Ledger أصلي."
       }
     },
     "firmwareUpdateCheckStep" : {
       "active" : {
-        "title" : "التحقق من تحديث نظام التشغيل",
-        "description" : "يتحقق هذا مما إذا كان نظام تشغيل جهازك {{productName}} مُحدَّث إلى آخر إصدار أم لا. "
+        "title" : "التحقق من نظام تشغيل Ledger OS",
+        "description" : "هذا يتحقق مما إذا كان نظام تشغيل جهازك {{productName}} مُحدَّث إلى آخر إصدار. "
       },
       "completed" : {
         "noUpdateAvailable" : {
-          "title" : "نظام تشغيل {{productName}} مُحدَّث إلى آخر إصدار"
+          "title" : "نظام تشغيل Ledger OS مُحدَّث إلى آخر إصدار"
         }
       },
       "error" : {
@@ -2064,8 +2375,8 @@
         "skipCta" : "تخطي التحديث"
       },
       "inactive" : {
-        "title" : "التحقق من تحديث نظام التشغيل",
-        "description" : "يتحقق هذا مما إذا كان نظام تشغيل جهازك {{productName}} مُحدَّث إلى آخر إصدار أم لا. "
+        "title" : "التحقق من نظام تشغيل Ledger OS",
+        "description" : "هذا يتحقق مما إذا كان نظام تشغيل جهازك {{productName}} مُحدَّث إلى آخر إصدار. "
       }
     },
     "firmwareUpdateAvailableDrawer" : {
@@ -2077,7 +2388,7 @@
     }
   },
   "syncOnboarding" : {
-    "title" : "إعداد {{deviceName}}",
+    "title" : "جهّز {{productName}} الخاص بك",
     "estimatedTimeFormat" : "{{estimatedTime}} دقيقة",
     "deviceSelection" : {
       "title" : "اختر جهاز Ledger الذي تريد إعداده:",
@@ -2132,7 +2443,7 @@
     },
     "earlySecurityCheckCompletedStep" : {
       "title" : "{{productName}} أصلي",
-      "subtitle" : "من الآمن استخدام جهاز {{productName}} هذا. يمكنك المتابعة إلى إعداده.",
+      "subtitle" : "جهازك {{productName}} آمن للاستخدام. أنت مستعدٌ للبدء في الإعداد.",
       "description" : "انقر على {{productName}} لبدء الإعداد."
     },
     "pinStep" : {
@@ -2142,30 +2453,58 @@
       "continueOnDevice" : "قم بإعداد كود PIN الخاص بك على جهازك {{productName}}."
     },
     "seedStep" : {
-      "title" : "عبارة الاسترداد السرية",
+      "title" : "الإعداد والنسخ الاحتياطي",
       "doneTitle" : "تم تأكيد عبارة الاسترداد السرية",
       "description" : "عبارة الاسترداد الخاصة بك هي قائمة سرية من 24 كلمة تقوم بنسخ مفاتيحك الخاصة أحتيطياً. {{productName}} خاصتك تنتج عبارة استرداد فريدة. Ledger لا تحتفظ بنسخة منها",
       "choiceRestoreDirectOrRecover" : "Placeholder - اختيار استعادة مباشرة أو استخدم استرداد",
       "recoverSeed" : "Placeholder: استرداد",
-      "restoreSeed" : "تأكد من استخدام عبارة استرداد سرية تم إنشاؤها عن طريق جهاز Ledger لأقصى درجات الأمان لأصولك. \n\nليس لديك عبارة استرداد؟ استخدم جهازك {{productName}} لإنشاء واحدة جديدة.",
       "selection" : "اختر خيار الإعداد الأكثر ملائمة لك:",
       "selectionNewLedger" : {
         "title" : "الإعداد كجهاز Ledger جديد",
-        "desc" : "يتيح لك إنشاء محفظة جديدة. هذا يُنشئ عبارة استرداد سرية جديدة."
+        "desc" : "هذا يُنشئ عبارة الاسترداد السرية الجديدة الخاصة بك."
       },
       "selectionRestore" : {
-        "title" : "الاستعادة",
-        "desc" : "يتيح لك استعادة الوصول إلى أصولك الحالية بعبارة الاسترداد السرية الخاصة بك، أو باستخدام Ledger Recover."
+        "title" : "استعادة الوصول إلى أصولك",
+        "desc" : "هذا يتيح لك الاستعادة باستخدام نسخك الاحتياطي — عبارة الاسترداد السرية أو Ledger Recover.",
+        "descWithCharon" : "هذا يتيح لك الاستعادة باستخدام نسخك الاحتياطي — عبارة الاسترداد السرية أو Ledger Recover أو Ledger Recovery Key."
+      },
+      "backupCharon" : {
+        "title" : "Ledger Recovery Key",
+        "desc" : "قم بإنشاء نسخ احتياطي جديد على بطاقة محمية بكود PIN مع شريحة عنصر آمن مدمجة — حتى تتمكن من استعادة الوصول إلى أصولك ببضع نقرات فقط.",
+        "cta" : "معرفة المزيد أو الشراء",
+        "continueOnDevice" : "اتبع التعليمات على جهازك {{productName}}"
+      },
+      "selectionRestoreChoice" : {
+        "description" : "قم باختيار نسخ احتياطي ترغب في الاستعادة منه:",
+        "continueOnDevice" : "حدد الخيار ذي الصلة على جهازك {{productName}}.",
+        "secretRecoveryPhrase" : {
+          "title" : "عبارة الاسترداد السرية",
+          "description" : "استخدم عبارة استرداد سرية تم إنشاؤها عن طريق جهاز Ledger لأقصى درجات الأمان."
+        },
+        "ledgerCharon" : {
+          "title" : "Ledger Recovery Key",
+          "description" : "استخدم Recovery Key الخاص بك لاستعادة الوصول إلى أصولك."
+        },
+        "ledgerRecover" : {
+          "title" : "اشتراك Ledger Recover",
+          "description" : "استخدم اشتراكك لاستعادة الوصول إلى أصولك بواسطة هويّتك."
+        }
+      },
+      "restoreSeed" : {
+        "title" : "الاستعادة باستخدام عبارة الاسترداد السرية",
+        "description" : "للاستعادة، اتبع التعليمات التي تظهر على شاشة Ledger الآمنة خاصتك.",
+        "continueOnDevice" : "حدد الخيار ذي الصلة على جهازك {{productName}}."
+      },
+      "restoreLedgerCharon" : {
+        "title" : "الاستعادة باستخدام Recovery Key",
+        "description" : "للاستعادة، اتبع التعليمات التي تظهر على شاشة Ledger الآمنة لديك.",
+        "continueOnDevice" : "اتبع التعليمات على جهازك {{productName}}."
       },
       "selectionContinueOnDevice" : "اختر الخيار ذي الصلة على جهازك {{productName}}.",
-      "newSeedDescription" : "تريد معرفة المزيد عن عبارة الاسترداد السرية؟ شاهد مقاطع الفيديو هذه:",
-      "newSeedContinueOnDevice" : "قم بهذا على {{productName}} خاصتك",
-      "recovery" : "تأكد من استخدام عبارة استرداد سرية تم إنشاؤها عن طريق جهاز Ledger لأقصى درجات الأمان لأصولك. \n\nليس لديك عبارة استرداد؟ استخدم جهازك {{productName}} لإنشاء واحدة جديدة.",
-      "restoreChoiceContinueOnDevice" : "اختر الخيار ذي الصلة على جهازك {{productName}}.",
-      "restoreChoiceSRPTitle" : "الاستعادة باستخدام عبارة الاسترداد السرية",
-      "restoreChoiceSRPDescription" : "استخدم عبارة استرداد سرية تم إنشاؤها عن طريق جهاز Ledger لأقصى درجات الأمان. ",
-      "restoreChoiceRecoverTitle" : "استعادة باستخدام Ledger Recover",
-      "restoreChoiceRecoverDescription" : "إذا كنت مشتركاً في Ledger Recover، قم بتسجيل الدخول إلى اشتراكك لبدء عملية الاستعادة للنسخة الاحتياطية لعبارة الاسترداد السرية الخاصة بك."
+      "newSeedTitle" : "عبارة الاسترداد السرية",
+      "newSeedDescription" : "شاهد مقاطع الفيديو هذه لمعرفة المزيد عن عبارة الاسترداد السرية:",
+      "newSeedContinueOnDevice" : "اتبع التعليمات على جهازك {{productName}}",
+      "recovery" : "تأكد من استخدام عبارة استرداد سرية تم إنشاؤها عن طريق جهاز Ledger لأقصى درجات الأمان لأصولك. \n\nليس لديك عبارة استرداد؟ استخدم جهازك {{productName}} لإنشاء واحدة جديدة."
     },
     "backup" : {
       "title" : "نسخة احتياطية لعبارة الاسترداد السرية الخاصة بك",
@@ -2252,7 +2591,8 @@
       "seeMarket" : "رؤية الكل"
     },
     "walletBalance" : "رصيد المحفظة",
-    "seelAllAssets" : "رؤية جميع الأصول",
+    "seeAllAssets" : "رؤية جميع الأصول",
+    "seeAllAccounts" : "رؤية جميع الحسابات",
     "marketPriceSection" : {
       "title" : "سعر السوق لـ{{currencyTicker}}",
       "currencyPrice" : "سعر 1 {{currencyTicker}}",
@@ -2266,6 +2606,7 @@
     },
     "quickActions" : {
       "buy" : "شراء",
+      "sell" : "بيع",
       "swap" : "مبادلة",
       "send" : "إرسال",
       "deposit" : "تلقي",
@@ -2273,16 +2614,13 @@
     },
     "recoverBanner" : {
       "subscribeDone" : {
-        "title" : "أكمِل إضافة بطاقة الدفع الخاصة بك",
-        "description" : "استعد بشكل موثوق مع Ledger Recover."
+        "title" : "تذكير: أكمِل تسجيل الاشتراك في Ledger Recover"
       },
       "verifyIdentity" : {
-        "title" : "أكمِل تأكيد هويتك",
-        "description" : "استعد بشكل موثوق مع Ledger Recover."
+        "title" : "الوصول إلى محفظتك لم يتم نسخه احتياطياً بعد"
       },
       "connectDevice" : {
-        "title" : "الخطوة الأخيرة: توصيل جهازك Ledger",
-        "description" : "أنت على بعد خطوة واحدة من Ledger Recover."
+        "title" : "الوصول إلى محفظتك لم يتم نسخه احتياطياً بعد"
       }
     }
   },
@@ -2307,12 +2645,11 @@
         "description" : "استيراد الأصل من Ledger Live لسطح المكتب"
       },
       "add" : {
-        "title" : "الإضافة عن طريق جهازك Ledger",
-        "description" : "إنشاء أو استيراد أصولك باستخدام جهازك Ledger"
+        "title" : "استخدم جهازك Ledger",
+        "description" : "إنشاء أو استيراد حسابات الأصول المشفرة خاصتك باستخدام جهازك Ledger"
       },
       "walletSync" : {
-        "title" : "الاستيراد عبر تطبيق Ledger Live آخر",
-        "description" : "تنشيط مزامنة Ledger"
+        "title" : "استخدام مزامنة Ledger"
       }
     }
   },
@@ -2456,7 +2793,8 @@
       "gasLimit" : "حد الغاز",
       "id" : "المُعرّف",
       "autoClaimedRewards" : "المكافآت المطالب بها تلقائياً",
-      "stakedAmount" : "المبلغ المُكدَّس"
+      "stakedAmount" : "المبلغ المُكدَّس",
+      "accountCreationFee" : "رسوم إنشاء الحساب"
     },
     "multipleAddresses" : "لماذا عناوين متعددة؟",
     "tokenName" : "اسم رمز التوكن",
@@ -2485,8 +2823,13 @@
         "subTitle" : "دمج {{family}} تم بواسطة فريق {{team}}",
         "description" : "Ledger Live هي منصة مفتوحة المصدر.",
         "description2" : "المطورون من أي مكان في العالم بإمكانهم الدمج مع Ledger Live",
-        "description3" : "هذا الدمج تم تنفيذه من قِبل {{team}} بالتعاون مع Ledger"
+        "description3" : "هذا الدمج تم تنفيذه من قِبل {{team}} بالتعاون مع Ledger",
+        "description3Link" : "هذا الدمج تم تنفيذه من قِبل <1><0>{{team}}</1></0> بالتعاون مع Ledger"
       }
+    },
+    "migrationBanner" : {
+      "title" : "{{from}} تُرحَّل إلى {{to}}. اتبع هذا <0>الرابط</0> لمعرفة المزيد أو تواصل مع الدعم إذا كنت بحاجة إلى مساعدة.",
+      "contactSupport" : "تواصل مع الدعم"
     },
     "willBedeprecatedBanner" : {
       "title" : "لتحسين الكفاءة، {{currencyName}} لن تكون مدعومةً على Ledger Live بدءاً من {{deprecatedDate}}. مع ذلك، ستظل مدعومةً على محافظ أجهزة Ledger. يُرجى التواصل مع دعم عملاء Ledger إذا كنت ترغب في الحصول على مساعدة حول ذلك.",
@@ -2526,6 +2869,7 @@
     "buy" : "شراء",
     "walletconnect" : "WalletConnect",
     "stake" : "تكديس",
+    "yield" : "العائد",
     "sell" : "بيع",
     "swap" : "مبادلة",
     "manage" : "إدارة",
@@ -2657,6 +3001,9 @@
       }
     }
   },
+  "assets" : {
+    "title" : "الأصول"
+  },
   "accounts" : {
     "title" : "الحسابات",
     "cryptoAccountsTitle" : "حسابات {{currencyTicker}}",
@@ -2752,7 +3099,7 @@
       "dateFormat" : "تنسيق التاريخ",
       "dateFormatDesc" : "تعيين تنسيق التاريخ في Ledger Live",
       "walletSync" : "مزامنة Ledger",
-      "walletSyncDesc" : "ببساطة قم بتأمين بيانات التطبيق لديك ومزامنة العديد من حالات Ledger Live.",
+      "walletSyncDesc" : "قم بمزامنة حسابات الأصول المشفرة خاصتك على Ledger Live عبر هواتف وأجهزة كمبيوتر مختلفة.",
       "region" : "المنطقة",
       "regionDesc" : "اختر منطقتك لتحديث صِيغ التواريخ والوقت والعملات.",
       "password" : "App lock (قفل التطبيق)",
@@ -2777,9 +3124,12 @@
       "developerMode" : "وضع المطور",
       "developerModeDesc" : "عرض تطبيقات المطور في My Ledger (جهازي Ledger) وتمكين تطبيقات Testnet.",
       "analytics" : "تحليلات",
-      "analyticsDesc" : "قم بتمكين Ledger من تتبع بيانات استخدام التطبيق للمساعدة على قياس أداء Ledger Live وتحسين كل من التطبيق وتجربتك.",
+      "analyticsDesc" : "قم بتمكين Ledger من جمع بيانات استخدام التطبيق للمساعدة في قياس أداء Ledger Live وتحسين كلٍ من التطبيق وتجربتك.",
+      "mevProtection" : "حماية الحد الأقصى للقيمة القابلة للاستخراج (MEV)",
+      "mevProtectionDesc" : "قم بتمكين حماية الحد الأقصى للقيمة القابلة للاستخراج (MEV) لمعاملات أكثر موثوقية على إيثريوم.",
+      "mevProtectionLearnMore" : "إشعار الخصوصية",
       "personalizedRecommendations" : "تجربة مخصصة",
-      "personalizedRecommendationsDesc" : "قم بتمكين Ledger من تتبع بيانات استخدام التطبيق لتقديم توصيات مخصصة ومحتوى يطابق تفضيلاتك وللمساعدة في قياس أداء حملاتنا التسويقية.",
+      "personalizedRecommendationsDesc" : "قم بتمكين Ledger من جمع بيانات استخدام التطبيق لتقديم توصيات مخصصة ومحتوى يطابق تفضيلاتك وللمساعدة في قياس أداء حملاتنا التسويقية.",
       "analyticsModal" : {
         "title" : "مشاركة التحليلات",
         "desc" : "قم بتمكين التحليلات لمساعدة Ledger على تحسين تجربة المستخدم.",
@@ -2887,8 +3237,8 @@
         "desc" : "تلقى تحديثات Ledger Live المهمة"
       },
       "largeMover" : {
-        "title" : "تحرك كبير في السعر",
-        "desc" : "سيتم إخطارك بالتحركات المهمة في السعر إذا كنت تمتلك BTC أو ETH أو SOL أو ADA أو XRP"
+        "title" : "تنبيهات الأسعار",
+        "desc" : "سيتم إخطارك بالتحركات المهمة في سعر رموز التوكن الشائعة التي تملكها"
       },
       "transactionsAlerts" : {
         "title" : "تنبيهات المعاملات (بيتا)",
@@ -2985,6 +3335,10 @@
         },
         "platformManifest" : {
           "title" : "تحميل بيان المنصة"
+        },
+        "mockAppUpdate" : {
+          "title" : "تحديث صوري للتطبيق",
+          "description" : "يعرض التحديث المتاح للتطبيق في My Ledger (جهازي Ledger)، ويقوم بإعادة تثبيت نفس إصدار التطبيق"
         }
       }
     },
@@ -2992,7 +3346,20 @@
       "title" : "مطوّر",
       "desc" : "جرّب ميزات المطور وأخبرنا برأيك.",
       "customManifest" : {
-        "title" : "تحميل بيان المنصة المخصص"
+        "title" : "تحميل البيان"
+      },
+      "exchangeDeveloperMode" : {
+        "title" : "وضع المطور لمنصة التداول",
+        "description" : "إضافة معلومات مُزوّد منصة التداول",
+        "placeholder" : "معلومات مُزوّد التداول بصيغة CAL",
+        "currentSetting" : "الإعداد الحالي",
+        "error" : "قيمة CAL غير صالحة"
+      },
+      "customCALRef" : {
+        "title" : "مرجع CAL مخصص",
+        "description" : "حدّد فرع مخصص أو تضمين أو علامة للاستخدام gكل طلبات CAL",
+        "enable" : "تمكين مرجع CAL مخصص",
+        "disable" : "تعطيل مرجع CAL مخصص"
       }
     },
     "debug" : {
@@ -3040,6 +3407,14 @@
       "input" : "أدخل العنوان",
       "inputEns" : "أدخِل عنواناً أو ENS"
     },
+    "memoTag" : {
+      "input" : "أدخِل علامة/ملاحظة (تسمية الوجهة)",
+      "title" : "لا تستخدم علامة/ملاحظة (تسمية الوجهة)؟",
+      "description" : "أموالك سوف تُفقَد إذا لم تقم بإضافة علامة/ملاحظة (تسمية الوجهة) عند إرسالها إلى أي منصة تداول مركزية أو محفظة وصاية.",
+      "cta" : "إضافة علامة",
+      "ignore" : "لا تضف علامة",
+      "learnMore" : "تعرّف على المزيد عن العلامة/الملاحظة (تسمية الوجهة)"
+    },
     "send" : {
       "title" : "إرسال",
       "description" : "إرسال الأصول المشفرة إلى محفظة أخرى."
@@ -3063,6 +3438,13 @@
       "shareAddress" : "عنوان المشاركة",
       "addressCopied" : "تم نسخ العنوان إلى ذاكرة النصوص",
       "taprootWarning" : "تأكد أن المُرسل يدعم taproot",
+      "memoTag" : {
+        "link" : "تحتاج إلى علامة/ملاحظة (تسمية الوجهة)؟",
+        "title" : "تحتاج إلى علامة/ملاحظة (تسمية الوجهة)؟",
+        "description" : "ربما تحتاج إلى علامة/ملاحظة (تسمية الوجهة) لتلقي هذا الأصل من منصة تداول. يمكنك استخدام أي مزيج من الأرقام مثل 1234.",
+        "cta" : "أفهم ذلك",
+        "learnMore" : "تعرّف على المزيد عن العلامات"
+      },
       "selectCrypto" : {
         "title" : "اختر الأصل المشفر الذي تريد تلقيه"
       },
@@ -3093,7 +3475,7 @@
       },
       "verifyAddress" : {
         "title" : "التحقق من العنوان",
-        "subtitle" : "تحقّق ممّا إذا كان العنوان المعروض على جهازك يتطابق مع العنوان أدناه. بمجرّد أن تتأكد، يمكنك النقر على approve [موافقة] على جهازك.",
+        "subtitle" : "تحقّق ممّا إذا كان العنوان المعروض على جهازك يتطابق مع العنوان أدناه. بمجرّد أن تتأكد، يمكنك التأكيد على جهازك.",
         "cancel" : {
           "title" : "لقد رفضت هذا العنوان للتوّ",
           "subtitle" : "إذا قمت بهذا عن طريق الخطأ، يُمكنك إعادة المحاولة بالنقر على الزرّ أدناه.",
@@ -3101,6 +3483,7 @@
         }
       },
       "receiveConfirmation" : {
+        "utxoWarning" : "لأسباب تتعلق بالخصوصية، يتم إنشاء عنوان جديد لكل معاملة. العناوين السابقة تظل صالحةً.",
         "title" : "تلقي {{currencyTicker}}",
         "onCurrencyName" : "على {{currencyName}}",
         "copyAdress" : "نسخ العنوان",
@@ -3110,7 +3493,7 @@
         "adviceVerify" : "نوصي دائماً بالتحقق من عنوانك باستخدام جهازك Ledger",
         "sendWarning" : "أرسِل رموز التوكن فقط من شبكة {{network}}. الإرسال من شبكة أخرى قد يُؤدي إلى فقدان رموز التوكن خاصتك تماماً.",
         "dashStakingWarning" : "يُرجى التأكد من أنك لا تستخدم هذا العنوان لتلقي مكافآت التكديس",
-        "bannerTitle" : "تعلم كيف تقوم بعملية سحب من منصة تداول"
+        "bannerTitle" : "تعلّم كيف تقوم بعملية سحب من منصات التداول؟"
       },
       "securityVerify" : {
         "title" : "التحقق من العنوان أمر بالغ الأهمية لتأمين هذه المعاملة",
@@ -3142,7 +3525,13 @@
         "verify" : "لم يتم التحقق من عنوان {{accountType}}. تحقق من العناوين على جهازك لتظل آمناً."
       },
       "noResultsFound" : "لم يتم العثور على أي أصول مشفرة",
-      "noResultsDesc" : "من فضلك تأكد من التهجئة وحاول مرة أخرى"
+      "noResultsDesc" : "من فضلك تأكد من التهجئة وحاول مرة أخرى",
+      "sanctionedAddress" : {
+        "title" : "إبقاؤك آمناً",
+        "description" : "هذه المعاملة تتضمن عنوان محفظة خاضع لعقوبات ولا يمكن معالجتها.\n--{{sanctionedAddress}}\n<Link>{{learnMore}}</Link>",
+        "close" : "إغلاق",
+        "learnMore" : "تعرّف على المزيد"
+      }
     },
     "buy" : {
       "title" : "شراء",
@@ -3153,11 +3542,12 @@
       "description" : "بيع الأصول المشفرة بأمان مقابل العملات النقدية."
     },
     "exchange" : {
-      "title" : "شراء / بيع"
+      "title" : "شراء / بيع",
+      "connectingTo" : "جارٍ توصيلك بـ {{provider}}"
     },
     "stake" : {
       "title" : "تكديس",
-      "description" : "كدّس ممتلكاتك من الأصول المشفرة."
+      "description" : "احصل على مكافآت على أصولك المشفرة."
     },
     "swap" : {
       "title" : "مبادلة",
@@ -3198,7 +3588,7 @@
       },
       "form" : {
         "validate" : "تأكيد معاملة المبادلة",
-        "tab" : "تبادل",
+        "tab" : "مبادلة",
         "button" : "متابعة",
         "from" : "من",
         "to" : "إلى",
@@ -3270,7 +3660,8 @@
           "refunded" : "يرجى التواصل مع مزود المبادلة باستخدام مُعرف مبادلتك للمزيد من المعلومات.",
           "pending" : "يُرجى الانتظار بينما يقوم مزود المبادلة بمعالجة المعاملة.",
           "onhold" : "يرجى التواصل مع مزود المبادلة باستخدام مُعرف مبادلتك لحل المشكلة.",
-          "finished" : "تم تنفيذ مبادلتك بنجاح."
+          "finished" : "تم تنفيذ مبادلتك بنجاح.",
+          "unknown" : "نحن بانتظار معلومات من المزود."
         }
       },
       "missingApp" : {
@@ -3289,6 +3680,7 @@
         "CTAButton" : "إضافة حساب"
       },
       "history" : {
+        "button" : "الانتقال إلى السجل",
         "tab" : "السجل",
         "disclaimer" : "عمليات المبادلة لتطبيق الجوال الخاص بك غير متزامنة مع تطبيق Ledger Live لسطح المكتب",
         "exportButton" : "تصدير العمليات",
@@ -3307,8 +3699,8 @@
           "receive" : "تلقي"
         },
         "placeholder" : "اختر",
-        "title" : "تبادل",
-        "cta" : "استبدل",
+        "title" : "مبادلة",
+        "cta" : "مبادلة",
         "from" : "من",
         "to" : "إلى",
         "loading" : "جاري التحميل ...",
@@ -3330,6 +3722,7 @@
             "provider" : "المزود",
             "rate" : "مُعدل",
             "fees" : "رسوم الشبكة",
+            "feesDescription" : "يتم فرض هذه الرسوم من قِبل شبكة سلسلة الكتل (بلوكتشين) لمعالجة المبادلة. يتم فرض رسوم الإرسال فقط بالإضافة إلى عرض السعر المُقدّر. رسوم التلقي مشمولة",
             "target" : "الحساب المستهدف"
           },
           "noAccount" : "إنشاء حساب لتلقي {{name}}",
@@ -3346,6 +3739,39 @@
         "providers" : {
           "noProviders" : "لم يتم العثور على نتائج. ليس متاح عروض أسعار بالتفضيلات الحالية."
         }
+      },
+      "quotesList" : {
+        "title" : "اختر عرض سعر"
+      },
+      "twoStepApproval" : {
+        "title" : "أكمل الخطوات"
+      },
+      "history" : {
+        "title" : "سجلّ المبادلة"
+      },
+      "incompatibility" : {
+        "explore_compatible_devices" : "استكشف الأجهزة المتوافقة",
+        "contact_support" : "تواصل مع دعم العملاء",
+        "ton_title" : "™Ledger Nano S لا تدعم مبادلة Ton",
+        "ton_description" : "لمبادلة Ton، استخدِم أي جهاز Ledger آخر متوافق مثل ™Ledger Nano S Plus أو ™Ledger Nano X أو ™Ledger Flex أو ™Ledger Stax.",
+        "ton_tokens_title" : "™Ledger Nano S لا تدعم مبادلة رموز Ton",
+        "ton_tokens_description" : "لمبادلة رموز Ton، استخدِم أي جهاز Ledger متوافق آخر مثل ™Ledger Nano S Plus أو ™Ledger Nano X أو ™Ledger Flex أو ™Ledger Stax.",
+        "spl_tokens_title" : "™Ledger Nano S لا تدعم مبادلة رموز سولانا (Solana)",
+        "spl_tokens_description" : "لمبادلة رموز سولانا (Solana)، استخدِم أي جهاز Ledger آخر متوافق مثل ™Ledger Nano S Plus أو ™Ledger Nano X أو ™Ledger Flex أو ™Ledger Stax.",
+        "near_title" : "™Ledger Nano S لا تدعم مبادلة Near",
+        "near_description" : "لمبادلة Near، استخدم أي جهاز Ledger متوافق آخر مثل ™Ledger Nano S Plus أو ™Ledger Nano X أو ™Ledger Flex أو ™Ledger Stax.",
+        "ada_title" : "™Ledger Nano S لا تدعم مبادلة كاردانو (Cardano)",
+        "ada_description" : "لمبادلة كاردانو (Cardano)، استخدِم أي جهاز Ledger آخر متوافق مثل ™Ledger Nano S Plus أو ™Ledger Nano X أو ™Ledger Flex أو ™Ledger Stax.",
+        "apt_title" : "™Ledger Nano S لا تدعم مبادلة Aptos",
+        "apt_description" : "لمبادلة Aptos، استخدم أي جهاز Ledger متوافق آخر مثل ™Ledger Nano S Plus أو ™Ledger Nano X أو ™Ledger Flex أو ™Ledger Stax.",
+        "cosmos_title" : "™Ledger Nano S لا تدعم مبادلة Cosmos",
+        "cosmos_description" : "لمبادلة Cosmos، استخدم أي جهاز Ledger متوافق آخر مثل ™Ledger Nano S Plus أو ™Ledger Nano X أو ™Ledger Flex أو ™Ledger Stax.",
+        "osmo_title" : "™Ledger Nano S لا تدعم مبادلة Osmosis",
+        "osmo_description" : "لمبادلة Osmosis، استخدم أي جهاز Ledger متوافق آخر مثل ™Ledger Nano S Plus أو ™Ledger Nano X أو ™Ledger Flex أو ™Ledger Stax.",
+        "dydx_title" : "™Ledger Nano S لا تدعم مبادلة dYdX",
+        "dydx_description" : "لمبادلة dYdX، استخدم أي جهاز Ledger متوافق آخر مثل ™Ledger Nano S Plus أو ™Ledger Nano X أو ™Ledger Flex أو ™Ledger Stax.",
+        "sui_title" : "™Ledger Nano S لا تدعم مبادلة Sui",
+        "sui_description" : "لمبادلة Sui، استخدِم أي جهاز Ledger آخر متوافق مثل ™Ledger Nano S Plus أو ™Ledger Nano X أو ™Ledger Flex أو ™Ledger Stax."
       }
     },
     "lending" : {
@@ -3572,7 +3998,7 @@
     "highFeeModal" : "كن حذراً، رسوم الشبكة أعلى من <1>%10</1> من المبلغ. هل ترغب في المتابعة؟",
     "scan" : {
       "title" : "مسح ضوئي لكود QR",
-      "descBottom" : "يرجى توسيط كود QR داخل المربع.",
+      "descBottom" : "مسح ضوئي لكود QR",
       "fallback" : {
         "header" : "مسح ضوئي لكود QR",
         "title" : "تمكين الكاميرا",
@@ -3610,6 +4036,9 @@
         }
       }
     },
+    "spl2022" : {
+      "splExtensionsWarning" : "أنت تتفاعل مع رمز توكن يشكل جزءاً من برنامج Token-2022، المعروف أيضاً باسم Token Extensions (ملحقات رموز التوكن). رمز التوكن هذا يأتي مع مخاطر محددة. <0>انقر هنا</0> لمعرفة المزيد."
+    },
     "amount" : {
       "available" : "إجمالي المتاح",
       "useMax" : "استخدم الحد الأقصى",
@@ -3618,6 +4047,10 @@
       "quantityAvailable" : "الكمية المتاحة"
     },
     "summary" : {
+      "solanaRawTransaction" : {
+        "title" : "التوقيع بدون اطلاع مطلوب",
+        "description" : "لا يمكنك تأكيد صحة تفاصيل المعاملة على جهازك Ledger. إذا قمت بتوقيعها، فقد تخسر كل أصولك. قم بالتوقيع فقط إذا كنت تثق في هذا الموقع الإلكتروني."
+      },
       "subaccountsWarning" : "ستحتاج إلى إعادة شحن هذا الحساب بعملة {{ currency }} لتستطيع إرسال رموز التوكن من هذا الحساب",
       "tag" : "علامة (اختيارية)",
       "validateTag" : "التحقق من العلامة",
@@ -3627,6 +4060,7 @@
       "to" : "إلى",
       "infoTotalTitle" : "إجمالي الخصم",
       "infoTotalDesc" : "يشمل مبلغ المعاملة ورسوم الشبكة المحددة",
+      "gasFee" : "رسوم الغاز",
       "gasLimit" : "حد الغاز",
       "gasPrice" : "سعر الغاز",
       "maxFee" : "الحد الأقصى للرسوم",
@@ -3647,6 +4081,8 @@
         "value" : "قيمة الملاحظة"
       },
       "validateMemo" : "تحقق من صحة الملاحظة",
+      "comment" : "التعليق",
+      "validateComment" : "تأكيد التعليق",
       "quantity" : "الكمية"
     },
     "validation" : {
@@ -3838,14 +4274,24 @@
   },
   "addAccounts" : {
     "addNew" : "إضافة جديد",
+    "seeAllAccounts" : "رؤية جميع الحسابات",
+    "addNewOrExisting" : "إضافة حساب جديد أو موجود",
     "supportLinks" : {
       "segwit_or_native_segwit" : "Segwit أم Native SegWit؟"
     },
     "quitConfirmation" : {
       "title" : "إلغاء إضافة حساب",
-      "desc" : "هل أنت متأكد أنك تريد إلغاء إضافة حسابات؟"
+      "desc" : "هل أنت متأكد أنك تريد إلغاء إضافة حسابات؟",
+      "v2" : {
+        "title" : "إلغاء إضافة حساب؟",
+        "desc" : "لن يتم إضافة أي حساب إلى Ledger Live.",
+        "continue" : "متابعة الإضافة",
+        "cancel" : "إلغاء"
+      }
     },
     "imported" : "تمت إضافة الأصل بنجاح",
+    "added" : "تمت إضافة الحساب إلى محفظتك الاستثمارية",
+    "added_plural" : "تمت إضافة {{count}} حساب إلى محفظتك الاستثمارية",
     "sections" : {
       "importable" : {
         "title" : "إضافة حساب موجود"
@@ -3878,7 +4324,7 @@
       "title" : "إضافة رمز توكن",
       "createParentCurrencyAccount" : "أضف حساب {{parrentCurrencyName}}",
       "generic" : {
-        "disclaimer" : "{{token}} ({{ticker}}) هو رمز {{tokenType}}.\nيمكنك تلقي رموز التوكن مباشرةً على حساب {{currency}}.",
+        "disclaimer" : "{{token}} ({{ticker}}) هو رمز {{tokenType}}.\nيمكنك تلقي رموز التوكن مباشرةً في حساب {{currency}}.",
         "learnMore" : "تعرف على المزيد عن {{tokenType}}"
       }
     },
@@ -3902,7 +4348,41 @@
         "title" : "Taproot",
         "desc" : "أحدث ترقية لشبكة {{currency}}. سوف توفر خصوصية أفضل ورسوم أرخص بمجرد انتشارها. لا يزال الدعم محدود من المحفظة ومنصات التداول."
       }
-    }
+    },
+    "scanDeviceAccounts" : {
+      "title" : "اختر الحسابات التي ترغب في إضافتها",
+      "ctaStopScan" : "إيقاف المسح الضوئي",
+      "confirm" : "تأكيد",
+      "scanningTitle" : "جارٍ البحث عن أي حسابات قائمة في سلسلة الكتل (Blockchain)...",
+      "whichAddressType" : "تعلّم كيفية اختيار نوع العنوان",
+      "sections" : {
+        "importable" : {
+          "title" : "وجدنا {{count}} حساب",
+          "title_plural" : "وجدنا {{count}} حساب"
+        },
+        "creatable" : {
+          "title" : "حساب جديد"
+        },
+        "migrate" : {
+          "title" : "الحسابات المطلوب تحديثها"
+        }
+      },
+      "retryScanning" : "إعادة المحاولة"
+    },
+    "addAccountsSuccess" : {
+      "ctaAddFunds" : "إضافة أموال إلى حسابي",
+      "ctaClose" : "إغلاق"
+    },
+    "addAccountsWarning" : {
+      "cantCreateAccount" : {
+        "title" : "لا يمكننا إضافة حساب جديد",
+        "body" : "لا يمكن إضافة حساب جديد قبل تلقي أصول في حسابك {{accountName}}."
+      },
+      "noAccountToCreate" : {
+        "title" : "لم نتمكن من إضافة حساب {{currency}} جديد"
+      }
+    },
+    "chooseAccountToFund" : "اختر حساباً لإضافة الأموال"
   },
   "DeviceAction" : {
     "stayInTheAppPlz" : "لا تُغادر تطبيق Ledger Live وابق على Ledger خاصتك بالقرب منك.",
@@ -3968,7 +4448,9 @@
     "installApp" : "{{percentage}} من تثبيت تطبيق {{appName}}",
     "installAppDescription" : "يُرجى الانتظار حتى يتم الانتهاء من التثبيت",
     "listApps" : "التحقق من تبعيات التطبيق",
-    "listAppsDescription" : "يُرجى الانتظار بينما نتأكد أن لديك جميع التطبيقات المطلوبة"
+    "listAppsDescription" : "يُرجى الانتظار بينما نتأكد أن لديك جميع التطبيقات المطلوبة",
+    "confirmExchangeOnDevice" : "أكِّد التبادل على جهازك",
+    "confirmSwapOnDevice" : "أكِّد المبادلة على جهازك"
   },
   "SelectDevice" : {
     "title" : "إقران جهاز جديد",
@@ -4413,7 +4895,7 @@
   },
   "FirmwareUpdateReleaseNotes" : {
     "introTitle" : "قم بتحديث {{deviceName}} إلى الإصدار {{version}}",
-    "recoveryPhraseBackupInstructions" : "تأكد من كتابة عبارة الاسترداد الخاصة بك المكونة من 24 كلمة على ورقة الاسترداد وأنها متوفرة، على سبيل الاحتياط.",
+    "recoveryPhraseBackupInstructions" : "تأكد من كتابة عبارة الاسترداد السرية الخاصة بك المكونة من 24 كلمة على ورقة الاسترداد وأنها متاحة، على سبيل الاحتياط.\n\nفكّر في استخدام Ledger Recover لعمل نسخ احتياطي للوصول إلى محفظتك وضمان أنها دائماً في المتناول.",
     "confirmRecoveryPhrase" : "لدي عبارة الاسترداد الخاصة بي",
     "introDescription1" : "يرجى ملاحظة أنه سيتم حذف جميع التطبيقات الموجودة على جهازك. يمكنك إعادة تثبيت تطبيقاتك بعد تحديث البرنامج الثابت.",
     "introDescription2" : "ليس لذلك أي تأثير على أصولك المشفرة.",
@@ -4437,7 +4919,8 @@
       "tr" : "Türk",
       "ja" : "日本",
       "ko" : "한국어",
-      "pt" : "Português"
+      "pt" : "Português (Br)",
+      "th" : "ภาษาไทย"
     }
   },
   "deviceLocalization" : {
@@ -4457,7 +4940,12 @@
     "languages" : {
       "english" : "English",
       "french" : "Français",
-      "spanish" : "Español"
+      "spanish" : "Español",
+      "german" : "Deutsch",
+      "brazilian" : "Português (Br)",
+      "russian" : "Русский",
+      "turkish" : "Türkçe",
+      "thai" : "ภาษาไทย"
     }
   },
   "FirmwareUpdateCheckId" : {
@@ -5332,6 +5820,9 @@
     "AccountHeader" : {
       "title" : "يمكنك أن تكسب مكافآت عن طريق تفويض حسابك",
       "btn" : "اكسب المكافآت"
+    },
+    "delegation" : {
+      "addCustomValidator" : "+ إضافة مدقق مخصص"
     }
   },
   "tron" : {
@@ -5758,6 +6249,7 @@
       "iWithdraw" : "أنا أسحب",
       "totalStake" : "إجمالي التكديس",
       "commission" : "العمولة",
+      "netApy" : "صافي المردود المئوي السنوي (APY)",
       "stakeActivationState" : "الولاية",
       "stakeActivePercent" : "نشِط",
       "stakeAvailableBalance" : "الرصيد المتاح",
@@ -5782,7 +6274,75 @@
         "description" : "يمكنك كسب المكافآت عن طريق تفويض أصولك SOL لمدقق."
       },
       "reserveWarning" : "يُرجى التأكد من أنك تحتفظ بـ {{amount}} SOL على الأقل في محفظتك لتغطية رسوم الشبكة المستقبلية من أجل إلغاء تنشيط وسحب حصتك"
+    },
+    "token" : {
+      "frozenStateWarning" : "تمّ تجميد أصول الحساب!",
+      "transferWarning" : "للتحقق من عنوان المستلم لرموز سولانا (Solana) باستخدام ™Ledger Nano S، <0>يرجى اتباع هذه التعليمات.</0>",
+      "transferFees" : {
+        "title" : "رسوم التحويل",
+        "feesPercentHint" : "رمز التوكن عليه رسوم تحويل %{{feePercent}} ({{feeBps}} نقطة أساس) ({{maxFee}} بحد أقصى)",
+        "feesHint" : "رسوم تحويل رمز التوكن: {{transferFee}}",
+        "notice" : "رسوم التحويل %{{fee}}",
+        "tooltipHint" : "النسبة المئوية من التحويل المحتجزة من أجل منشئ رمز التوكن"
+      },
+      "nonTransferable" : {
+        "notice" : "رمز التوكن غير قابل للتحويل"
+      },
+      "interestRate" : {
+        "notice" : "مُعدل الفائدة %{{rate}}",
+        "tooltipHint" : "من أجل الأغراض التجميلية فقط، لم يتم إنشاء أي رموز توكن جديدة نتيجةً للفائدة"
+      },
+      "permanentDelegate" : {
+        "notice" : "سُلطة المُفوِّض الدائم (Permanent delegate) مُمكّنة",
+        "initializationNotice" : "سُلطة المُفوِّض الدائم (Permanent delegate) بدأت لكنها غير مُمكّنة",
+        "initializedNoticeTooltipHint" : "المُفوِّض لديه القدرة على تحويل أو حرق رمز التوكن هذا من حسابك",
+        "tooltipHint" : "{{delegateAddress}}<0></0> لديه القدرة على تحويل أو حرق رمز التوكن هذا من حسابك"
+      },
+      "requiredMemoOnTransfer" : {
+        "notice" : "الملاحظة (تسمية الوجهة) الإلزامية على التحويل مُمكّنة",
+        "tooltipHint" : "كل التحويلات الواردة إلى هذا الحساب يجب أن تكون مصحوبةً بملاحظة (تسمية الوجهة)"
+      },
+      "transferHook" : {
+        "notice" : "خُطّاف التحويل (Transfer hook) مُمكّن",
+        "initializationNotice" : "خُطّاف التحويل (Transfer hook) بدأ لكنه غير مُمكّن",
+        "tooltipHint" : "رمز التوكن له وظيفة إضافية يتم التعامل معها بواسطة {{programAddress}}<0></0>"
+      },
+      "extensionsInfo" : {
+        "title" : "ملحقات رموز سولانا (Solana)",
+        "commonInfo" : "ملحقات الرموز هي الجيل القادم من معيار رمز سولانا (Solana). إنها تقدّم مجموعة جديدة من الطرق لتمديد وظيفة رمز التوكن العادية بميزات إضافية؛ مثل التحويلات السرية، والمُفوِّض الدائم (Permanent Delegate)، ومنطق التحويل المخصص، والبيانات الوصفية الممتدة، والكثير غير ذلك.",
+        "permanentDelegate" : {
+          "title" : "المُفوِّض الدائم (Permanent Delegate)",
+          "permanentDelegateAddress" : "سلطة المُفوِّض الحالية هي {{address}}",
+          "permanentDelegateNotSetup" : "سلطة المُفوِّض الحالية لم يتم إعدادها.",
+          "description" : "المُفوِّض الدائم (Permanent Delegate) هو سلطة لديها امتيازات تفويض غير محدودة على أي حساب من أجل ذلك السكّ. المُفوِّض يمكن أن يقوم بحرق أو تحويل أي مبلغ من رموز التوكن، في أي وقت، ضمن سلطته."
+        },
+        "nonTransferable" : {
+          "title" : "الرموز غير القابلة للتحويل",
+          "description" : "رموز التوكن تلك هي ”soul-bound (رموز مرتبطة بالروح)“ ولا يمكن نقلها أو حرقها إلا بواسطة مُصدر رمز التوكن."
+        },
+        "transferHook" : {
+          "title" : "خُطّاف التحويل (Transfer hook)",
+          "transferHookAddress" : "برنامج خُطّاف التحويل (Transfer hook) الحالي هو {{address}}",
+          "transferHookNotSetup" : "برنامج خُطّاف التحويل (Transfer hook) الحالي لم يتم إعداده.",
+          "description" : "خُطّاف التحويل (Transfer hook) يمنح مُصدري رموز التوكن قدرة على إملاء كيفية تفاعل المستخدمين ورموز التوكن. بدلاً من التحويل العادي، يمكن للمُصدر أن يُدخِل منطقاً مخصصاً في برنامج سيتم استخدامه مع ملحق خُطّاف التحويل (Transfer hook)."
+        },
+        "transferFee" : {
+          "title" : "رسوم التحويل",
+          "currentTransferFee" : "رسوم التحويل الحالية هي %{{feePercent}} ({{feeBps}} نقطة أساس (bps) ). أقصى حد {{maxFee}}.",
+          "description" : "يتم فرض الرسوم على كل تحويل لرمز توكن وتُحجز على حساب المستلم، ولا يمكن للمستلم المساس بها."
+        },
+        "interestBearing" : {
+          "title" : "رموز التوكن المُدرة للفائدة",
+          "currentInterestRate" : "مُعدل الفائدة الحالي هو %{{rate}}.",
+          "accruedDelta" : "المتراكمة {{delta}}.",
+          "interestRateNotSetup" : "مُعدل الفائدة الحالي تم تعيينه ليكون %0.",
+          "description" : "رموز التوكن التي تنمو أو تنخفض قيمتها باستمرار وفقاً لمعدل فائدتها. لا يتم إنشاء أي رموز توكن جديدة على الإطلاق، الميزة تجميلية بشكل كامل."
+        }
+      }
     }
+  },
+  "mina" : {
+    "memoPlaceholder" : "ملاحظة اختيارية"
   },
   "near" : {
     "info" : {
@@ -5840,7 +6400,7 @@
       }
     },
     "staking" : {
-      "sectionLabel" : "موضع (أو مواضع) التكديس",
+      "sectionLabel" : "مركز (أو مراكز) التكديس",
       "info" : "كيف يعمل التكديس",
       "add" : "إضافة",
       "stakingEarn" : "يمكنك كسب مكافآت NEAR عن طريق تكديس أصولك.",
@@ -5855,7 +6415,6 @@
         "status" : "الحالة",
         "active" : "نشِط",
         "inactive" : "غير نشِط",
-        "rewards" : "المكافآت",
         "pending" : "مُعلقّة",
         "available" : "قابل للسحب"
       },
@@ -5882,6 +6441,141 @@
           "amount" : {
             "assetsRemaining" : "الأصول المتبقية : <0>{{amount}}</0>",
             "allAssetsUsed" : "جميع الأصول مستخدمة",
+            "minAmount" : "الحد الأدنى للمبلغ : <0>{{min}}</0>",
+            "incorrectAmount" : "الحد الأقصى للمبلغ : <0>{{max}}</0>",
+            "cta" : "متابعة"
+          },
+          "verification" : {
+            "success" : {
+              "title" : "لقد قمت بتكديس أصولك بنجاح",
+              "text" : "سيتم تحديث رصيد حسابك بمجرد أن تؤكد الشبكة المعاملة."
+            }
+          }
+        }
+      }
+    }
+  },
+  "aptos" : {
+    "info" : {
+      "available" : {
+        "title" : "Aptos متاح",
+        "description" : "هذا المبلغ يمكن التخلص منه."
+      },
+      "storageUsage" : {
+        "title" : "الحد الأدنى للرصيد",
+        "description" : "هذا المبلغ محجوز للحفظ والمعاملات، وهو الحد الأدنى للرصيد الذي يجب أن يكون في حسابك لكي يظل نشطاً."
+      },
+      "staked" : {
+        "title" : "الرصيد المُكدَّس",
+        "description" : "هذا المبلع مُكدَّس حالياً مع مدققين."
+      },
+      "pending" : {
+        "title" : "الرصيد المُعلَّق",
+        "description" : "هذا المبلغ تمّ إلغاء تكديسه وحالياً بانتظار الإتاحة."
+      },
+      "withdrawable" : {
+        "title" : "الرصيد القابل للسحب",
+        "description" : "هذا المبلغ تم إلغاء تكديسه وحالياً قابل للسحب."
+      },
+      "stakingUnavailable" : {
+        "title" : "التكديس غير متاح",
+        "description" : "ليس هناك رصيد متاح كافٍ في حسابك للتكديس وإلغاء التكديس والسحب."
+      }
+    },
+    "operationDetails" : {
+      "extra" : {
+        "stakedAmount" : "المبلغ المُكدَّس",
+        "unstakedAmount" : "المبلغ غير المُكدّس",
+        "withdrawnAmount" : "المبلغ المسحوب"
+      }
+    },
+    "unstaking" : {
+      "stepperHeader" : {
+        "amountSubTitle" : "المبلغ المطلوب إلغاء تكديسه"
+      },
+      "flow" : {
+        "steps" : {
+          "verification" : {
+            "success" : {
+              "title" : "لقد ألغيت تكديس أصولك بنجاح"
+            }
+          }
+        }
+      }
+    },
+    "withdrawing" : {
+      "stepperHeader" : {
+        "amountSubTitle" : "المبلغ المراد سحبه"
+      },
+      "flow" : {
+        "steps" : {
+          "verification" : {
+            "success" : {
+              "title" : "لقد قمت بسحب أصولك بنجاح"
+            }
+          }
+        }
+      }
+    },
+    "restaking" : {
+      "stepperHeader" : {
+        "amountSubTitle" : "المبلغ المطلوب إعادة تكديسه"
+      },
+      "flow" : {
+        "steps" : {
+          "verification" : {
+            "success" : {
+              "title" : "لقد قمت بإعادة تكديس أصولك بنجاح"
+            }
+          }
+        }
+      }
+    },
+    "staking" : {
+      "sectionLabel" : "مركز (أو مراكز) التكديس",
+      "info" : "كيف يعمل التكديس",
+      "add" : "إضافة",
+      "stakingEarn" : "يمكنك كسب مكافآت Aptos عن طريق تكديس أصولك.",
+      "totalStake" : "إجمالي التكديس",
+      "commission" : "العمولة",
+      "comm" : "العمولة",
+      "timeToUnlock" : "إلغاء القفل خلال",
+      "iStake" : "أنا أقوم بتكديس",
+      "actions" : {
+        "unstake" : "إلغاء التكديس",
+        "withdraw" : "سحب",
+        "restake" : "إعادة التكديس"
+      },
+      "drawer" : {
+        "status" : "الحالة",
+        "active" : "نشِط",
+        "inactive" : "غير نشِط",
+        "pending" : "مُعلقّ",
+        "available" : "قابل للسحب"
+      },
+      "stepperHeader" : {
+        "amountSubTitle" : "المبلغ المطلوب تكديسه",
+        "selectDevice" : "اختر جهاز",
+        "connectDevice" : "توصيل الجهاز",
+        "stepRange" : "خطوة {{currentStep}} من {{totalSteps}}"
+      },
+      "flow" : {
+        "steps" : {
+          "starter" : {
+            "description" : "قم بتكديس Aptos خاصتك لكسب المكافآت بأمان، مع الاحتفاظ بالسيطرة على أصولك.",
+            "steps" : {
+              "0" : "الأصول المُكدَّسة تظل ملكك.",
+              "1" : "يجب عليك الانتظار ~2 ساعة حتى يكتمل إلغاء التكديس.",
+              "2" : "قم بالتكديس بشكل آمن مع جهازك Ledger."
+            },
+            "warning" : {
+              "description" : "اختر المدقق بحكمة: فقد يتم فقدان جزء من أصولك المُكدسة بشكل لا رجعة فيه إذا لم يتصرف المدقق بشكل لائق."
+            },
+            "cta" : "متابعة"
+          },
+          "amount" : {
+            "assetsRemaining" : "الأصول المتبقية : <0>{{amount}}</0>",
+            "allAssetsUsed" : "جميع الأصول المستخدمة",
             "minAmount" : "الحد الأدنى للمبلغ : <0>{{min}}</0>",
             "incorrectAmount" : "الحد الأقصى للمبلغ : <0>{{max}}</0>",
             "cta" : "متابعة"
@@ -5973,7 +6667,7 @@
     },
     "warning" : "تأكد أن العنوان المعروض على Ledger الخاص بك يُطابق عنوان {{recipientWording}}",
     "recipientWording" : {
-      "send" : "دائماً تحقق من أن العنوان المعروض على جهازك يطابق تماماً العنوان الذي قدمه لك المستلم",
+      "send" : "دائماً تحقق أن العنوان المعروض على جهازك يطابق تماماً العنوان الذي قدمه المستلم",
       "delegate" : "دائماً تحقق من أن جهازك يعرض العنوان بشكل مطابق لما قدمه لك المدقق",
       "undelegate" : "دائماً تحقق من أن جهازك يعرض العنوان بشكل مطابق لما قدمه لك المدقق",
       "freeze" : "دائماً تحقق من أن جهازك يعرض العنوان بشكل مطابق لما تم تقديمه إليك",
@@ -6110,7 +6804,9 @@
     },
     "stepVerification" : {
       "action" : "يرجى تأكيد العملية على جهازك",
-      "accountName" : "اسم الحساب"
+      "accountName" : "اسم الحساب",
+      "title" : "تابع على جهازك Ledger {{wording}}",
+      "description" : "اتبع التعليمات المعروضة على شاشتك الآمنة التي تعمل باللمس."
     }
   },
   "notificationCenter" : {
@@ -6196,6 +6892,9 @@
     "webPlatformPlayer" : {
       "infoPanel" : {
         "website" : "الموقع الإلكتروني"
+      },
+      "back" : {
+        "card" : "كل البطاقات"
       }
     }
   },
@@ -6290,7 +6989,12 @@
       "24h" : "24 ساعة",
       "7d" : "7 أيام",
       "30d" : "30 يوم",
-      "1y" : "1 سنة"
+      "1y" : "1 سنة",
+      "1H_label" : "1 ساعة",
+      "1D_label" : "1 يوم",
+      "1W_label" : "1 أسبوع",
+      "1M_label" : "1 شهر",
+      "1Y_label" : "1 سنة"
     },
     "warnings" : {
       "connectionError" : "خطأ في الاتصال",
@@ -6368,7 +7072,9 @@
     "name" : "hedera",
     "createHederaAccountHelp" : {
       "text" : "يرجي الرجوع إلى مقالة الدعم هذه لمعرفة",
-      "link" : "كيفية إنشاء حساب Hedera"
+      "link" : "كيف تنشئ حساب Hedera ؟",
+      "title" : "لا يمكننا إنشاء حساب Hedera جديد",
+      "description" : "في نظام Hedera البيئي، عدد محدود فقط من الخدمات هي التي يمكنها أن تُنشيء حسابات جديدة. بينما لا توفر Ledger حالياً خدمة التهيئة هذه، هناك بدائل متاحة. ستكون قادراً على إضافة حساب Hedera خاصتك على Ledger Live بمجرد إنشائه."
     },
     "currentAddress" : {
       "messageIfVirtual" : "عنوانك {{name}} لا يمكن تأكيده على جهازك Ledger. استخدمه على مسؤوليتك الخاصة."
@@ -6382,7 +7088,7 @@
   },
   "customImage" : {
     "title" : "صورة شاشة القَفل",
-    "replace" : "استبدال",
+    "change" : "تغيير",
     "drawer" : {
       "options" : {
         "uploadFromPhone" : "اختر من معرض الصور خاصتي",
@@ -6406,6 +7112,8 @@
     },
     "confirmCrop" : "تأكيد القص",
     "confirmContrast" : "تأكيد التباين",
+    "keepOnDevice" : "تعيين",
+    "discardOnDevice" : "حذف",
     "nftEntryPointButtonLabel" : "التعيين كصورة شاشة القفل",
     "customImage" : "صورة مخصصة",
     "doThisLater" : "ربّما في وقت لاحق",
@@ -6423,7 +7131,7 @@
   "postOnboarding" : {
     "hub" : {
       "title" : "قريباً، استخدم {{productName}} الخاص بك من أجل...",
-      "allDoneTitle" : "أنت مُستعد الآن! تابع واستكشف محفظتك الاستثمارية",
+      "areAllPostOnboardingActionsCompletedTitle" : "أنت مُستعد الآن! تابع واستكشف محفظتك الاستثمارية",
       "skip" : "سأفعل هذا لاحقاً",
       "viewWallet" : "استكشاف محفظتي الاستثمارية"
     },
@@ -6475,6 +7183,7 @@
         "hide" : "إخفاء {{count}} مجموعة",
         "hiddenCollections" : "المجموعات المخفية",
         "hide_plural" : "إخفاء {{count}} مجموعة",
+        "empty" : "ليس هناك مجموعات مخفية لعرضها",
         "alertHide" : "تم إخفاء 1 مجموعة. يمكنك إلغاء إخفائها في أي وقت من تصفية المعرض.",
         "alertHide_plural" : "تم إخفاء {{count}} مجموعة. يمكنك إلغاء إخفائها في أي وقت من تصفية المعرض."
       },
@@ -6539,7 +7248,7 @@
     "title" : "توصيل الجهاز"
   },
   "stake" : {
-    "ethereum" : {
+    "ethereum_deprecated" : {
       "title" : "قم بتنمية ما تملك من ETH",
       "subTitle" : "قم بتكديس ETH خاصتك وتنمية ممتلكاتك من خلال كسب مكافآت يومية مباشرةً في Ledger Live لديك.",
       "tagMinimum" : "يتطلب {{min}} ETH",
@@ -6548,7 +7257,7 @@
         "kiln_pooling" : {
           "title" : "مُجمِع تكديس Kiln",
           "description" : "قم بالتكديس دون حد أدنى. اكسب مكافآت مُجمّعة تلقائياً بدون فترة قَفل.",
-          "supportLink" : "تعرف على المزيد عن مُجمِعات Kiln"
+          "supportLink" : "تعرّف على المزيد عن مُجمِعات Kiln"
         },
         "stader-eth" : {
           "title" : "Stader Labs",
@@ -6558,13 +7267,13 @@
         "lido" : {
           "title" : "Lido",
           "description" : "قم بتكديس أي مبلغ من ETH من أجل سيولة فورية ومكافآت يومية.",
-          "supportLink" : "تعرف على المزيد عن Lido"
+          "supportLink" : "تعرّف على المزيد عن Lido"
         },
         "figment" : {
           "title" : "Figment",
           "tag" : "يتطلب 32 ETH",
-          "description" : "قم بتكديس أكثر من 32 ETH على مدققين مخصصين واجعل المكافآت تُرسل تلقائياً إلى حسابك.",
-          "supportLink" : "تعرف على المزيد عن Figment"
+          "description" : "قم بتكديس أكثر من 32 ETH على مدققين مخصصين واحصل على مكافآت تُرسل تلقائياً إلى حسابك.",
+          "supportLink" : "تعرّف على المزيد عن Figment"
         },
         "kiln" : {
           "title" : "تكديس Kiln الفردي",
@@ -6572,6 +7281,72 @@
           "description" : "قم بتكديس أكثر من 32 ETH على مدققين مخصصين وطالب بالمكافآت بسهولة.",
           "supportLink" : "تعرّف على المزيد عن Kiln"
         }
+      }
+    },
+    "ethereum" : {
+      "title" : "اختر مزود تكديس",
+      "category" : {
+        "all" : {
+          "name" : "الكل",
+          "description" : "كل مزودي تكديس إيثريوم المتاحين على Ledger Live."
+        },
+        "liquid" : {
+          "name" : "Liquid",
+          "description" : "يمكنك تكديس ETH والحصول على مكافآت برموز توكن سائلة. ستظل قادراً على التداول والمشاركة في أنشطة التمويل اللامركزي (DeFi)."
+        },
+        "protocol" : {
+          "name" : "البروتوكول",
+          "description" : "يمكنك تكديس دفعة من 32 ETH والحصول على مكافآت العقدة الكاملة بوحدات ETH."
+        },
+        "pooling" : {
+          "name" : "التجميع",
+          "description" : "يمكنك الانضمام إلى مُجمِع لتكديس أي مبلغ من ETH والحصول على مكافآت."
+        },
+        "restaking" : {
+          "name" : "إعادة التكديس",
+          "description" : "يمكنك إعادة تكديس رمز التوكن السائل خاصتك للحصول على مكافآت إضافية."
+        }
+      },
+      "howItWorks" : "كيف يعمل تكديس ETH",
+      "lst" : "مطلوب رمز توكن سائل",
+      "noMinimum" : "ليس هناك حد أدنى",
+      "provider" : {
+        "figment" : {
+          "title" : "Figment"
+        },
+        "kiln_pooling" : {
+          "title" : "مُجمِع تكديس Kiln"
+        },
+        "kiln_restaking" : {
+          "title" : "إعادة التكديس السائل من Kiln"
+        },
+        "kiln" : {
+          "title" : "تكديس Kiln المُخصص"
+        },
+        "kelpdao" : {
+          "title" : "منظمة Kelp اللامركزية المستقلة"
+        },
+        "lido" : {
+          "title" : "Lido"
+        },
+        "p2p" : {
+          "title" : "نظير لنظير"
+        },
+        "rocket_pool" : {
+          "title" : "Rocket Pool"
+        },
+        "stader-eth" : {
+          "title" : "Stader Labs"
+        }
+      },
+      "readAbout" : "استراتيجيات وتكتيكات يجب معرفتها",
+      "requiredMinimum" : "يتطلب {{min}} ETH",
+      "rewardsStrategy" : {
+        "auto-compounded" : "مكافآت مُجمّعة تلقائياً",
+        "basic" : "المكافآت",
+        "daily" : "مكافآت يومية",
+        "eigenlayer_points" : "نقاط Eigenlayer",
+        "validator" : "مكافآت مدقق"
       }
     },
     "noFundsModal" : {
@@ -6605,12 +7380,12 @@
         "subtitle" : "مشاركة بيانات Ledger Live الخاصة بك تساعدنا على فهم تفضيلاتك، وعرض محتوى مناسب لك.",
         "content" : {
           "able" : {
-            "title" : "بموافقتك، Ledger ستكون قادرةً على تتبع بيانات حول كيف تستخدم Ledger Live (بما في ذلك زيارات الصفحات والنقرات):",
+            "title" : "بموافقتك، Ledger ستكون قادرةً على جمع بيانات حول كيف تستخدم Ledger Live (بما في ذلك زيارات الصفحات والنقرات):",
             "diagAndUsage" : "لقياس أداء Ledger Live وتحسين كل من التطبيق وتجربتك (التحليلات).",
             "personnalizationData" : "لتزويدك بتوصيات مخصصة ومحتوى مُصمم خصيصاً ليناسب تفضيلاتك، بالإضافة إلى مساعدتنا على قياس فاعلية حملاتنا التسويقية (التخصيص)."
           },
           "unable" : {
-            "title" : "Ledger Live لن يتتبع أبداً معلومات متعلقة بما يلي:",
+            "title" : "Ledger Live لن يجمع أبداً معلومات متعلقة بما يلي:",
             "adresses" : "أصولك.",
             "balance" : "محفظتك الاستثمارية.",
             "personnalInfos" : "معلومات التعريف الشخصية الخاصة بك (مثل اسمك أو عنوان بريدك الإلكتروني)."
@@ -6622,7 +7397,7 @@
           },
           "infoText" : {
             "info" : "يمكنك إلغاء موافقتك في أي وقت من إعدادات التطبيق.",
-            "link" : "تعرّف على المزيد حول سياسة التتبع لدينا"
+            "link" : "اعرف المزيد عن كيف نتعامل مع بياناتك"
           }
         }
       },
@@ -6630,7 +7405,7 @@
         "title" : "إدارة تفضيلاتك",
         "analytics" : {
           "title" : "التحليلات",
-          "description" : "لقياس أداء Ledger Live وتحسين كل من التطبيق وتجربتك، نشارك بيانات الاستخدام، بما في ذلك زيارات الصفحات والنقرات."
+          "description" : "لقياس أداء Ledger Live وتحسين كل من التطبيق وتجربة المستخدم، أوافق على جمع بياناتي، بما في ذلك زيارات الصفحات والنقرات"
         },
         "personalizedExp" : {
           "title" : "التخصيص",
@@ -6640,7 +7415,7 @@
           "notNow" : "ليس الآن",
           "accept" : "قبول",
           "acceptAll" : "قبول الكل",
-          "confirm" : "مشاركة"
+          "confirm" : "تأكيد"
         },
         "infoText" : {
           "info" : "يمكنك إلغاء موافقتك في أي وقت من إعدادات التطبيق.",
@@ -6685,13 +7460,410 @@
     }
   },
   "walletSync" : {
+    "title" : "مزامنة Ledger",
+    "entryPoints" : {
+      "simpleCta" : {
+        "title" : "تنشيط مزامنة Ledger"
+      },
+      "card" : {
+        "title" : "مزامنة Ledger",
+        "description" : "قم بمزامنة حساباتك تلقائياً، حتى عند التبديل إلى هاتف جديد.",
+        "cta" : "تشغيل مزامنة Ledger"
+      }
+    },
     "activation" : {
       "screen" : {
-        "title" : "قم بمزامنة حساباتك عبر جميع المنصات",
-        "description" : "جهازك Ledger سيقوم بإنشاء مفتاح تشفير، مما يضمن أن بياناتك تظل خاصةً وقابلة للاستعادة بواسطتك أنت وحدك.",
-        "mainCta" : "مزامنة حساباتك",
-        "secondCta" : "أنشأت مفتاحاً بالفعل؟"
+        "title" : "تشغيل مزامنة Ledger لهذا الهاتف؟",
+        "description" : "يقوم هذا بمزامنة حسابات الأصول المشفرة خاصتك تلقائياً عبر كل هواتفك وأجهزة الكمبيوتر الخاصة بك، حتى عند الانتقال إلى جهاز جديد.",
+        "mainCta" : "تشغيل مزامنة Ledger",
+        "secondCta" : "لقد قمت بتشغيلها بالفعل",
+        "learnMore" : "كيف تعمل مزامنة Ledger؟"
       }
+    },
+    "deviceSelection" : {
+      "title" : "اختر جهاز Ledger"
+    },
+    "deviceAction" : {
+      "title" : "تابع على جهازك Ledger {{wording}}",
+      "description" : "اتبع التعليمات التي تظهر على الشاشة الموثوقة (Trusted Display) لجهازك Ledger."
+    },
+    "loading" : {
+      "title" : "انتظرنا...",
+      "activation" : "قد يستغرق هذا حتى 30 ثانية.\nيُرجى عدم مغادرة هذه الشاشة.",
+      "synch" : "جارٍ تحديث الحالات التي تمت مزامنتها..."
+    },
+    "success" : {
+      "sync" : "تمت المزامنة بنجاح",
+      "syncDesc" : "التغييرات في حسابات الأصول المشفرة خاصتك ستظهر الآن تلقائياً عبر تطبيقات Ledger Live على الهواتف وأجهزة الكمبيوتر التي تمت مزامنتها.",
+      "activation" : "تم تشغيل مزامنة Ledger لهذا الهاتف",
+      "syncAnother" : "المزامنة مع تطبيق Ledger Live آخر",
+      "close" : "إغلاق"
+    },
+    "walletSyncActivated" : {
+      "synchronize" : {
+        "title" : "المزامنة مع تطبيق Ledger Live آخر",
+        "description" : "قم بمزامنة حسابات الأصول المشفرة خاصتك على Ledger Live عبر هواتف وأجهزة كمبيوتر مختلفة."
+      },
+      "unauthorizeMember" : {
+        "error" : {
+          "title" : "هذا التطبيق لم يعد متزامناً",
+          "description" : "قم بتشغيل مزامنة Ledger إما على تطبيق Ledger Live هذا أو على التطبيق الذي تقوم بالمزامنة معه.",
+          "cta" : "تشغيل مزامنة Ledger"
+        }
+      },
+      "manageKey" : {
+        "title" : "حذف المزامنة",
+        "description" : "حسابات أصولك المشفرة عبر الهواتف وأجهزة الكمبيوتر المختلفة ستتوقف عن المزامنة.",
+        "success" : "تطبيقات Ledger Live الخاصة بك لم تعد متزامنةً",
+        "successHint" : "يمكنك تشغيل المزامنة مجدداً في أي وقت.",
+        "confirm" : {
+          "delete" : "نعم، احذفها",
+          "cancel" : "إبقاء المزامنة",
+          "title" : "متأكد أنك تريد حذف المزامنة؟",
+          "desc" : "حسابات أصولك المشفرة عبر الهواتف وأجهزة الكمبيوتر المختلفة لن تكون متزامنة بعد الآن. هذا لا يؤثر على أموالك بأي طريقة."
+        },
+        "error" : {
+          "title" : "هذا التطبيق لم يعد متزامناً",
+          "description" : "قم بتشغيل مزامنة Ledger إما على تطبيق Ledger Live هذا أو على التطبيق الذي تقوم بالمزامنة معه.",
+          "cta" : "تشغيل مزامنة Ledger"
+        }
+      },
+      "manageInstances" : {
+        "title" : "تمت مزامنة Ledger Live عبر:",
+        "remove" : "حذف"
+      },
+      "synchronizedInstances" : {
+        "cta" : "إدارة",
+        "title" : "تمت مزامنة عدد {{count}} تطبيق Ledger Live",
+        "title_plural" : "تمت مزامنة عدد {{count}} تطبيق Ledger Live",
+        "error" : "الحالات",
+        "unsecuredError" : {
+          "title" : "قم بتوصيل نفس جهاز Ledger الذي استخدمته لتمكين مزامنة Ledger",
+          "description" : "إذا لم يكن لديك نفس جهاز Ledger، اختر ”Delete sync (حذف المزامنة)“.",
+          "cta" : "توصيل جهاز Ledger آخر",
+          "ctaDelete" : "حذف المزامنة"
+        },
+        "autoRemoveError" : {
+          "title" : "لا يمكنك إزالة هذا الهاتف بينما تستخدمه",
+          "description" : "للإزالة، استخدم هاتف أو كمبيوتر آخر تم تمكين مزامنة Ledger عليه. إذا لم يكن لديك جهاز آخر، اختر ”Delete sync (حذف المزامنة)“.",
+          "info" : "حذف مفتاح التشفير الخاص بك سيؤدي إلى إلغاء مزامنة أجهزتك، وكل البيانات التي تمت مزامنتها ستُحذف. لكن، هذا لن يؤثر على أموالك. يمكنك إعادة مزامنة حساباتك في أي وقت.",
+          "cta" : "أفهم ذلك",
+          "ctaDelete" : "حذف المزامنة"
+        },
+        "success" : "تطبيق Ledger Live الخاص بك على {{member}} لم يعد متصلاً بمزامنة Ledger"
+      },
+      "errors" : {
+        "fetching" : "حدث خطأ ما أثناء جلب حالاتك التي تمت مزامنتها.",
+        "ledgerSyncUnavailable" : "مزامنة Ledger غير متاحة بشكل مؤقت بسبب بعض المشكلات التقنية من جانبنا. نحن نعمل على حلها."
+      }
+    },
+    "synchronize" : {
+      "chooseMethod" : {
+        "title" : "اختر طريقة المزامنة التي تريدها",
+        "scan" : {
+          "title" : "مسح ضوئي لكود QR"
+        },
+        "connectDevice" : {
+          "title" : "استخدام جهازي Ledger"
+        }
+      },
+      "qrCode" : {
+        "title" : "مزامنة تطبيقات Ledger Live",
+        "show" : {
+          "title" : "عرض كود QR",
+          "explanation" : {
+            "title" : "مسح ومزامنة حساباتك باستخدام تطبيق Ledger Live آخر",
+            "steps" : {
+              "step1" : "تأكد من أن مزامنة Ledger Sync مُفعَّلة على أحد تطبيقاتك.",
+              "step2" : "افتح تطبيق Ledger Live الذي تريد مزامنته.",
+              "step3" : "انتقل إلى <0>Settings (إعدادات)</0> <1>></1> <0>General (عامة)</0> <1>></1> <0>Ledger Sync (مزامنة Ledger Sync)</0> <1>></1> <0>I already turned it on (قمت بتشغيلها بالفعل)</0> <1>></1> <0>Scan QR code (امسح كود QR ضوئياً.)</0>",
+              "step4" : "امسح كود QR ضوئياً."
+            }
+          }
+        },
+        "scan" : {
+          "title" : "مسح ضوئي",
+          "description" : "مسح ضوئي لكود QR",
+          "explanation" : {
+            "title" : "للمزامنة مع Ledger Live على هاتف أو كمبيوتر آخر...",
+            "steps" : {
+              "step1" : "تأكد من أن مزامنة Ledger Sync مُفعَّلة على أحد تطبيقاتك.",
+              "step2" : "افتح Ledger Live الذي ترغب في المزامنة معه.",
+              "step3" : "انتقل إلى <0>Settings (إعدادات)</0> <1>></1> <0>General (عامة)</0> <1>></1> <0>Ledger Sync (مزامنة Ledger Sync)</0> <1>></1> <0>I already turned it on (قمت بتشغيلها بالفعل)</0> <1>></1> <0>Show QR (عرض كود QR)</0>",
+              "step4" : "امسح كود QR ضوئياً."
+            }
+          }
+        },
+        "pinCode" : {
+          "title" : "أدخِل كود مزامنة Ledger",
+          "desc" : "أدخِل الكود الظاهر على جهاز الكمبيوتر الخاص بك لمزامنة حسابات الأصول المشفرة خاصتك عبر كلا التطبيقين.",
+          "error" : {
+            "title" : "الأكواد غير متطابقة",
+            "desc" : "تأكد من أن الكود الذي تكتبه هو نفسه المعروض في حالة Ledger Live الأخرى.",
+            "tryAgain" : "إعادة المحاولة"
+          }
+        },
+        "scannedInvalidQrCode" : {
+          "title" : "كود QR غير صالح",
+          "desc" : "فقط امسح ضوئياً كود QR المعروض على Ledger Live من أجل مزامنة تطبيقات Ledger Live الخاصة بك.",
+          "info" : "للحصول على كود QR، افتح ”Settings (الإعدادات)“، واختر ”General (عام)“، ثم اختر ”Ledger Sync (مزامنة Ledger)“، و”Turn on Sync (تشغيل المزامنة)“ و”Show QR (عرض كود QR)“.",
+          "cta" : "أفهم ذلك",
+          "tryAgain" : "إعادة المحاولة"
+        },
+        "scannedOldQrCode" : {
+          "title" : "تحديث Ledger Live مطلوب",
+          "desc" : "لمتابعة المزامنة، قم بتحديث تطبيق Ledger Live غير المُحدّث إلى أحدث إصدار.",
+          "info" : "للمزيد حول كيفية التحديث، <0>اطّلع على هذه المقالة<0>.",
+          "cta" : "أفهم ذلك"
+        },
+        "unbacked" : {
+          "title" : "لم يتم اكتشاف المزامنة",
+          "description" : "قم بتشغيل مزامنة Ledger إما على تطبيق Ledger Live هذا أو على التطبيق الذي تقوم بالمزامنة معه.",
+          "cta" : "تشغيل مزامنة Ledger"
+        },
+        "unbackedOnboarding" : {
+          "title" : "لم يتم اكتشاف المزامنة",
+          "description" : "عُد إلى هنا بعد تشغيل المزامنة في تطبيق Ledger Live الآخر، ثم اختر ”Try again (إعادة المحاولة)“.",
+          "info" : "إذا لم تكن مزامنة Ledger مُمكّنة في أي مكان، تابع بدونها.",
+          "cta" : "إعادة المحاولة",
+          "cancel" : "المتابعة بدون مزامنة"
+        },
+        "backedWithDifferentSeeds" : {
+          "title" : "تم استخدام أجهزة Ledger مختلفة لتمكين مزامنة Ledger على كل تطبيق",
+          "description" : "لمزامنة تطبيقي Ledger Live، تحتاج إلى استخدام نفس جهاز Ledger.",
+          "info" : "لإصلاح هذا، قم بحذف المزامنة لتطبيق من التطبيقين وأعِد تشغيله بمسح كود QR ضوئياً.",
+          "cta" : "أفهم ذلك"
+        },
+        "alreadyBacked" : {
+          "title" : "تمت مزامنة كلا تطبيقي Ledger Live بالفعل",
+          "cta" : "فهمت ذلك"
+        }
+      },
+      "unbackedOnboarding" : {
+        "title" : "لم يتم اكتشاف المزامنة",
+        "description" : "إذا كانت مزامنة Ledger مُمكّنة، اختر ”Try again (إعادة المحاولة)“ وتأكد من توصيل نفس جهاز Ledger الذي استخدمته في تمكينها.",
+        "info" : "أو تابع بدون مزامنة Ledger.",
+        "cta" : "إعادة المحاولة",
+        "cancel" : "المتابعة بدون مزامنة"
+      },
+      "alreadySecureError" : {
+        "title" : "هذا التطبيق مُؤمّن بالفعل بواسطة جهاز Ledger هذا",
+        "description" : "إذا كنت تحاول إنشاء نسخ احتياطي جديد، يُرجى توصيل جهاز Ledger الذي استخدمته لإنشاء مفتاح التشفير الآخر الخاص بك.",
+        "cta" : "أفهم ذلك"
+      },
+      "alreadySecureOtherSeedError" : {
+        "title" : "يمكنك استخدام جهاز Ledger هذا للمزامنة",
+        "description" : "إذا كانت لا تزال ترغب في مزامنة التطبيقين، يُرجى حذف مفتاحك وحاول مرةً أخرى.",
+        "cta" : "حذف مفتاح التشفير الخاص بي"
+      }
+    }
+  },
+  "web3hub" : {
+    "components" : {
+      "disclaimer" : {
+        "clearSigningEnabled" : "تم تمكين التوقيع بوضوح",
+        "clearSigningDisabled" : "تم تعطيل التوقيع بوضوح",
+        "checkbox" : "لاتذكرني مرة أخرى.",
+        "CTA" : "افتح {{app}}"
+      },
+      "manifestsList" : {
+        "title" : "استكشف",
+        "description" : "اكتشف أفضل ما في ويب 3.0 مُنسّقاً بواسطة Ledger"
+      },
+      "label" : {
+        "clearSigning" : "التوقيع بوضوح"
+      }
+    },
+    "main" : {
+      "manifestsList" : {
+        "title" : "اكتشف"
+      },
+      "header" : {
+        "title" : "استكشف ويب 3.0",
+        "placeholder" : "ابحث أو اكتب عنوان URL"
+      },
+      "clearSigning" : {
+        "title" : "التوقيع بوضوح"
+      }
+    },
+    "app" : {
+      "selectAccountModal" : {
+        "networkHeader" : {
+          "title" : "اختر شبكة"
+        },
+        "accountHeader" : {
+          "title" : "اختر حساب"
+        },
+        "addAccountItem" : {
+          "name" : "إضافة حساب"
+        }
+      }
+    }
+  },
+  "assetSelection" : {
+    "selectCrypto" : {
+      "title" : "اختر أصل"
+    },
+    "selectNetwork" : {
+      "title" : "اختر شبكة سلسلة الكتل (blockchain) التي ينتمي الأصل إليها",
+      "detectedAccounts" : "{{count}} حساب (تم اكتشافه)",
+      "detectedAccounts_plural" : "{{count}} حساب (تم اكتشافه)"
+    }
+  },
+  "emptyList" : {
+    "accounts" : {
+      "title" : "لم يتم العثور على حسابات",
+      "subTitle" : "يبدو أنك لم تقم بإضافة حساب بعد. ابدأ الآن.",
+      "cta" : "إضافة حساب",
+      "link" : "بحاجة إلى مساعدة؟ تعرَّف على كيفية إضافة حساب إلى Ledger Live."
+    }
+  },
+  "lnsUpsell" : {
+    "opted_in" : {
+      "description" : "قم بترقية Ledger Nano S الخاصة بك إلى جهاز Ledger جديد — مثل Ledger Flex — من أجل المزيد من الذاكرة، وأحدث تحسينات الأمان، وميزات جديدة، وخصم حصري %20. ",
+      "cta" : "ترقية جهاز Ledger الخاص بي"
+    },
+    "opted_out" : {
+      "description" : "الذاكرة المحدودة في ledger Nano S الخاصة بك تُقيد وصولك إلى أحدث الميزات، ومتغيّرات سلاسل الكتل، وتحسينات الأمان. من أجل الاستخدام على المدى الطويل، قم بالترقية إلى جهاز Ledger أحدث.",
+      "cta" : "تعرّف على المزيد"
+    }
+  },
+  "largeMover" : {
+    "info" : "معلومات",
+    "marketCap" : "سقف أسعار السوق (Market Cap)",
+    "volume" : "حجم التداول (24 ساعة)",
+    "fdv" : "التقييم المُخفّف بالكامل (FDV)",
+    "marketCap24h" : "حجم التداول/القيمة السوقية (24 ساعة)",
+    "circulatingSupply" : "التوريد المتداول",
+    "totalSupply" : "إجمالي التوريد",
+    "ath" : "الحد الأقصى التاريخي",
+    "atl" : "الحد الأدنى التاريخي",
+    "timeAgo" : {
+      "years" : "(منذ {{count}} سنة)",
+      "years_plural" : "(منذ {{count}} سنة)",
+      "months" : "(منذ {{count}} شهر)",
+      "months_plural" : "(منذ {{count}} شهر)",
+      "days" : "(منذ {{count}} يوم)",
+      "days_plural" : "(منذ {{count}} يوم)",
+      "hours" : "(منذ {{count}} ساعة)",
+      "hours_plural" : "(منذ {{count}} ساعة)",
+      "minutes" : "(منذ {{count}} دقيقة)",
+      "minutes_plural" : "(منذ {{count}} دقيقة)",
+      "seconds" : "(منذ {{count}} ثانية)",
+      "seconds_plural" : "(منذ {{count}} ثانية)"
+    },
+    "performance" : "الأداء",
+    "low" : "منخفض",
+    "high" : "مرتفع",
+    "title" : "تحركات السوق",
+    "overlay" : {
+      "title" : "تحرك بين الأصول",
+      "action" : "مرّر لليسار أو اليمين",
+      "button" : "فهمت ذلك!"
+    }
+  },
+  "nftEntryPoint" : {
+    "title" : "رموزك غير القابلة للاستبدال (NFTs)",
+    "entry" : {
+      "magiceden" : "Magic Eden",
+      "opensea" : "OpenSea"
+    }
+  },
+  "geoBlocking" : {
+    "title" : "الموقع غير متاح",
+    "description" : "Ledger Live غير متاح في هذا الموقع.",
+    "learnMore" : "تعرّف على المزيد"
+  },
+  "versionBlocking" : {
+    "title" : "تحديث Ledger Live مطلوب",
+    "description" : "هذا الإصدار من Ledger Live غير متوافق مع أحدث أنظمة تشغيل الجهاز. قم بالتحديث الآن للاستمتاع باتصال مُحسّن.",
+    "openStore" : "تحديث"
+  },
+  "modularDrawer" : {
+    "selectAsset" : "اختر أصل",
+    "selectNetwork" : "اختر شبكة",
+    "selectAccount" : "اختر حساب",
+    "searchPlaceholder" : "بحث",
+    "emptyAssetList" : "لم يتم العثور على أصول",
+    "accountCount" : "{{count}} حساب",
+    "accountCount_plural" : "{{count}} حساب"
+  },
+  "swapErrors" : {
+    "incorrectCommandData" : {
+      "title" : "بيانات أمر غير صحيحة",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "deserializationFailed" : {
+      "title" : "فشل إلغاء تسلسل الحمولة",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "wrongTransactionId" : {
+      "title" : "مُعرف معاملة خاطئ",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "invalidAddress" : {
+      "title" : "عنوان غير صحيح",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "WrongDeviceForAccountPayout" : {
+      "title" : "حدث خطأ ما",
+      "description" : "حساب التلقي هذا لا ينتمي إلى الجهاز المتصل. يُرجى تغييره وإعادة المحاولة."
+    },
+    "WrongDeviceForAccountRefund" : {
+      "title" : "حدث خطأ ما",
+      "description" : "حساب الإرسال هذا لا ينتمي إلى الجهاز المتصل. يُرجى تغييره وإعادة المحاولة."
+    },
+    "userRefused" : {
+      "title" : "تم رفض العملية على الجهاز",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "internalError" : {
+      "title" : "خطأ داخلي",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "wrongP1" : {
+      "title" : "P1 خاطئ",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "wrongP2" : {
+      "title" : "P2 خاطئ",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "wrongP2Extension" : {
+      "title" : "ملحق P2 خاطئ",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "invalidP2Extension" : {
+      "title" : "حدث خطأ ما",
+      "description" : "ملحق P2 غير صالح"
+    },
+    "unexpectedInstruction" : {
+      "title" : "حدث خطأ ما",
+      "description" : "تعليمات غير متوقعة"
+    },
+    "classNotSupported" : {
+      "title" : "حدث خطأ ما",
+      "description" : "الفئة غير مدعومة"
+    },
+    "invalidInstruction" : {
+      "title" : "تعليمات غير صالحة",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "malformedApdu" : {
+      "title" : "عنوان APDU مشوه",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "invalidDataLength" : {
+      "title" : "طول بيانات غير صالح",
+      "description" : "هذا الأمر لا يقبل بيانات بهذا الطول"
+    },
+    "signatureVerificationFail" : {
+      "title" : "فشل التحقق من التوقيع",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
+    },
+    "default" : {
+      "title" : "حدث خطأ ما",
+      "description" : "يرجى إعادة المحاولة أو التواصل مع دعم Ledger إذا كان لديك شك"
     }
   }
 }

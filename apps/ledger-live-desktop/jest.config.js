@@ -11,6 +11,7 @@ const testPathIgnorePatterns = [
   ".yalc",
   "cli/",
   "test-helpers/",
+  "src/.*/shared\\.(ts|tsx)$",
 ];
 
 const moduleNameMapper = {
@@ -22,8 +23,13 @@ const moduleNameMapper = {
   electron: "<rootDir>/tests/mocks/electron.ts",
   uuid: require.resolve("uuid"),
   "react-spring": require.resolve("react-spring"),
+  "^react-redux": "<rootDir>/node_modules/react-redux",
   "@braze/web-sdk": require.resolve("@braze/web-sdk"),
+  "@polkadot/x-fetch": "<rootDir>/__mocks__/x-fetch.js",
+  "@polkadot/x-ws": "<rootDir>/__mocks__/x-ws.js",
 };
+
+const transformIncludePatterns = ["ky"];
 
 const commonConfig = {
   testEnvironment: "jsdom",
@@ -37,7 +43,7 @@ const commonConfig = {
   },
   moduleNameMapper,
   testPathIgnorePatterns,
-  setupFiles: ["jest-canvas-mock"],
+  setupFiles: ["jest-canvas-mock", "./jest.polyfills.js"],
   setupFilesAfterEnv: ["<rootDir>/tests/jestSetup.js"],
   extensionsToTreatAsEsm: [".ts", ".tsx", ".jsx"],
   transform: {
@@ -56,11 +62,28 @@ const commonConfig = {
   moduleDirectories: ["node_modules", "./tests"],
   modulePaths: [compilerOptions.baseUrl],
   resolver: "<rootDir>/scripts/resolver.js",
+  testEnvironmentOptions: {
+    customExportConditions: [""],
+  },
+  transformIgnorePatterns: [`node_modules/.pnpm/(?!(${transformIncludePatterns.join("|")}))`],
 };
 
 module.exports = {
-  collectCoverageFrom: ["src/**/*.{ts,tsx}", "!src/**/*.test.{ts,tsx}", "!src/**/*.spec.{ts,tsx}"],
-  coverageReporters: ["json", "lcov", "json-summary"],
+  collectCoverageFrom: [
+    "src/**/*.{ts,tsx}",
+    "!src/**/*.test.{ts,tsx}",
+    "!src/**/*.spec.{ts,tsx}",
+    "!src/**/__integration__/**",
+    "!src/**/__integrations__/**",
+    "!src/**/__tests__/**",
+  ],
+  coverageReporters: ["json", ["lcov", { projectRoot: "../" }], "json-summary"],
+  reporters: [
+    "default",
+    ["jest-sonar", { outputName: "sonar-executionTests-report.xml", reportedFilePath: "absolute" }],
+  ],
+  silent: false,
+  verbose: true,
   projects: [
     {
       ...commonConfig,
@@ -69,6 +92,7 @@ module.exports = {
         ...testPathIgnorePatterns,
         "(/__tests__/.*|(\\.|/)react\\.test|spec)\\.tsx",
       ],
+      testMatch: ["**/src/**/*.test.(ts|tsx)"],
     },
     {
       ...commonConfig,

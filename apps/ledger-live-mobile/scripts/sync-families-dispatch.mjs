@@ -2,6 +2,12 @@
 import "zx/globals";
 import rimraf from "rimraf";
 
+$.verbose = true; // everything works like in v7
+
+if (os.platform() === "win32") {
+  usePowerShell();
+}
+
 const basePath = path.join(__dirname, "..", "src");
 const generatedPath = path.join(basePath, "generated");
 
@@ -23,13 +29,17 @@ const targets = [
   "AccountSubHeader",
   "SendRowsCustom",
   "SendRowsFee",
+  "SendSelectRecipient",
   "AccountBalanceSummaryFooter",
   "SubAccountList",
   "Confirmation",
   "ReceiveConfirmationPostAlert",
+  "ReceiveConfirmationTokenAlert",
   "ConnectDevice",
   "NoAssociatedAccounts",
   "EditOperationPanel",
+  "MemoTagInput",
+  "MemoTagSummary",
 ];
 
 async function genTarget(target) {

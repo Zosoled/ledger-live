@@ -20,6 +20,13 @@ import { setDrawer } from "~/renderer/drawers/Provider";
 import SelectAccountAndCurrencyDrawer from "~/renderer/drawers/DataSelector/SelectAccountAndCurrencyDrawer";
 import { WebviewAPI, WebviewState, WebviewTag } from "./types";
 import { useDappCurrentAccount } from "@ledgerhq/live-common/wallet-api/useDappLogic";
+import {
+  ModularDrawerLocation,
+  openAssetAndAccountDrawer,
+  useModularDrawerVisibility,
+} from "LLD/features/ModularDrawer";
+import { currentRouteNameRef } from "~/renderer/analytics/screenRefs";
+import { AccountLike } from "@ledgerhq/types-live";
 
 export const initialWebviewState: WebviewState = {
   url: "",
@@ -35,12 +42,17 @@ type UseWebviewStateParams = {
   inputs?: Record<string, string | boolean | undefined>;
 };
 
+type WebviewPartition = {
+  partition?: string;
+};
+
 type UseWebviewStateReturn = {
   webviewState: WebviewState;
   webviewProps: {
     src: string;
   };
   webviewRef: RefObject<WebviewTag>;
+  webviewPartition: WebviewPartition;
   handleRefresh: () => void;
 };
 
@@ -261,10 +273,24 @@ export function useWebviewState(
     src: initialURL,
   };
 
+  const webviewPartition = useMemo(() => {
+    const _webviewPartition: WebviewPartition = {};
+    if (manifest.cacheBustingId !== undefined) {
+      // webview data will persist across LL app reloads
+      // when changing cacheBustingId, the partition will change and the webview's cache will be reset
+      // NOTE: setting partition to "temp-no-cache" (anything that's not starting with "persist")
+      // means that the webview will not persist data across LL app reloads
+      const idSlug = manifest.id.replace(/[^a-zA-Z0-9]/g, "");
+      _webviewPartition.partition = `persist:${idSlug}-${manifest.cacheBustingId}`;
+    }
+    return _webviewPartition;
+  }, [manifest]);
+
   return {
     webviewState: state,
     webviewProps: props,
     webviewRef,
+    webviewPartition,
     handleRefresh,
   };
 }
@@ -276,26 +302,61 @@ export function useSelectAccount({
   manifest: LiveAppManifest;
   currentAccountHistDb?: CurrentAccountHistDB;
 }) {
+  const { isModularDrawerVisible } = useModularDrawerVisibility({
+    modularDrawerFeatureFlagKey: "lldModularDrawer",
+  });
+
+  const modularDrawerVisible = isModularDrawerVisible({
+    location: ModularDrawerLocation.LIVE_APP,
+    liveAppId: manifest.id,
+  });
+
   const currencies = useManifestCurrencies(manifest);
-  const { setCurrentAccountHist } = useDappCurrentAccount(currentAccountHistDb);
+  const { setCurrentAccountHist, setCurrentAccount, currentAccount } =
+    useDappCurrentAccount(currentAccountHistDb);
+
+  const onSuccess = useCallback(
+    (account: AccountLike) => {
+      setDrawer();
+      setCurrentAccountHist(manifest.id, account);
+      setCurrentAccount(account);
+    },
+    [manifest.id, setCurrentAccountHist, setCurrentAccount],
+  );
+
+  const onCancel = useCallback(() => {
+    setDrawer();
+  }, []);
+
+  const source =
+    currentRouteNameRef.current === "Platform Catalog"
+      ? "Discover"
+      : currentRouteNameRef.current ?? "Unknown";
+
+  const flow = manifest.name;
 
   const onSelectAccount = useCallback(() => {
-    setDrawer(
-      SelectAccountAndCurrencyDrawer,
-      {
-        currencies: currencies,
-        onAccountSelected: account => {
-          setDrawer();
-          setCurrentAccountHist(manifest.id, account);
-        },
-      },
-      {
-        onRequestClose: () => {
-          setDrawer();
-        },
-      },
-    );
-  }, [currencies, manifest.id, setCurrentAccountHist]);
+    modularDrawerVisible
+      ? openAssetAndAccountDrawer({
+          currencies,
+          onSuccess,
+          onCancel,
+          flow,
+          source,
+        })
+      : setDrawer(
+          SelectAccountAndCurrencyDrawer,
+          {
+            flow,
+            source,
+            currencies: currencies,
+            onAccountSelected: onSuccess,
+          },
+          {
+            onRequestClose: onCancel,
+          },
+        );
+  }, [currencies, flow, modularDrawerVisible, onCancel, onSuccess, source]);
 
-  return { onSelectAccount };
+  return { onSelectAccount, currentAccount };
 }

@@ -1,57 +1,82 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Flex } from "@ledgerhq/native-ui";
 import { StackScreenProps } from "@react-navigation/stack";
 import { TouchableWithoutFeedback } from "react-native-gesture-handler";
-import { useStartPostOnboardingCallback } from "@ledgerhq/live-common/postOnboarding/hooks/useStartPostOnboardingCallback";
 
 import { NavigatorName, ScreenName } from "~/const";
 import { SyncOnboardingStackParamList } from "~/components/RootNavigator/types/SyncOnboardingNavigator";
 import { BaseComposite, RootNavigation } from "~/components/RootNavigator/types/helpers";
 import { DeviceModelId } from "@ledgerhq/devices";
 import EuropaCompletionView from "./EuropaCompletionView";
-import StaxCompletionView from "./StaxCompletionView";
+import StaxOnboardingSuccessView from "./StaxOnboardingSuccessView";
+import ApexOnboardingSuccessView from "./ApexOnboardingSuccessView";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  setHasBeenRedirectedToPostOnboarding,
+  setHasBeenUpsoldProtect,
+  setIsReborn,
+  setOnboardingHasDevice,
+} from "~/actions/settings";
+import { hasCompletedOnboardingSelector } from "~/reducers/settings";
+import { useIsFocused, useNavigation } from "@react-navigation/core";
 
 type Props = BaseComposite<
   StackScreenProps<SyncOnboardingStackParamList, ScreenName.SyncOnboardingCompletion>
 >;
 
-const CompletionScreen = ({ navigation, route }: Props) => {
+const CompletionScreen = ({ route }: Props) => {
+  const navigation = useNavigation<RootNavigation>();
   const { device } = route.params;
-  const startPostOnboarding = useStartPostOnboardingCallback();
+  const dispatch = useDispatch();
+  const hasCompletedOnboarding = useSelector(hasCompletedOnboardingSelector);
 
-  const redirectToPostOnboarding = useCallback(() => {
-    startPostOnboarding({
-      deviceModelId: device.modelId,
-      resetNavigationStack: true,
-      fallbackIfNoAction: () =>
-        // Resets the navigation stack to avoid allowing to go back to the onboarding welcome screen
-        // FIXME: bindings to react-navigation seem to have issues with composites
-        (navigation as unknown as RootNavigation).reset({
-          index: 0,
-          routes: [
-            {
-              name: NavigatorName.Base,
-              state: {
-                routes: [
-                  {
-                    name: NavigatorName.Main,
-                  },
-                ],
+  useEffect(() => {
+    if (!hasCompletedOnboarding) {
+      dispatch(setOnboardingHasDevice(true));
+    }
+    dispatch(setIsReborn(false));
+    dispatch(setHasBeenUpsoldProtect(false));
+    dispatch(setHasBeenRedirectedToPostOnboarding(false));
+  }, [dispatch, hasCompletedOnboarding]);
+
+  const isFocused = useIsFocused();
+
+  const redirectToMainScreen = useCallback(() => {
+    if (!isFocused) return;
+    navigation.reset({
+      index: 0,
+      routes: [
+        {
+          name: NavigatorName.Base,
+          state: {
+            routes: [
+              {
+                name: NavigatorName.Main,
               },
-            },
-          ],
-        }),
+            ],
+          },
+        },
+      ],
     });
-  }, [device.modelId, navigation, startPostOnboarding]);
+  }, [isFocused, navigation]);
+
+  const onboardingSuccessView = () => {
+    switch (device.modelId) {
+      case DeviceModelId.europa:
+        return <EuropaCompletionView onAnimationFinish={redirectToMainScreen} />;
+      case DeviceModelId.stax:
+        return <StaxOnboardingSuccessView onAnimationFinish={redirectToMainScreen} />;
+      case DeviceModelId.apex:
+        return <ApexOnboardingSuccessView onAnimationFinish={redirectToMainScreen} />;
+      default:
+        return null;
+    }
+  };
 
   return (
-    <TouchableWithoutFeedback onPress={redirectToPostOnboarding}>
+    <TouchableWithoutFeedback onPress={redirectToMainScreen}>
       <Flex width="100%" height="100%" alignItems="center" justifyContent="center">
-        {device.modelId === DeviceModelId.europa ? (
-          <EuropaCompletionView device={device} onAnimationFinish={redirectToPostOnboarding} />
-        ) : (
-          <StaxCompletionView onAnimationFinish={redirectToPostOnboarding} />
-        )}
+        {onboardingSuccessView()}
       </Flex>
     </TouchableWithoutFeedback>
   );

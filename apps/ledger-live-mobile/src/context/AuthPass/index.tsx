@@ -1,230 +1,142 @@
-import React, { PureComponent } from "react";
-import { StyleSheet, View, AppState, Platform } from "react-native";
-import * as Keychain from "react-native-keychain";
-import type { TFunction } from "i18next";
-import { connect } from "react-redux";
-import { withTranslation } from "react-i18next";
-import { createStructuredSelector } from "reselect";
-import { compose } from "redux";
-import { setPrivacy } from "~/actions/settings";
+import React, { useEffect, useCallback, useState } from "react";
+import { StyleSheet, View, AppState } from "react-native";
+import { useDispatch, useSelector } from "react-redux";
 import { privacySelector } from "~/reducers/settings";
-import { isPasswordLockBlocked } from "~/reducers/appstate";
+import { setPrivacy as setPrivacyAction } from "~/actions/settings";
+import { isPasswordLockBlocked as isPasswordLockBlockedState } from "~/reducers/appstate";
 import { SkipLockContext } from "~/components/behaviour/SkipLock";
-import type { Privacy, State as GlobalState, AppState as EventState } from "~/reducers/types";
+import type { Privacy } from "~/reducers/types";
 import AuthScreen from "./AuthScreen";
 import RequestBiometricAuth from "~/components/RequestBiometricAuth";
-import { useQueuedDrawerContext } from "~/newArch/components/QueuedDrawer/QueuedDrawersContext";
-
-const mapDispatchToProps = {
-  setPrivacy,
-};
-
-const mapStateToProps = createStructuredSelector<
-  GlobalState,
-  {
-    privacy: Privacy | null | undefined;
-    isPasswordLockBlocked: EventState["isPasswordLockBlocked"]; // skips screen lock for internal deeplinks from ptx web player.
-  }
->({
-  privacy: privacySelector,
-  isPasswordLockBlocked: isPasswordLockBlocked,
-});
-
-type State = {
-  isLocked: boolean;
-  biometricsError: Error | null | undefined;
-  appState: string;
-  skipLockCount: number;
-  setEnabled: (_: boolean) => void;
-  authModalOpen: boolean;
-  mounted: boolean;
-};
+import { useQueuedDrawerContext } from "LLM/components/QueuedDrawer/QueuedDrawersContext";
+import { useAppStateHandler, usePrivacyInitialization } from "./auth.hooks";
+import { isLockedSelector, biometricsErrorSelector, authModalOpenSelector } from "~/reducers/auth";
+import {
+  initializeAuthState,
+  setLocked,
+  setBiometricsError,
+  setAuthModalOpen,
+  lock as lockAction,
+  unlock as unlockAction,
+} from "~/actions/auth";
 
 type OwnProps = {
   children: JSX.Element;
 };
 
-type Props = OwnProps & {
-  t: TFunction;
-  privacy: Privacy | null | undefined;
-  setPrivacy: (_: Privacy) => void;
-  isPasswordLockBlocked: EventState["isPasswordLockBlocked"];
-  closeAllDrawers: () => void;
-};
+const AuthPass: React.FC<OwnProps> = ({ children }) => {
+  const [skipLockCount, setSkipLockCount] = useState(0);
 
-// as we needs to be resilient to reboots (not showing unlock again after a reboot)
-// we need to store this global variable to know if we need to isLocked initially
-let wasUnlocked = false;
+  const dispatch = useDispatch();
 
-// If "Password lock" setting is enabled, then this provider opens a re-authentication modal every time the user "backgrounds" or closes the app then re-focuses. Requires refactor.
-class AuthPass extends PureComponent<Props, State> {
-  setEnabled = (enabled: boolean) => {
-    if (this.state.mounted)
-      this.setState(prevState => ({
-        skipLockCount: prevState.skipLockCount + (enabled ? 1 : -1),
-      }));
-  };
-  state = {
-    isLocked: !!this.props.privacy?.hasPassword && !wasUnlocked,
-    biometricsError: null,
-    appState: AppState.currentState || "",
-    skipLockCount: 0,
-    setEnabled: this.setEnabled,
-    authModalOpen: false,
-    mounted: false,
-  };
+  const privacy = useSelector(privacySelector);
+  const authModalOpen = useSelector(authModalOpenSelector);
+  const isLocked = useSelector(isLockedSelector);
+  const isPasswordLockBlocked = useSelector(isPasswordLockBlockedState);
+  const biometricsError = useSelector(biometricsErrorSelector);
 
-  static getDerivedStateFromProps({ privacy }: Props, { isLocked }: State) {
-    if (isLocked && !privacy?.hasPassword) {
-      return {
-        isLocked: false,
-      };
-    }
+  const setPrivacy = useCallback(
+    (privacy: Privacy) => {
+      dispatch(setPrivacyAction(privacy));
+    },
+    [dispatch],
+  );
 
-    return null;
-  }
+  const { closeAllDrawers } = useQueuedDrawerContext();
 
-  componentDidMount() {
-    // TODO: REWORK THIS COMPONENT WITHOUT USING STATE (eg: this.mounted instead)
-    // eslint-disable-next-line react/no-direct-mutation-state
-    this.state.mounted = true;
-    this.auth();
-    AppState.addEventListener("change", this.handleAppStateChange);
+  const lock = useCallback(() => {
+    if (!privacy?.hasPassword || skipLockCount) return;
 
-    // If privacy has never been set, set to the correct values
-    if (!this.props.privacy) {
-      Keychain.getSupportedBiometryType().then(biometricsType => {
-        this.props.setPrivacy({
-          hasPassword: false,
-          biometricsType,
-          biometricsEnabled: false,
-        });
-      });
-    }
-  }
+    closeAllDrawers();
 
-  componentWillUnmount() {
-    // eslint-disable-next-line react/no-direct-mutation-state
-    this.state.mounted = false;
-  }
+    dispatch(lockAction());
+  }, [privacy, skipLockCount, closeAllDrawers, dispatch]);
 
-  // The state lifecycle differs between iOS and Android. This is to prevent FaceId from triggering an inactive state and looping.
-  isBackgrounded = (appState: string) => {
-    const isAppInBackground =
-      Platform.OS === "ios" ? appState === "background" : appState.match(/inactive|background/);
+  const unlock = useCallback(() => {
+    dispatch(unlockAction());
+  }, [dispatch]);
 
-    return isAppInBackground;
-  };
+  const { handleAppStateChange } = useAppStateHandler({ isPasswordLockBlocked, lock });
 
-  // If the app reopened from the background, lock the app
-  handleAppStateChange = (nextAppState: string) => {
-    if (
-      this.isBackgrounded(this.state.appState) &&
-      nextAppState === "active" &&
-      // do not lock if triggered by a deep link flow
-      !this.props.isPasswordLockBlocked
-    ) {
-      this.lock();
-    }
+  const initializePrivacy = usePrivacyInitialization({ privacy, setPrivacy });
 
-    if (this.state.mounted)
-      this.setState({
-        appState: nextAppState,
-      });
-  };
+  const setEnabled = useCallback(
+    (enabled: boolean) => {
+      setSkipLockCount(prevCount => prevCount + (enabled ? 1 : -1));
+    },
+    [setSkipLockCount],
+  );
 
   // auth: try to auth with biometrics and fallback on password
-  auth = () => {
-    const { privacy } = this.props;
-    const { isLocked, authModalOpen } = this.state;
+  const auth = useCallback(() => {
+    const biometricModal = isLocked && !!privacy?.biometricsEnabled;
+    dispatch(setAuthModalOpen(biometricModal));
+  }, [isLocked, privacy?.biometricsEnabled, dispatch]);
 
-    if (isLocked && privacy && privacy.biometricsEnabled && !authModalOpen && this.state.mounted) {
-      this.setState({
-        authModalOpen: true,
-      });
+  const setupComponent = useCallback(() => {
+    auth();
+
+    const subscription = AppState.addEventListener("change", handleAppStateChange);
+
+    initializePrivacy();
+
+    return () => {
+      subscription.remove();
+    };
+  }, [auth, handleAppStateChange, initializePrivacy]);
+
+  const handlePasswordStateChange = useCallback(() => {
+    if (isLocked && !privacy?.hasPassword) {
+      dispatch(setLocked(false));
     }
-  };
+  }, [isLocked, privacy?.hasPassword, dispatch]);
 
-  onSuccess = () => {
-    if (this.state.mounted)
-      this.setState({
-        authModalOpen: false,
-      });
-    this.unlock();
-  };
+  useEffect(setupComponent, [setupComponent]);
+  useEffect(handlePasswordStateChange, [handlePasswordStateChange]);
 
-  onError = (error: Error) => {
-    if (this.state.mounted) {
-      this.setState({
-        authModalOpen: false,
-      });
-      this.setState({
-        biometricsError: error,
-      });
-    }
-  };
-
-  // lock the app
-  lock = () => {
-    if (!this.props.privacy?.hasPassword || this.state.skipLockCount) return;
-    wasUnlocked = false;
-
-    // Close the drawer if one was opened
-    this.props.closeAllDrawers();
-
-    if (this.state.mounted) {
-      this.setState(
-        {
-          isLocked: true,
-          biometricsError: null,
-        },
-        () => this.auth(),
-      );
-    }
-  };
-  // unlock the app
-  unlock = () => {
-    wasUnlocked = true;
-
-    if (this.state.mounted) {
-      this.setState({
-        isLocked: false,
-        biometricsError: null,
-      });
-    }
-  };
-
-  render() {
-    const { children, privacy } = this.props;
-    const { isLocked, biometricsError, setEnabled, authModalOpen } = this.state;
-    let lockScreen = null;
-
+  useEffect(() => {
     if (isLocked && privacy?.hasPassword) {
-      lockScreen = (
-        <View style={styles.container}>
-          <AuthScreen
-            biometricsError={biometricsError}
-            privacy={privacy}
-            lock={this.lock}
-            unlock={this.unlock}
-          />
-          <RequestBiometricAuth
-            disabled={!authModalOpen}
-            onSuccess={this.onSuccess}
-            onError={this.onError}
-          />
-        </View>
-      );
+      dispatch(initializeAuthState({ privacy }));
     }
+  }, [dispatch, isLocked, privacy]);
 
-    return (
-      <SkipLockContext.Provider value={setEnabled}>
-        {children}
-        {lockScreen}
-      </SkipLockContext.Provider>
+  const onSuccess = useCallback(() => {
+    dispatch(setAuthModalOpen(false));
+
+    dispatch(unlockAction());
+  }, [dispatch]);
+
+  const onError = useCallback(
+    (error: Error) => {
+      dispatch(setAuthModalOpen(false));
+      dispatch(setBiometricsError(error));
+    },
+    [dispatch],
+  );
+
+  let lockScreen = null;
+
+  if (isLocked && privacy?.hasPassword) {
+    lockScreen = (
+      <View style={styles.container}>
+        <AuthScreen
+          biometricsError={biometricsError}
+          privacy={privacy}
+          lock={lock}
+          unlock={unlock}
+        />
+        <RequestBiometricAuth disabled={!authModalOpen} onSuccess={onSuccess} onError={onError} />
+      </View>
     );
   }
-}
+
+  return (
+    <SkipLockContext.Provider value={setEnabled}>
+      {children}
+      {lockScreen}
+    </SkipLockContext.Provider>
+  );
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -237,13 +149,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default compose<React.ComponentType<OwnProps>>(
-  withTranslation(),
-  connect(mapStateToProps, mapDispatchToProps),
-  (Component: React.FC<{ closeAllDrawers(): void }>) => {
-    return (props: Props) => {
-      const { closeAllDrawers } = useQueuedDrawerContext();
-      return <Component {...props} closeAllDrawers={closeAllDrawers} />;
-    };
-  },
-)(AuthPass);
+export default AuthPass;

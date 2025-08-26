@@ -1,10 +1,10 @@
 export type SPLToken = [
-  number, // chainId
+  string, // CAL id
+  string, // network
   string, // name
-  string, // symbol
+  string, // ticker
   string, // address
   number, // decimals
-  boolean?, // enableCountervalues
 ];
 
 import tokens from "./spl.json";

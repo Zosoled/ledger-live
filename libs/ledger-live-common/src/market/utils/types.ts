@@ -82,6 +82,7 @@ export enum KeysPriceChange {
 
 export type CurrencyData = {
   id: string;
+  ledgerIds: string[];
   name: string;
   image?: string;
   internalCurrency?: CryptoOrTokenCurrency;
@@ -143,6 +144,7 @@ export type MarketItemResponse = {
   circulatingSupply: number;
   fullyDilutedValuation: number;
   high24h: number;
+  currencyId: string;
   id: string;
   image: string;
   ledgerIds: string[];
@@ -166,7 +168,11 @@ export type MarketItemResponse = {
   totalVolume: number;
   updatedAt: string;
 };
+
+export type PartialMarketItemResponse = Partial<MarketItemResponse>;
+
 export type MarketItemPerformer = {
+  id: string;
   name: string;
   ticker: string;
   priceChangePercentage1h: number;

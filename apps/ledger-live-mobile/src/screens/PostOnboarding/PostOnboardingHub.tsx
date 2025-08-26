@@ -14,25 +14,22 @@ import { TrackScreen } from "~/analytics";
 import Link from "~/components/wrappedUi/Link";
 import { useCompletePostOnboarding } from "~/logic/postOnboarding/useCompletePostOnboarding";
 import { ScrollContainer } from "@ledgerhq/native-ui";
+import { setHasBeenRedirectedToPostOnboarding } from "~/actions/settings";
 const PostOnboardingHub = () => {
   const dispatch = useDispatch();
   const { t } = useTranslation();
   const { actionsState, deviceModelId } = usePostOnboardingHubState();
   const closePostOnboarding = useCompletePostOnboarding();
 
-  const clearLastActionCompleted = useCallback(() => {
-    dispatch(clearPostOnboardingLastActionCompleted());
-  }, [dispatch]);
-
-  useEffect(
+  useEffect(() => {
     /**
      * The last action context (specific title & popup) should only be visible
      * the 1st time the hub is navigated to after that action was completed.
      * So here we clear the last action completed.
      * */
-    () => clearLastActionCompleted,
-    [clearLastActionCompleted],
-  );
+    dispatch(clearPostOnboardingLastActionCompleted());
+    dispatch(setHasBeenRedirectedToPostOnboarding(true));
+  }, [dispatch]);
 
   const navigateToMainScreen = useCallback(() => {
     closePostOnboarding();
@@ -67,9 +64,7 @@ const PostOnboardingHub = () => {
         <Flex pb={8}>
           <Text variant="h1Inter" fontWeight="semiBold">
             {areAllPostOnboardingActionsCompleted
-              ? t("postOnboarding.hub.areAllPostOnboardingActionsCompletedTitle", {
-                  productName,
-                })
+              ? t("postOnboarding.hub.areAllPostOnboardingActionsCompletedTitle")
               : t("postOnboarding.hub.title", { productName })}
           </Text>
         </Flex>

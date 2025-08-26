@@ -25,6 +25,17 @@ import {
 import { useRefreshAccountsOrdering } from "~/renderer/actions/general";
 import { Language, Locale } from "~/config/languages";
 import { Layout } from "LLD/features/Collectibles/types/Layouts";
+import {
+  PURGE_EXPIRED_ANONYMOUS_USER_NOTIFICATIONS,
+  RESET_HIDDEN_NFT_COLLECTIONS,
+  TOGGLE_MARKET_WIDGET,
+  TOGGLE_MEMOTAG_INFO,
+  TOGGLE_MEV,
+  UPDATE_ANONYMOUS_USER_NOTIFICATIONS,
+  UPDATE_NFT_COLLECTION_STATUS,
+} from "./constants";
+import { SupportedBlockchain } from "@ledgerhq/live-nft/supported";
+import { NftStatus } from "@ledgerhq/live-nft/types";
 export type SaveSettings = (a: Partial<Settings>) => {
   type: string;
   payload: Partial<Settings>;
@@ -100,6 +111,7 @@ export const setAllowExperimentalApps = (allowExperimentalApps: boolean) =>
   saveSettings({
     allowExperimentalApps,
   });
+
 export const setEnablePlatformDevTools = (enablePlatformDevTools: boolean) =>
   saveSettings({
     enablePlatformDevTools,
@@ -213,10 +225,12 @@ export const blacklistToken = (tokenId: string) => ({
   type: "BLACKLIST_TOKEN",
   payload: tokenId,
 });
-export const hideNftCollection = (collectionId: string) => ({
-  type: "HIDE_NFT_COLLECTION",
-  payload: collectionId,
+
+export const hideOrdinalsAsset = (inscriptionId: string) => ({
+  type: "HIDE_ORDINALS_ASSET",
+  payload: inscriptionId,
 });
+
 export const setLastSeenCustomImage = (lastSeenCustomImage: {
   imageSize: number;
   imageHash: string;
@@ -242,9 +256,23 @@ export const showToken = (tokenId: string) => ({
   type: "SHOW_TOKEN",
   payload: tokenId,
 });
-export const unhideNftCollection = (collectionId: string) => ({
-  type: "UNHIDE_NFT_COLLECTION",
-  payload: collectionId,
+
+export const updateNftStatus = (
+  blockchain: SupportedBlockchain,
+  collectionId: string,
+  status: NftStatus,
+) => ({
+  type: UPDATE_NFT_COLLECTION_STATUS,
+  payload: { blockchain, collectionId, status },
+});
+
+export const resetHiddenNftCollections = () => ({
+  type: RESET_HIDDEN_NFT_COLLECTIONS,
+});
+
+export const unhideOrdinalsAsset = (inscriptionId: string) => ({
+  type: "UNHIDE_ORDINALS_ASSET",
+  payload: inscriptionId,
 });
 type FetchSettings = (a: SettingsState) => (a: Dispatch<Action<"FETCH_SETTINGS">>) => void;
 export const fetchSettings: FetchSettings = (settings: SettingsState) => dispatch => {
@@ -363,7 +391,7 @@ export const setDismissedContentCards = (payload: { id: string; timestamp: numbe
   payload,
 });
 
-export const clearDismissedContentCards = (payload: string[]) => ({
+export const clearDismissedContentCards = (payload: { now: Date }) => ({
   type: "CLEAR_DISMISSED_CONTENT_CARDS",
   payload,
 });
@@ -387,3 +415,65 @@ export const removeStarredMarketCoins = (payload: string) => ({
   type: "MARKET_REMOVE_STARRED_COINS",
   payload,
 });
+
+export const setHasSeenOrdinalsDiscoveryDrawer = (payload: boolean) => ({
+  type: "SET_HAS_SEEN_ORDINALS_DISCOVERY_DRAWER",
+  payload,
+});
+
+export const setHasProtectedOrdinalsAssets = (payload: boolean) => ({
+  type: "SET_HAS_PROTECTED_ORDINALS_ASSETS",
+  payload,
+});
+
+export const setHasBeenUpsoldRecover = (payload: boolean) => ({
+  type: "SET_HAS_BEEN_UPSOLD_RECOVER",
+  payload,
+});
+
+export const setOnboardingUseCase = (payload: Settings["onboardingUseCase"]) => ({
+  type: "SET_ONBOARDING_USE_CASE",
+  payload,
+});
+
+export const setHasRedirectedToPostOnboarding = (payload: boolean) => ({
+  type: "SET_HAS_REDIRECTED_TO_POST_ONBOARDING",
+  payload,
+});
+
+export const setLastOnboardedDevice = (payload: Device | null) => ({
+  type: "SET_LAST_ONBOARDED_DEVICE",
+  payload,
+});
+export const setMevProtection = (payload: boolean) => ({
+  type: TOGGLE_MEV,
+  payload,
+});
+
+export const setMarketWidget = (payload: boolean) => ({
+  type: TOGGLE_MARKET_WIDGET,
+  payload,
+});
+
+export const toggleShouldDisplayMemoTagInfo = (payload: boolean) => {
+  return {
+    type: TOGGLE_MEMOTAG_INFO,
+    payload,
+  };
+};
+
+export const purgeExpiredAnonymousUserNotifications = (payload: { now: Date }) => {
+  return {
+    type: PURGE_EXPIRED_ANONYMOUS_USER_NOTIFICATIONS,
+    payload,
+  };
+};
+
+export const updateAnonymousUserNotifications = (payload: {
+  notifications: SettingsState["anonymousUserNotifications"];
+}) => {
+  return {
+    type: UPDATE_ANONYMOUS_USER_NOTIFICATIONS,
+    payload,
+  };
+};

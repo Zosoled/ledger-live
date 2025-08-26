@@ -1,17 +1,35 @@
 import { getCryptoCurrencyById } from "@ledgerhq/cryptoassets/currencies";
-import { Account } from "@ledgerhq/types-live";
 import BigNumber from "bignumber.js";
 import {
   TonAccountInfo,
   TonResponseEstimateFee,
+  TonResponseJettonTransfer,
+  TonResponseJettonWallets,
   TonResponseWalletInfo,
   TonTransactionsList,
 } from "../../bridge/bridgeHelpers/api.types";
-import type { Transaction } from "../../types";
+import type { TonAccount, TonSubAccount, Transaction } from "../../types";
 
 export const mockAddress = "UQDzd8aeBOU-jqYw_ZSuZjceI5p-F4b7HMprAsUJAtRPbMol";
 export const mockAccountId =
   "js:2:ton:b19891a06654f21c64147550b3321bef63acd25b5dd61b688b022c42fac4831d:ton";
+
+export const tokenAccount = {
+  id: "subAccountId",
+  type: "TokenAccount",
+  spendableBalance: new BigNumber("5000000"),
+  token: {
+    contractAddress: "contractAddress",
+    units: [
+      {
+        code: "NOT",
+        magnitude: 9,
+        name: "Notcoin",
+      },
+    ],
+  },
+  jettonWallet: "0:A2CC9B938389950125001F6B8AF280CACA23BE045714AD69387DD546588D667E",
+} as TonSubAccount;
 
 export const account = {
   id: mockAccountId,
@@ -23,17 +41,22 @@ export const account = {
   spendableBalance: new BigNumber("1000000000"),
   balance: new BigNumber("1000000000"),
   seedIdentifier: "seedIdentifier",
-} as Account;
+  subAccounts: [tokenAccount],
+} as TonAccount;
 
-export const transaction = {
-  mode: "send",
+export const transaction: Transaction = {
   recipient: "UQCOvQLYvTcbi5tL9MaDNzuVl3-J3vATimNm9yO5XPafLfV4",
   amount: new BigNumber("1000000"),
   useAllAmount: false,
   comment: { isEncrypted: false, text: "" },
-  payload: "",
   family: "ton",
-} as unknown as Transaction;
+  fees: new BigNumber(1000),
+};
+
+export const jettonTransaction: Transaction = {
+  ...transaction,
+  subAccountId: "subAccountId",
+};
 
 export const fees = {
   in_fwd_fee: 10000,
@@ -73,9 +96,43 @@ export const tonWallet: TonResponseWalletInfo = {
   status: "active",
 };
 
+export const jettonWallets: TonResponseJettonWallets = {
+  jetton_wallets: [
+    {
+      address: "0:495AB6C978E3C0AE7FCF863A2D4504E37CE8D2D04A5E59048301BA29EC372F79",
+      balance: "1200000000000",
+      owner: "0:D02D314791CB10EF3F964CC7421E4F46348C262444946F7A64C2374700E3ED19",
+      jetton: "0:3C52A0A732A83F022E517E5C2715E0EE458A4B9772580E903FF491526C3E9137",
+      last_transaction_lt: "30345242000008",
+      code_hash: "3axDia4eCUnTVixqU0/BUA4i8id5BtVw1pt/yayZd6k=",
+      data_hash: "P8j0kENM5s4zE2w5IpD8NrrSneGQ7d0mzs5yTBNPlqo=",
+    },
+  ],
+};
+
 export const tonEstimateFee: TonResponseEstimateFee = {
   source_fees: fees,
   destination_fees: [],
+};
+
+export const jettonTransferResponse: TonResponseJettonTransfer = {
+  jetton_transfers: [
+    {
+      query_id: "1",
+      source: "UQDnqcVSV4S9m2Y9gLAQrDerQktKSx2I1uhs6r5o_H8VT4x7",
+      destination: mockAddress,
+      amount: "",
+      source_wallet: "",
+      jetton_master: "0:2F956143C461769579BAEF2E32CC2D7BC18283F40D20BB03E432CD603AC33FFC",
+      transaction_hash: "",
+      transaction_lt: "",
+      transaction_now: 0,
+      response_destination: "",
+      custom_payload: null,
+      forward_ton_amount: "",
+      forward_payload: null,
+    },
+  ],
 };
 
 export const tonTransactionResponse: TonTransactionsList = {

@@ -4,13 +4,14 @@ import {
   trustchainSelector,
   resetTrustchainStore,
   memberCredentialsSelector,
-} from "@ledgerhq/trustchain/store";
+} from "@ledgerhq/ledger-key-ring-protocol/store";
 import { useMutation } from "@tanstack/react-query";
 import { setFlow } from "~/renderer/actions/walletSync";
 import { Flow, Step } from "~/renderer/reducers/walletSync";
 import { QueryKey } from "./type.hooks";
 import { useCloudSyncSDK } from "./useWatchWalletSync";
 import { walletSyncUpdate } from "@ledgerhq/live-wallet/store";
+import { track } from "~/renderer/analytics/segment";
 
 export function useDestroyTrustchain() {
   const dispatch = useDispatch();
@@ -31,6 +32,7 @@ export function useDestroyTrustchain() {
     onSuccess: () => {
       dispatch(setFlow({ flow: Flow.ManageBackup, step: Step.BackupDeleted }));
       dispatch(resetTrustchainStore());
+      track("ledgersync_deactivated");
       dispatch(walletSyncUpdate(null, 0));
     },
     onError: () => dispatch(setFlow({ flow: Flow.ManageBackup, step: Step.BackupDeletionError })),

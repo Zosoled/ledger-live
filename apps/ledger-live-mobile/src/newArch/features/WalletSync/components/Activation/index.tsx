@@ -4,39 +4,36 @@ import IconsHeader from "./IconsHeader";
 import { Flex, Text } from "@ledgerhq/native-ui";
 import { useTranslation } from "react-i18next";
 import { useTheme } from "styled-components/native";
-import { TrackScreen } from "~/analytics";
 import { useInitMemberCredentials } from "../../hooks/useInitMemberCredentials";
-import QueuedDrawer from "~/components/QueuedDrawer";
-import ChooseSyncMethod from "../../screens/Synchronize/ChooseMethod";
+import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
+import { Linking } from "react-native";
 
-type Props<T extends boolean> = T extends true
-  ? { isInsideDrawer: T; openSyncMethodDrawer: () => void }
-  : { isInsideDrawer?: T; openSyncMethodDrawer?: undefined };
+type Props = { onSyncMethodPress: () => void; navigateToChooseSyncMethod: () => void };
 
-const Activation: React.FC<Props<boolean>> = ({ isInsideDrawer, openSyncMethodDrawer }) => {
+const Activation: React.FC<Props> = ({ onSyncMethodPress, navigateToChooseSyncMethod }) => {
   const { colors } = useTheme();
   const { t } = useTranslation();
+  const walletSyncFF = useFeature("llmWalletSync");
+  const learnMoreLink = walletSyncFF?.params?.learnMoreLink;
+
   useInitMemberCredentials();
-  const [isChooseMethodDrawerOpen, setIsChooseMethodDrawerOpen] = React.useState(false);
 
-  const onPressSyncAccounts = () => {
-    isInsideDrawer ? openSyncMethodDrawer() : setIsChooseMethodDrawerOpen(true);
-  };
-
-  const onPressHasAlreadyCreatedAKey = () => {
-    isInsideDrawer ? openSyncMethodDrawer() : setIsChooseMethodDrawerOpen(true);
-  };
-
-  const onPressCloseDrawer = () => {
-    setIsChooseMethodDrawerOpen(false);
+  const onPressLearnMore = () => {
+    if (learnMoreLink) {
+      Linking.openURL(learnMoreLink);
+    }
   };
 
   return (
     <Flex flexDirection="column" justifyContent="center" alignItems="center" rowGap={24}>
-      <TrackScreen />
       <IconsHeader />
       <Flex justifyContent="center" alignItems="center" flexDirection="column" rowGap={16}>
-        <Text variant="h4" textAlign="center" lineHeight="32.4px">
+        <Text
+          variant="h4"
+          textAlign="center"
+          lineHeight="32.4px"
+          testID="walletsync-activation-title"
+        >
           {t("walletSync.activation.screen.title")}
         </Text>
         <Text
@@ -46,22 +43,16 @@ const Activation: React.FC<Props<boolean>> = ({ isInsideDrawer, openSyncMethodDr
           alignSelf={"center"}
           maxWidth={330}
           numberOfLines={3}
+          testID="walletsync-activation-description"
         >
           {t("walletSync.activation.screen.description")}
         </Text>
       </Flex>
       <Actions
-        onPressHasAlreadyCreatedAKey={onPressHasAlreadyCreatedAKey}
-        onPressSyncAccounts={onPressSyncAccounts}
+        onPressHasAlreadyCreatedAKey={navigateToChooseSyncMethod}
+        onPressSyncAccounts={onSyncMethodPress}
+        onPressLearnMore={learnMoreLink ? onPressLearnMore : undefined}
       />
-      {!isInsideDrawer && (
-        <QueuedDrawer
-          isRequestingToBeOpened={isChooseMethodDrawerOpen}
-          onClose={onPressCloseDrawer}
-        >
-          <ChooseSyncMethod />
-        </QueuedDrawer>
-      )}
     </Flex>
   );
 };

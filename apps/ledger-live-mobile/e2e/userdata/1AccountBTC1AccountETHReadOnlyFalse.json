@@ -11,6 +11,7 @@
       "language": "en",
       "theme": "light",
       "region": null,
+      "locale": "en-US",
       "orderAccounts": "balance|desc",
       "countervalueFirst": false,
       "autoLockTimeout": 10,
@@ -32,7 +33,7 @@
       "preferredDeviceModel": "nanoS",
       "hasInstalledApps": true,
       "dismissedDynamicCards": [],
-      "lastSeenDevice": null,
+      "seenDevices": [],
       "readOnlyModeEnabled": false,
       "blacklistedTokenIds": [],
       "swapAcceptedProviderIds": [],
@@ -21340,6 +21341,17 @@
             }
           ],
           "swapHistory": []
+        },
+        "version": 1
+      },
+      {
+        "data": {
+          "id": "js:2:ethereum:0x04DBA1194ee10112fE6C3207C0687DEf0e78baCf:",
+          "name": "Sanctioned Ethereum",
+          "derivationMode": "",
+          "freshAddress": "0x04DBA1194ee10112fE6C3207C0687DEf0e78baCf",
+          "currencyId": "ethereum",
+          "type": "Account"
         },
         "version": 1
       }

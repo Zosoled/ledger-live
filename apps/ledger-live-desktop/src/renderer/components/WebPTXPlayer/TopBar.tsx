@@ -1,6 +1,6 @@
 import React, { RefObject, useCallback, useEffect, useMemo, useRef } from "react";
 import { useHistory, useRouteMatch } from "react-router";
-import { Trans } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import styled from "styled-components";
 import { LiveAppManifest } from "@ledgerhq/live-common/platform/types";
 import { rgba } from "~/renderer/styles/helpers";
@@ -18,6 +18,10 @@ import { track } from "~/renderer/analytics/segment";
 import { INTERNAL_APP_IDS } from "@ledgerhq/live-common/wallet-api/constants";
 import { useInternalAppIds } from "@ledgerhq/live-common/hooks/useInternalAppIds";
 import { safeUrl } from "@ledgerhq/live-common/wallet-api/helpers";
+import Switch from "../Switch";
+import { Icons } from "@ledgerhq/react-ui/index";
+import Input from "~/renderer/components/Input";
+import { MobileView } from "~/renderer/hooks/useMobileView";
 
 const Container = styled(Box).attrs(() => ({
   horizontal: true,
@@ -25,8 +29,8 @@ const Container = styled(Box).attrs(() => ({
   alignItems: "center",
 }))`
   padding: 10px 16px;
-  background-color: ${p => p.theme.colors.palette.background.paper};
-  border-bottom: 1px solid ${p => p.theme.colors.palette.text.shade10};
+  background-color: ${p => p.theme.colors?.palette.background.paper};
+  border-bottom: 1px solid ${p => p.theme.colors?.palette.text.shade10};
 `;
 
 const ItemContainer = styled(Tabbable).attrs(p => ({
@@ -63,12 +67,12 @@ const ItemContainer = styled(Tabbable).attrs(p => ({
   }
 
   &:hover {
-    color: ${p => (p.disabled ? "" : p.theme.colors.palette.text.shade100)};
-    background: ${p => (p.disabled ? "" : rgba(p.theme.colors.palette.action.active, 0.05))};
+    color: ${p => (p.disabled ? "" : p.theme.colors?.palette.text.shade100)};
+    background: ${p => (p.disabled ? "" : rgba(p.theme.colors?.palette.action.active, 0.05))};
   }
 
   &:active {
-    background: ${p => (p.disabled ? "" : rgba(p.theme.colors.palette.action.active, 0.1))};
+    background: ${p => (p.disabled ? "" : rgba(p.theme.colors?.palette.action.active, 0.1))};
   }
 `;
 
@@ -83,7 +87,7 @@ export const Separator = styled.div`
   margin-right: 16px;
   height: 15px;
   width: 1px;
-  background: ${p => p.theme.colors.palette.divider};
+  background: ${p => p.theme.colors?.palette.divider};
 `;
 
 const RightContainer = styled(Box).attrs(() => ({
@@ -98,9 +102,18 @@ export type Props = {
   manifest: LiveAppManifest;
   webviewAPIRef: RefObject<WebviewAPI>;
   webviewState: WebviewState;
+  mobileView: MobileView;
+  setMobileView?: React.Dispatch<React.SetStateAction<MobileView>>;
 };
 
-export const TopBar = ({ manifest, webviewAPIRef, webviewState }: Props) => {
+export const TopBar = ({
+  manifest,
+  webviewAPIRef,
+  webviewState,
+  mobileView,
+  setMobileView,
+}: Props) => {
+  const { t } = useTranslation();
   const lastMatchingURL = useRef<string | null>(null);
   const history = useHistory();
   const match = useRouteMatch();
@@ -142,8 +155,9 @@ export const TopBar = ({ manifest, webviewAPIRef, webviewState }: Props) => {
         flow: flowName,
       });
 
+      const pathname = match.path.replace("/:appId?", "");
       history.replace({
-        pathname: "/exchange",
+        pathname,
         search: `?referrer=isExternal`,
         state: {
           mode: flowName,
@@ -166,19 +180,37 @@ export const TopBar = ({ manifest, webviewAPIRef, webviewState }: Props) => {
       await webview.loadURL(safeUrl);
       webview.clearHistory();
     }
-  }, [localStorage, history, webviewAPIRef, webviewState.url]);
+  }, [localStorage, history, match.path, webviewAPIRef, webviewState.url]);
 
   const getButtonLabel = useCallback(() => {
     const lastScreen = localStorage.getItem("last-screen") || "";
 
-    return lastScreen === "compare_providers" ? "Quote" : manifest.name;
-  }, [localStorage, manifest]);
+    const screenMap: {
+      [key: string]: string;
+    } = {
+      compare_providers: t("common.quote"),
+      card: t("card.backToCard"),
+    };
+
+    return screenMap[lastScreen] || manifest.name;
+  }, [localStorage, manifest, t]);
 
   const handleReload = useCallback(() => {
     const webview = safeGetRefValue(webviewAPIRef);
 
     webview.reload();
   }, [webviewAPIRef]);
+
+  const toggleMobileView = useCallback(async () => {
+    setMobileView?.(prev => ({ ...prev, display: !prev.display }));
+  }, [setMobileView]);
+
+  const updateMobileWidth = useCallback(
+    async (width: number) => {
+      setMobileView?.(prev => ({ ...prev, width: width > 0 ? width : 355 }));
+    },
+    [setMobileView],
+  );
 
   useEffect(() => {
     if (isInternalApp) {
@@ -191,7 +223,10 @@ export const TopBar = ({ manifest, webviewAPIRef, webviewState }: Props) => {
         if (goToURL) {
           localStorage.setItem("manifest-id", manifestId);
           localStorage.setItem("flow-name", url.searchParams.get("flowName") || "buy");
-          localStorage.setItem("last-screen", url.searchParams.get("lastScreen") || "");
+          localStorage.setItem(
+            "last-screen",
+            url.searchParams.get("lastScreen") || url.searchParams.get("flowName") || "",
+          );
 
           history.replace(`${match.url}/${manifestId}?goToURL=${goToURL}`);
         }
@@ -202,6 +237,10 @@ export const TopBar = ({ manifest, webviewAPIRef, webviewState }: Props) => {
   }, [localStorage, history, isInternalApp, match.url, webviewState.url]);
 
   const isLoading = useDebounce(webviewState.loading, 100);
+
+  if (!enablePlatformDevTools && isInternalApp) {
+    return null;
+  }
 
   return (
     <Container>
@@ -228,6 +267,33 @@ export const TopBar = ({ manifest, webviewAPIRef, webviewState }: Props) => {
               <Trans i18nKey="common.sync.devTools" />
             </ItemContent>
           </ItemContainer>
+          <Separator />
+          <ItemContainer isInteractive onClick={toggleMobileView} style={{ marginRight: 0 }}>
+            <Icons.Desktop size="S" />
+            <ItemContent>
+              <Switch isChecked={mobileView.display}></Switch>
+            </ItemContent>
+            <Icons.Mobile size="S" />
+          </ItemContainer>
+          {mobileView.display && (
+            <Box style={{ marginRight: 16 }}>
+              <Input
+                small
+                value={`${mobileView.width}` || ""}
+                onChange={(e: string) => {
+                  const value = parseInt(e, 10) || 0;
+                  updateMobileWidth?.(value);
+                }}
+                onBlur={() => {
+                  if (!mobileView.width) {
+                    updateMobileWidth?.(355);
+                  }
+                }}
+                style={{ width: 30, textAlign: "center" }}
+                maxLength={4}
+              />
+            </Box>
+          )}
         </>
       ) : null}
       <RightContainer>

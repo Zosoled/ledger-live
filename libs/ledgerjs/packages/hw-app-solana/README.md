@@ -45,14 +45,19 @@ If ledger returns error `6808` - enable blind signature in settings (not needed 
     *   [getAddress](#getaddress)
         *   [Parameters](#parameters-1)
         *   [Examples](#examples-1)
-    *   [signTransaction](#signtransaction)
+    *   [provideTrustedDynamicDescriptor](#providetrusteddynamicdescriptor)
         *   [Parameters](#parameters-2)
+    *   [signTransaction](#signtransaction)
+        *   [Parameters](#parameters-3)
         *   [Examples](#examples-2)
     *   [signOffchainMessage](#signoffchainmessage)
-        *   [Parameters](#parameters-3)
+        *   [Parameters](#parameters-4)
         *   [Examples](#examples-3)
     *   [getAppConfiguration](#getappconfiguration)
         *   [Examples](#examples-4)
+    *   [getChallenge](#getchallenge)
+    *   [provideTrustedName](#providetrustedname)
+        *   [Parameters](#parameters-5)
 
 ### Solana
 
@@ -89,6 +94,16 @@ solana.getAddress("44'/501'/0'").then(r => r.address)
 ```
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)<{address: [Buffer](https://nodejs.org/api/buffer.html)}>** an object with the address field
+
+#### provideTrustedDynamicDescriptor
+
+Provides trusted dynamic and signed coin metadata
+
+##### Parameters
+
+*   `data` **DescriptorInput** An object containing the descriptor and its signature from the CAL
+
+Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)<[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)>**&#x20;
 
 #### signTransaction
 
@@ -135,3 +150,19 @@ solana.getAppConfiguration().then(r => r.version)
 ```
 
 Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)\<AppConfig>** application config object
+
+#### getChallenge
+
+Method returning a 4 bytes TLV challenge as an hex string
+
+Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)<[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)>**&#x20;
+
+#### provideTrustedName
+
+Provides a trusted name to be displayed during transactions in place of the token address it is associated to. It shall be run just before a transaction involving the associated address that would be displayed on the device.
+
+##### Parameters
+
+*   `data` **[string](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/String)** a stringified buffer of some TLV encoded data to represent the trusted name
+
+Returns **[Promise](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Promise)<[boolean](https://developer.mozilla.org/docs/Web/JavaScript/Reference/Global_Objects/Boolean)>** a boolean

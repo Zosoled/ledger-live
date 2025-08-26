@@ -1,0 +1,78 @@
+name: "[All Platforms] - Build and Test - Push"
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - release
+      - hotfix
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+jobs:
+  # LLD
+  build-desktop:
+    name: "Build Desktop"
+    uses: LedgerHQ/ledger-live/.github/workflows/build-desktop-reusable.yml@develop
+    secrets: inherit
+
+  test-desktop:
+    name: "Test Desktop"
+    uses: LedgerHQ/ledger-live/.github/workflows/test-desktop-reusable.yml@develop
+    secrets: inherit
+
+  test-mobile:
+    name: "Test Mobile"
+    uses: LedgerHQ/ledger-live/.github/workflows/test-mobile-reusable.yml@develop
+    secrets: inherit
+
+  build-test-mobile:
+    name: "Build & Test Mobile"
+    uses: LedgerHQ/ledger-live/.github/workflows/test-mobile-mock-reusable.yml@develop
+    secrets: inherit
+    with:
+      macos-specificity-runner-label: "performance-pool"
+      skip-bundle-size-reporting: true
+
+  # Tests
+  test-libraries:
+    name: "Test Libraries"
+    uses: LedgerHQ/ledger-live/.github/workflows/test-libs-reusable.yml@develop
+    secrets: inherit
+
+  test-design-system:
+    name: "Test UI Libs"
+    uses: LedgerHQ/ledger-live/.github/workflows/test-design-system-reusable.yml@develop
+    secrets: inherit
+
+  build-web-tools:
+    name: "Build Web Tools"
+    uses: LedgerHQ/ledger-live/.github/workflows/build-web-tools-reusable.yml@develop
+    secrets: inherit
+
+  test-cli:
+    name: "Test CLI"
+    uses: LedgerHQ/ledger-live/.github/workflows/test-cli-reusable.yml@develop
+    secrets: inherit
+
+  # Final Check required
+  ok:
+    name: "OK"
+    needs:
+      - build-desktop
+      - test-desktop
+      - test-mobile
+      - build-test-mobile
+      - test-libraries
+      - test-design-system
+      - build-web-tools
+      - test-cli
+    runs-on: ubuntu-22.04
+    if: always() && !cancelled()
+    steps:
+      - name: Check result
+        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1

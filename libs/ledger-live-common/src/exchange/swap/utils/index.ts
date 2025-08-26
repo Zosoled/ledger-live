@@ -1,5 +1,6 @@
+import { SWAP_DATA_CDN } from "@ledgerhq/ledger-cal-service";
 import { CryptoCurrency, TokenCurrency } from "@ledgerhq/types-cryptoassets";
-import { Account, AccountLike, SubAccount } from "@ledgerhq/types-live";
+import { Account, AccountLike, TokenAccount } from "@ledgerhq/types-live";
 import { getAccountCurrency, makeEmptyTokenAccount } from "../../../account";
 import { getSwapProvider } from "../../providers/swap";
 
@@ -12,13 +13,7 @@ export const FILTER = {
 
 export type AccountTuple = {
   account: Account | null | undefined;
-  subAccount: SubAccount | null | undefined;
-};
-
-const providerMap: Record<string, string> = {
-  cic: "CIC",
-  oneinch: "1inch",
-  moonpay: "MoonPay",
+  subAccount: TokenAccount | null | undefined;
 };
 
 export function getAccountTuplesForCurrency(
@@ -34,7 +29,7 @@ export function getAccountTuplesForCurrency(
         subAccount:
           (account.subAccounts &&
             account.subAccounts.find(
-              (subAcc: SubAccount) =>
+              (subAcc: TokenAccount) =>
                 subAcc.type === "TokenAccount" && subAcc.token.id === currency.id,
             )) ||
           makeEmptyTokenAccount(account, currency),
@@ -66,8 +61,10 @@ export const isRegistrationRequired = async (provider: string): Promise<boolean>
   return needsBearerToken || needsKYC;
 };
 
-export const getProviderName = (provider: string): string =>
-  providerMap[provider] ?? provider.charAt(0).toUpperCase() + provider.slice(1);
+export const getProviderName = (provider: string): string => {
+  const { displayName } = SWAP_DATA_CDN[provider] ?? { displayName: "" };
+  return displayName;
+};
 
 export const getNoticeType = (provider: string): { message: string; learnMore: boolean } => {
   switch (provider) {

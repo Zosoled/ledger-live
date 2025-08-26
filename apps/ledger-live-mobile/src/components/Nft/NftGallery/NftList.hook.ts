@@ -1,5 +1,4 @@
 import { decodeNftId } from "@ledgerhq/coin-framework/nft/nftId";
-import { useToasts } from "@ledgerhq/live-common/notifications/ToastProvider/index";
 import { ProtoNFT, NFTMetadata } from "@ledgerhq/types-live";
 import { useIsFocused, useNavigation } from "@react-navigation/native";
 import { v4 as uuid } from "uuid";
@@ -7,16 +6,17 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useDispatch, useSelector } from "react-redux";
 import { BackHandler } from "react-native";
-import { hideNftCollection } from "../../../actions/settings";
-import { track } from "../../../analytics";
+import { updateNftStatus } from "~/actions/settings";
+import { track } from "~/analytics";
 import { NavigatorName, ScreenName } from "~/const";
-import { updateMainNavigatorVisibility } from "../../../actions/appstate";
-import {
-  galleryFilterDrawerVisibleSelector,
-  galleryChainFiltersSelector,
-} from "../../../reducers/nft";
-import { setGalleryChainFilter, setGalleryFilterDrawerVisible } from "../../../actions/nft";
-import { NftGalleryChainFiltersState } from "../../../reducers/types";
+import { updateMainNavigatorVisibility } from "~/actions/appstate";
+import { galleryFilterDrawerVisibleSelector } from "~/reducers/nft";
+import { setGalleryChainFilter, setGalleryFilterDrawerVisible } from "~/actions/nft";
+import { NftGalleryChainFiltersState } from "~/reducers/types";
+import { NftStatus } from "@ledgerhq/live-nft/types";
+import { SupportedBlockchain } from "@ledgerhq/live-nft/supported";
+import { useChains } from "~/screens/Nft/hooks/useChains";
+import { useToastsActions } from "~/actions/toast";
 
 const TOAST_ID = "SUCCESS_HIDE";
 
@@ -24,11 +24,11 @@ export function useNftList({ nftList }: { nftList?: ProtoNFT[] }) {
   const isFocused = useIsFocused();
   const dispatch = useDispatch();
   const { t } = useTranslation();
-  const { pushToast } = useToasts();
   const navigation = useNavigation();
   const [multiSelectModeEnabled, setMultiSelectMode] = useState<boolean>(false);
   const isFilterDrawerVisible = useSelector(galleryFilterDrawerVisibleSelector);
-  const chainFilters = useSelector(galleryChainFiltersSelector);
+  const { chainFilters } = useChains();
+  const { pushToast } = useToastsActions();
 
   const [nftsToHide, setNftsToHide] = useState<ProtoNFT[]>([]);
 
@@ -66,7 +66,15 @@ export function useNftList({ nftList }: { nftList?: ProtoNFT[] }) {
     exitMultiSelectMode();
     nftsToHide.forEach(nft => {
       const { accountId } = decodeNftId(nft.id ?? "");
-      dispatch(hideNftCollection(`${accountId}|${nft.contract}`));
+      const collectionId = `${accountId}|${nft.contract}`;
+
+      dispatch(
+        updateNftStatus({
+          collection: collectionId,
+          status: NftStatus.blacklisted,
+          blockchain: nft.currencyId as SupportedBlockchain,
+        }),
+      );
     });
 
     pushToast({
@@ -77,7 +85,7 @@ export function useNftList({ nftList }: { nftList?: ProtoNFT[] }) {
         count: nftsToHide.length,
       }),
     });
-  }, [exitMultiSelectMode, dispatch, nftsToHide, pushToast, t]);
+  }, [exitMultiSelectMode, nftsToHide, pushToast, t, dispatch]);
 
   const triggerMultiSelectMode = useCallback(() => {
     setNftsToHide([]);

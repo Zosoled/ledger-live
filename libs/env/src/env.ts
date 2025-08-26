@@ -62,15 +62,35 @@ const envDefinitions = {
     parser: stringParser,
     desc: "Rosetta API for ICP",
   },
-  API_CASPER_INDEXER_ENDPOINT: {
+  APTOS_API_ENDPOINT: {
+    def: "https://apt.coin.ledger.com/node/v1",
     parser: stringParser,
-    def: "https://casper.coin.ledger.com/indexer",
-    desc: "Casper API url indexer",
+    desc: "API enpoint for Aptos",
   },
-  API_CASPER_NODE_ENDPOINT: {
+  APTOS_TESTNET_API_ENDPOINT: {
+    def: "https://apt.coin.ledger-stg.com/node/v1",
     parser: stringParser,
-    def: "https://casper.coin.ledger.com/node/",
-    desc: "Casper API url node",
+    desc: "API enpoint for Aptos",
+  },
+  APTOS_INDEXER_ENDPOINT: {
+    def: "https://apt.coin.ledger.com/node/v1/graphql",
+    parser: stringParser,
+    desc: "Indexer endpoint for Aptos",
+  },
+  APTOS_TESTNET_INDEXER_ENDPOINT: {
+    def: "https://apt.coin.ledger-stg.com/node/v1/graphql",
+    parser: stringParser,
+    desc: "Indexer endpoint for Aptos",
+  },
+  APTOS_ENABLE_TOKENS: {
+    def: false,
+    parser: boolParser,
+    desc: "Enable tokens on Aptos",
+  },
+  APTOS_ENABLE_STAKING: {
+    def: false,
+    parser: boolParser,
+    desc: "Enable staking for Aptos",
   },
   API_ALGORAND_BLOCKCHAIN_EXPLORER_API_ENDPOINT: {
     def: "https://algorand.coin.ledger.com",
@@ -122,15 +142,15 @@ const envDefinitions = {
     def: "https://polkadot-fullnodes.api.live.ledger.com",
     desc: "Polkadot Node",
   },
-  ELROND_API_ENDPOINT: {
+  MULTIVERSX_API_ENDPOINT: {
     parser: stringParser,
     def: "https://elrond.coin.ledger.com",
-    desc: "Elrond API url",
+    desc: "MultiversX API url",
   },
-  ELROND_DELEGATION_API_ENDPOINT: {
+  MULTIVERSX_DELEGATION_API_ENDPOINT: {
     parser: stringParser,
     def: "https://delegations-elrond.coin.ledger.com",
-    desc: "Elrond DELEGATION API url",
+    desc: "MultiversX DELEGATION API url",
   },
   API_STELLAR_HORIZON: {
     parser: stringParser,
@@ -141,6 +161,11 @@ const envDefinitions = {
     parser: intParser,
     def: 100,
     desc: "Limit of operation that Horizon will fetch per page",
+  },
+  API_STELLAR_HORIZON_INITIAL_FETCH_MAX_OPERATIONS: {
+    parser: intParser,
+    def: 1000,
+    desc: "Limit of operation that Horizon will fetch on initial sync",
   },
   API_STELLAR_HORIZON_STATIC_FEE: {
     def: false,
@@ -177,10 +202,30 @@ const envDefinitions = {
     def: "https://solana.coin.ledger.com",
     desc: "proxy url for solana API",
   },
+  API_SUI_NODE_PROXY_TEST: {
+    parser: stringParser,
+    def: "https://sui.coin.ledger-test.com",
+    desc: "reverse proxy url for sui node",
+  },
+  API_SUI_NODE_PROXY: {
+    parser: stringParser,
+    def: "https://sui.coin.ledger.com",
+    desc: "reverse proxy url for sui node",
+  },
+  SUI_ENABLE_TOKENS: {
+    parser: boolParser,
+    def: true,
+    desc: "Enable tokens on Sui",
+  },
   SOLANA_VALIDATORS_APP_BASE_URL: {
     parser: stringParser,
     def: "https://earn.api.live.ledger.com/v0/network/solana/validator-details",
     desc: "base url for validators.app validator list",
+  },
+  SOLANA_VALIDATORS_SUMMARY_BASE_URL: {
+    parser: stringParser,
+    def: "https://earn-dashboard.aws.stg.ldg-tech.com/figment/solana/validators_summary",
+    desc: "base url for validators.app validator summary",
   },
   SOLANA_TESTNET_VALIDATORS_APP_BASE_URL: {
     parser: stringParser,
@@ -191,6 +236,11 @@ const envDefinitions = {
     def: 100 * 1000,
     parser: intParser,
     desc: "solana transaction broadcast confirmation timeout",
+  },
+  HEDERA_TOKEN_ASSOCIATION_MIN_USD: {
+    def: 0.05,
+    parser: floatParser,
+    desc: "Minimum USD value an account must hold to perform a token association",
   },
   API_HEDERA_MIRROR: {
     def: "https://hedera.coin.ledger.com",
@@ -267,6 +317,11 @@ const envDefinitions = {
     parser: stringParser,
     desc: "(dev feature) defines the folder for speculos mode that contains Nano apps binaries (.elf) in a specific structure: <device>/<firmware>/<appName>/app_<appVersion>.elf",
   },
+  CAL_REF: {
+    def: "",
+    parser: stringParser,
+    desc: "(dev feature) allows to target a different reference of the CAL for testing purposes",
+  },
   CRYPTO_ORG_INDEXER: {
     def: "https://cryptoorg-rpc-indexer.coin.ledger.com",
     parser: stringParser,
@@ -327,6 +382,11 @@ const envDefinitions = {
     parser: boolParser,
     desc: "disable the version check for firmware update eligibility",
   },
+  DETOX: {
+    def: "",
+    parser: stringParser,
+    desc: "switch the app into a DETOX mode for test purpose. Avoid falsy values.",
+  },
   EIP1559_MINIMUM_FEES_GATE: {
     def: true,
     parser: boolParser,
@@ -338,7 +398,7 @@ const envDefinitions = {
     desc: "minimum priority fee percents allowed compared to network conditions allowed when EIP1559_MINIMUM_FEES_GATE is activated",
   },
   EIP1559_BASE_FEE_MULTIPLIER: {
-    def: 1.5,
+    def: 1.27,
     parser: floatParser,
     desc: "mutiplier for the base fee that is composing the maxFeePerGas property",
   },
@@ -507,6 +567,11 @@ const envDefinitions = {
     parser: stringParser,
     desc: "switch the countervalues resolution into a MOCK mode for test purpose",
   },
+  MOCK_APP_UPDATE: {
+    def: false,
+    parser: boolParser,
+    desc: "Always shows app update in the manager",
+  },
   /**
    * Note: the mocked cryptoassets config and test partner are signed with the
    * Ledger test private key
@@ -515,6 +580,11 @@ const envDefinitions = {
     def: false,
     parser: boolParser,
     desc: "mock the cryptoassets config and test partner (in the context of app-exchange)",
+  },
+  MOCK_EXCHANGE_TEST_PARTNER: {
+    def: false,
+    parser: boolParser,
+    desc: "change CAL partner context to test",
   },
   MOCK_REMOTE_LIVE_MANIFEST: {
     def: "",
@@ -532,11 +602,11 @@ const envDefinitions = {
     desc: "if defined, avoids bypass of the currentDevice in the store.",
   },
   NFT_CURRENCIES: {
-    def: "ethereum,polygon",
-    parser: stringParser,
+    def: ["avalanche_c_chain", "bsc", "ethereum", "polygon", "solana"],
+    parser: stringArrayParser,
     desc: "set the currencies where NFT is active",
   },
-  NFT_ETH_METADATA_SERVICE: {
+  NFT_METADATA_SERVICE: {
     def: "https://nft.api.live.ledger.com",
     parser: stringParser,
     desc: "service uri used to get the metadata of an nft",
@@ -596,6 +666,11 @@ const envDefinitions = {
     parser: intParser,
     desc: "API port for speculos",
   },
+  SPECULOS_DEVICE: {
+    def: "",
+    parser: stringParser,
+    desc: "Device model id for speculos",
+  },
   SPECULOS_PID_OFFSET: {
     def: 0,
     parser: intParser,
@@ -622,6 +697,11 @@ const envDefinitions = {
     def: "",
     parser: stringParser,
     desc: "Swap IP",
+  },
+  SWAP_DISABLE_APPS_INSTALL: {
+    def: false,
+    parser: boolParser,
+    desc: "bypass app checks on Nano for speculos swap tests",
   },
   SYNC_ALL_INTERVAL: {
     def: 8 * 60 * 1000,
@@ -713,6 +793,16 @@ const envDefinitions = {
     parser: stringParser,
     desc: "Trustchain API Prod",
   },
+  DADA_API_STAGING: {
+    def: "https://dada.api.ledger-test.com/v1/",
+    parser: stringParser,
+    desc: "Dynamic Assets Data Aggregator API Staging",
+  },
+  DADA_API_PROD: {
+    def: "https://dada.api.ledger.com/v1/",
+    parser: stringParser,
+    desc: "Dynamic Assets Data Aggregator API Prod",
+  },
   PLATFORM_DEBUG: {
     def: false,
     parser: boolParser,
@@ -798,6 +888,11 @@ const envDefinitions = {
     parser: boolParser,
     desc: "Show a performance overlay on the app UI",
   },
+  STORAGE_PERFORMANCE_OVERLAY: {
+    def: false,
+    parser: boolParser,
+    desc: "Show a performance overlay on the app storage",
+  },
   ETHEREUM_STUCK_TRANSACTION_TIMEOUT: {
     def: 5 * 60 * 1000,
     parser: intParser,
@@ -817,6 +912,11 @@ const envDefinitions = {
     def: 1.1,
     parser: floatParser,
     desc: "Replace transaction max priority fee factor for EIP1559 evm transaction. This value should be 1.1 minimum since this is the minimum increase required by most nodes",
+  },
+  EVM_FORCE_LEGACY_TRANSACTIONS: {
+    def: false,
+    parser: boolParser,
+    desc: "Force transaction type 0 on EVM networks",
   },
   ENABLE_NETWORK_LOGS: {
     def: false,
@@ -847,6 +947,11 @@ const envDefinitions = {
     def: false,
     parser: boolParser,
     desc: "Enable logs for drawers",
+  },
+  SANCTIONED_ADDRESSES_URL: {
+    def: "https://compliance.ledger.com/all_sanctioned_addresses_without_ticker.json",
+    parser: stringParser,
+    desc: "List of sanctioned addresses",
   },
 };
 

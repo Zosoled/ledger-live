@@ -22,7 +22,7 @@ import { CounterValuesStatus, RateMapRaw } from "@ledgerhq/live-countervalues/ty
 import { hubStateSelector } from "@ledgerhq/live-common/postOnboarding/reducer";
 import { settingsExportSelector } from "./reducers/settings";
 import logger from "./logger";
-import { trustchainStoreSelector } from "@ledgerhq/trustchain/store";
+import { trustchainStoreSelector } from "@ledgerhq/ledger-key-ring-protocol/store";
 import { marketStoreSelector } from "./reducers/market";
 import { ExportedWalletState } from "@ledgerhq/live-wallet/store";
 
@@ -129,6 +129,7 @@ export const getKey = async <
     keyPath,
     defaultValue,
   });
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const transform = transforms[keyPath as keyof Transforms];
   if (transform) {
     data = transform.get(data);
@@ -148,10 +149,12 @@ if (getEnv("PLAYWRIGHT_RUN")) {
 const debouncedSetKey = memoize(
   <K extends keyof DatabaseValues, V = DatabaseValue<K>>(ns: string, keyPath: K) =>
     debounceToUse((value: V) => {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const transform = transforms[keyPath as keyof Transforms];
       ipcRenderer.invoke("setKey", {
         ns,
         keyPath,
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         value: transform ? transform.set(value as Parameters<typeof transform.set>[0]) : value,
       });
     }, 1000),

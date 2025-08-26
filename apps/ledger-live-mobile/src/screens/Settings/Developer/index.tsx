@@ -11,6 +11,7 @@ import { SettingsNavigatorStackParamList } from "~/components/RootNavigator/type
 import { StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
 
 export { default as DeveloperCustomManifest } from "./CustomManifest";
+export { default as ExchangeDeveloperMode } from "./ExchangeDeveloperMode";
 export default function DeveloperSettings({
   navigation,
 }: StackNavigatorProps<SettingsNavigatorStackParamList, ScreenName.DeveloperSettings>) {
@@ -25,10 +26,19 @@ export default function DeveloperSettings({
             <FeatureRow key={feat.name} feature={feat} />
           ),
       )}
-
+      <SettingsRow
+        title={t("settings.developer.exchangeDeveloperMode.title")}
+        desc={t("settings.developer.exchangeDeveloperMode.description")}
+        onPress={() => navigation.navigate(ScreenName.ExchangeDeveloperMode)}
+      />
       <SettingsRow
         title={t("settings.experimental.developerFeatures.platformManifest.title")}
         onPress={() => navigation.navigate(ScreenName.DeveloperCustomManifest)}
+      />
+      <SettingsRow
+        title={t("settings.developer.customCALRef.title")}
+        desc={t("settings.developer.customCALRef.description")}
+        onPress={() => navigation.navigate(ScreenName.CustomCALRefInput)}
       />
     </ScrollView>
   );

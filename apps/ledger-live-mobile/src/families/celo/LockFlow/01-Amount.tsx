@@ -32,6 +32,7 @@ import SendRowsFee from "../SendRowsFee";
 import { BaseComposite, StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
 import { CeloLockFlowParamList } from "./types";
 import { useMaybeAccountUnit } from "~/hooks/useAccountUnit";
+import SupportLinkError from "~/components/SupportLinkError";
 
 type Props = BaseComposite<StackNavigatorProps<CeloLockFlowParamList, ScreenName.CeloLockAmount>>;
 
@@ -128,6 +129,7 @@ export default function LockAmount({ navigation, route }: Props) {
             <View style={[styles.root, { backgroundColor: colors.background }]}>
               <View style={styles.wrapper}>
                 <CurrencyInput
+                  testID="celo-lock-amount-input"
                   editable={!useAllAmount}
                   isActive
                   onChange={onChange}
@@ -151,13 +153,26 @@ export default function LockAmount({ navigation, route }: Props) {
                   hasError={!!error}
                   hasWarning={!!warning}
                 />
-                <LText
-                  style={[styles.fieldStatus]}
-                  color={error ? "alert" : warning ? "orange" : "darkBlue"}
-                  numberOfLines={2}
-                >
-                  <TranslatedError error={error || warning} />
-                </LText>
+                {error !== status.errors.sender && (
+                  <LText
+                    style={[styles.fieldStatus]}
+                    color={error ? "alert" : warning ? "orange" : "darkBlue"}
+                    numberOfLines={5}
+                  >
+                    <TranslatedError error={error || warning} />
+                  </LText>
+                )}
+                {status.errors.sender && (
+                  <>
+                    <LText style={[styles.fieldStatus]} color="alert" numberOfLines={5}>
+                      <TranslatedError error={status.errors.sender} />
+                    </LText>
+                    <LText style={[styles.fieldStatus]} color="alert" numberOfLines={5}>
+                      <TranslatedError error={status.errors.sender} field="description" />
+                    </LText>
+                    <SupportLinkError error={status.errors.sender} type="alert" />
+                  </>
+                )}
                 <LText style={styles.info}>
                   <Trans i18nKey={`celo.lock.flow.steps.amount.info`} />
                 </LText>
@@ -197,6 +212,7 @@ export default function LockAmount({ navigation, route }: Props) {
                 />
                 <View style={styles.continueWrapper}>
                   <Button
+                    testID="celo-delegation-amount-continue"
                     event="CeloLockAmountContinue"
                     type="primary"
                     title={

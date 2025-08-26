@@ -1,5 +1,5 @@
 import { Flow, Step, initialStateWalletSync } from "~/renderer/reducers/walletSync";
-import { renderHook } from "tests/testUtils";
+import { renderHook } from "tests/testSetup";
 import { act } from "react-dom/test-utils";
 import { FlowOptions, useFlows } from "../hooks/useFlows";
 
@@ -7,7 +7,7 @@ const INITIAL_STATE = {
   walletSync: {
     ...initialStateWalletSync,
     flow: Flow.ManageBackup,
-    step: Step.ManageBackup,
+    step: Step.DeleteBackup,
   },
 };
 
@@ -25,15 +25,11 @@ describe("useFlows", () => {
       result.current.goToNextScene();
     });
     expect(result.current.currentStep).toBe(Object.values(steps)[1]);
-    act(() => {
-      result.current.goToNextScene();
-    });
-    expect(result.current.currentStep).toBe(Object.values(steps)[2]);
 
     act(() => {
       result.current.goToPreviousScene();
     });
-    expect(result.current.currentStep).toBe(Object.values(steps)[1]);
+    expect(result.current.currentStep).toBe(Object.values(steps)[0]);
   });
 
   it("should reset Flow and Step", async () => {
@@ -44,7 +40,7 @@ describe("useFlows", () => {
     expect(result.current.currentStep).toBe(Object.values(steps)[0]);
 
     act(() => {
-      result.current.goToWelcomeScreenWalletSync(false);
+      result.current.goToWelcomeScreenWalletSync();
     });
     expect(store.getState().walletSync.step).toBe(Step.CreateOrSynchronize);
     expect(store.getState().walletSync.flow).toBe(Flow.Activation);

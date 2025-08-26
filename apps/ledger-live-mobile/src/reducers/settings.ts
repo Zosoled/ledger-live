@@ -1,10 +1,7 @@
 import { handleActions, ReducerMap } from "redux-actions";
 import type { Action } from "redux-actions";
 import merge from "lodash/merge";
-import {
-  findCurrencyByTicker,
-  getFiatCurrencyByTicker,
-} from "@ledgerhq/live-common/currencies/index";
+import { getFiatCurrencyByTicker } from "@ledgerhq/live-common/currencies/index";
 import { getEnv, setEnvUnsafe } from "@ledgerhq/live-env";
 import { createSelector } from "reselect";
 import { getAccountCurrency } from "@ledgerhq/live-common/account/helpers";
@@ -20,7 +17,6 @@ import type {
   SettingsDismissBannerPayload,
   SettingsHideEmptyTokenAccountsPayload,
   SettingsFilterTokenOperationsZeroAmountPayload,
-  SettingsHideNftCollectionPayload,
   SettingsImportDesktopPayload,
   SettingsImportPayload,
   SettingsSetHasInstalledAnyAppPayload,
@@ -51,7 +47,6 @@ import type {
   SettingsSetSensitiveAnalyticsPayload,
   SettingsSetThemePayload,
   SettingsShowTokenPayload,
-  SettingsUnhideNftCollectionPayload,
   SettingsUpdateCurrencyPayload,
   SettingsSetSwapSelectableCurrenciesPayload,
   SettingsSetDismissedDynamicCardsPayload,
@@ -79,12 +74,21 @@ import type {
   SettingsClearDismissedContentCardsPayload,
   SettingsAddStarredMarketcoinsPayload,
   SettingsRemoveStarredMarketcoinsPayload,
+  SettingsSetFromLedgerSyncOnboardingPayload,
+  SettingsSetHasBeenRedirectedToPostOnboardingPayload,
+  SettingsSetMevProtectionPayload,
+  SettingsUpdateNftCollectionStatus,
+  SettingsSetSelectedTabPortfolioAssetsPayload,
+  SettingsSetIsRebornPayload,
 } from "../actions/types";
 import {
   SettingsActionTypes,
   SettingsSetWalletTabNavigatorLastVisitedTabPayload,
 } from "../actions/types";
 import { ScreenName } from "~/const";
+import { SupportedBlockchain } from "@ledgerhq/live-nft/supported";
+import { NftStatus } from "@ledgerhq/live-nft/types";
+import { findCurrencyByTicker } from "@ledgerhq/live-countervalues/findCurrencyByTicker";
 
 export const timeRangeDaysByKey = {
   day: 1,
@@ -117,6 +121,8 @@ export const INITIAL_STATE: SettingsState = {
   filterTokenOperationsZeroAmount: true,
   blacklistedTokenIds: [],
   hiddenNftCollections: [],
+  whitelistedNftCollections: [],
+  nftCollectionsStatusByNetwork: {} as Record<SupportedBlockchain, Record<string, NftStatus>>,
   dismissedBanners: [],
   hasAvailableUpdate: false,
   theme: "system",
@@ -137,7 +143,7 @@ export const INITIAL_STATE: SettingsState = {
     acceptedProviders: [],
     selectableCurrencies: [],
   },
-  lastSeenDevice: null,
+  seenDevices: [],
   knownDeviceModelIds: {
     blue: false,
     nanoS: false,
@@ -145,12 +151,14 @@ export const INITIAL_STATE: SettingsState = {
     nanoX: false,
     stax: false,
     europa: false,
+    apex: false,
   },
   hasSeenStaxEnabledNftsPopup: false,
   lastConnectedDevice: null,
   marketCounterCurrency: null,
   sensitiveAnalytics: false,
   onboardingHasDevice: null,
+  isReborn: null,
   notifications: {
     areNotificationsAllowed: true,
     announcementsCategory: true,
@@ -163,7 +171,8 @@ export const INITIAL_STATE: SettingsState = {
   featureFlagsBannerVisible: false,
   debugAppLevelDrawerOpened: false,
   dateFormat: "default",
-  hasBeenUpsoldProtect: false,
+  hasBeenUpsoldProtect: true, // will be set to false at the end of an onboarding, not false by default to avoid upsell for existing users
+  hasBeenRedirectedToPostOnboarding: true, // will be set to false at the end of an onboarding, not false by default to avoid redirection for existing users
   onboardingType: null,
   depositFlow: {
     hasClosedNetworkBanner: false,
@@ -174,6 +183,9 @@ export const INITIAL_STATE: SettingsState = {
   hasSeenAnalyticsOptInPrompt: false,
   dismissedContentCards: {},
   starredMarketCoins: [],
+  fromLedgerSyncOnboarding: false,
+  mevProtection: true,
+  selectedTabPortfolioAssets: "Assets",
 };
 
 const pairHash = (from: { ticker: string }, to: { ticker: string }) =>
@@ -351,21 +363,25 @@ const handlers: ReducerMap<SettingsState, SettingsPayload> = {
     };
   },
 
-  [SettingsActionTypes.HIDE_NFT_COLLECTION]: (state, action) => {
-    const ids = state.hiddenNftCollections;
+  [SettingsActionTypes.UPDATE_NFT_COLLECTION_STATUS]: (state, action) => {
+    const { blockchain, collection, status } = (action as Action<SettingsUpdateNftCollectionStatus>)
+      .payload;
     return {
       ...state,
-      hiddenNftCollections: [...ids, (action as Action<SettingsHideNftCollectionPayload>).payload],
+      nftCollectionsStatusByNetwork: {
+        ...state.nftCollectionsStatusByNetwork,
+        [blockchain]: {
+          ...state.nftCollectionsStatusByNetwork[blockchain],
+          [collection]: status,
+        },
+      },
     };
   },
 
-  [SettingsActionTypes.UNHIDE_NFT_COLLECTION]: (state, action) => {
-    const ids = state.hiddenNftCollections;
+  [SettingsActionTypes.RESET_NFT_COLLECTION_STATUS]: state => {
     return {
       ...state,
-      hiddenNftCollections: ids.filter(
-        id => id !== (action as Action<SettingsUnhideNftCollectionPayload>).payload,
-      ),
+      nftCollectionsStatusByNetwork: {} as Record<SupportedBlockchain, Record<string, NftStatus>>,
     };
   },
 
@@ -439,17 +455,19 @@ const handlers: ReducerMap<SettingsState, SettingsPayload> = {
     },
   }),
 
-  [SettingsActionTypes.LAST_SEEN_DEVICE_INFO]: (state, action) => ({
-    ...state,
-    lastSeenDevice: {
-      ...(state.lastSeenDevice || {}),
-      ...(action as Action<SettingsLastSeenDeviceInfoPayload>).payload,
-    },
-    knownDeviceModelIds: {
-      ...state.knownDeviceModelIds,
-      [(action as Action<SettingsLastSeenDeviceInfoPayload>).payload.modelId]: true,
-    },
-  }),
+  [SettingsActionTypes.LAST_SEEN_DEVICE_INFO]: (state, action) => {
+    const { payload } = action as Action<SettingsLastSeenDeviceInfoPayload>;
+    return {
+      ...state,
+      seenDevices: state.seenDevices
+        .filter(d => d.modelId !== payload.modelId)
+        .concat({ ...state.seenDevices.at(-1), ...payload }),
+      knownDeviceModelIds: {
+        ...state.knownDeviceModelIds,
+        [payload.modelId]: true,
+      },
+    };
+  },
 
   [SettingsActionTypes.SET_KNOWN_DEVICE_MODEL_IDS]: (state, action) => ({
     ...state,
@@ -472,16 +490,15 @@ const handlers: ReducerMap<SettingsState, SettingsPayload> = {
   }),
 
   [SettingsActionTypes.LAST_SEEN_DEVICE_LANGUAGE_ID]: (state, action) => {
-    if (!state.lastSeenDevice) return state;
+    const lastSeenDevice = state.seenDevices.at(-1);
+    if (!lastSeenDevice) return state;
+    const payload = (action as Action<SettingsLastSeenDeviceLanguagePayload>).payload;
     return {
       ...state,
-      lastSeenDevice: {
-        ...state.lastSeenDevice,
-        deviceInfo: {
-          ...state.lastSeenDevice.deviceInfo,
-          languageId: (action as Action<SettingsLastSeenDeviceLanguagePayload>).payload,
-        },
-      },
+      seenDevices: state.seenDevices.slice(0, -1).concat({
+        ...lastSeenDevice,
+        deviceInfo: { ...lastSeenDevice.deviceInfo, languageId: payload },
+      }),
     };
   },
 
@@ -517,6 +534,11 @@ const handlers: ReducerMap<SettingsState, SettingsPayload> = {
   [SettingsActionTypes.SET_ONBOARDING_HAS_DEVICE]: (state, action) => ({
     ...state,
     onboardingHasDevice: (action as Action<SettingsSetOnboardingHasDevicePayload>).payload,
+  }),
+
+  [SettingsActionTypes.SET_IS_REBORN]: (state, action) => ({
+    ...state,
+    isReborn: (action as Action<SettingsSetIsRebornPayload>).payload,
   }),
 
   [SettingsActionTypes.SET_ONBOARDING_TYPE]: (state, action) => ({
@@ -599,6 +621,12 @@ const handlers: ReducerMap<SettingsState, SettingsPayload> = {
     ...state,
     hasBeenUpsoldProtect: (action as Action<SettingsSetHasBeenUpsoldProtectPayload>).payload,
   }),
+  [SettingsActionTypes.SET_HAS_BEEN_REDIRECTED_TO_POST_ONBOARDING]: (state, action) => ({
+    ...state,
+    hasBeenRedirectedToPostOnboarding: (
+      action as Action<SettingsSetHasBeenRedirectedToPostOnboardingPayload>
+    ).payload,
+  }),
   [SettingsActionTypes.SET_GENERAL_TERMS_VERSION_ACCEPTED]: (state, action) => ({
     ...state,
     generalTermsVersionAccepted: (action as Action<SettingsSetGeneralTermsVersionAccepted>).payload,
@@ -638,6 +666,12 @@ const handlers: ReducerMap<SettingsState, SettingsPayload> = {
     };
   },
 
+  [SettingsActionTypes.SET_LEDGER_SYNC_ONBOARDING]: (state, action) => ({
+    ...state,
+    fromLedgerSyncOnboarding: (action as Action<SettingsSetFromLedgerSyncOnboardingPayload>)
+      .payload,
+  }),
+
   [SettingsActionTypes.ADD_STARRED_MARKET_COINS]: (state, action) => ({
     ...state,
     starredMarketCoins: [
@@ -651,6 +685,17 @@ const handlers: ReducerMap<SettingsState, SettingsPayload> = {
     starredMarketCoins: state.starredMarketCoins.filter(
       id => id !== (action as Action<SettingsRemoveStarredMarketcoinsPayload>).payload,
     ),
+  }),
+
+  [SettingsActionTypes.SET_MEV_PROTECTION]: (state, action) => ({
+    ...state,
+    mevProtection: (action as Action<SettingsSetMevProtectionPayload>).payload,
+  }),
+
+  [SettingsActionTypes.SET_SELECTED_TAB_PORTFOLIO_ASSETS]: (state, action) => ({
+    ...state,
+    selectedTabPortfolioAssets: (action as Action<SettingsSetSelectedTabPortfolioAssetsPayload>)
+      .payload,
   }),
 };
 
@@ -787,7 +832,6 @@ export const hasInstalledAnyAppSelector = (state: State) => state.settings.hasIn
 export const countervalueFirstSelector = (state: State) => state.settings.graphCountervalueFirst;
 export const readOnlyModeEnabledSelector = (state: State) => state.settings.readOnlyModeEnabled;
 export const blacklistedTokenIdsSelector = (state: State) => state.settings.blacklistedTokenIds;
-export const hiddenNftCollectionsSelector = (state: State) => state.settings.hiddenNftCollections;
 export const exportSettingsSelector = createSelector(
   counterValueCurrencySelector,
   () => getEnv("MANAGER_DEV_MODE"),
@@ -829,8 +873,9 @@ export const hasSeenStaxEnabledNftsPopupSelector = (state: State) =>
   state.settings.hasSeenStaxEnabledNftsPopup;
 export const customImageTypeSelector = (state: State) => state.settings.customLockScreenType;
 
+export const seenDevicesSelector = (state: State) => state.settings.seenDevices;
 export const lastSeenDeviceSelector = (state: State) => {
-  const { lastSeenDevice } = state.settings;
+  const lastSeenDevice = state.settings.seenDevices.at(-1);
   if (!lastSeenDevice || !Object.values(DeviceModelId).includes(lastSeenDevice?.modelId))
     return null;
   return lastSeenDevice;
@@ -848,6 +893,7 @@ export const marketCounterCurrencySelector = (state: State) => state.settings.ma
 export const customImageBackupSelector = (state: State) => state.settings.customLockScreenBackup;
 export const sensitiveAnalyticsSelector = (state: State) => state.settings.sensitiveAnalytics;
 export const onboardingHasDeviceSelector = (state: State) => state.settings.onboardingHasDevice;
+export const isRebornSelector = (state: State) => state.settings.isReborn;
 export const onboardingTypeSelector = (state: State) => state.settings.onboardingType;
 export const hasClosedNetworkBannerSelector = (state: State) =>
   state.settings.depositFlow.hasClosedNetworkBanner;
@@ -865,7 +911,10 @@ export const featureFlagsBannerVisibleSelector = (state: State) =>
   state.settings.featureFlagsBannerVisible;
 export const debugAppLevelDrawerOpenedSelector = (state: State) =>
   state.settings.debugAppLevelDrawerOpened;
+/* NB: Protect is the former codename for Ledger Recover */
 export const hasBeenUpsoldProtectSelector = (state: State) => state.settings.hasBeenUpsoldProtect;
+export const hasBeenRedirectedToPostOnboardingSelector = (state: State) =>
+  state.settings.hasBeenRedirectedToPostOnboarding;
 export const generalTermsVersionAcceptedSelector = (state: State) =>
   state.settings.generalTermsVersionAccepted;
 export const userNpsSelector = (state: State) => state.settings.userNps;
@@ -874,5 +923,14 @@ export const supportedCounterValuesSelector = (state: State) =>
 export const hasSeenAnalyticsOptInPromptSelector = (state: State) =>
   state.settings.hasSeenAnalyticsOptInPrompt;
 export const dismissedContentCardsSelector = (state: State) => state.settings.dismissedContentCards;
+export const isFromLedgerSyncOnboardingSelector = (state: State) =>
+  state.settings.fromLedgerSyncOnboarding;
 
 export const starredMarketCoinsSelector = (state: State) => state.settings.starredMarketCoins;
+
+export const mevProtectionSelector = (state: State) => state.settings.mevProtection;
+export const selectedTabPortfolioAssetsSelector = (state: State) =>
+  state.settings.selectedTabPortfolioAssets;
+
+export const nftCollectionsStatusByNetworkSelector = (state: State) =>
+  state.settings.nftCollectionsStatusByNetwork;

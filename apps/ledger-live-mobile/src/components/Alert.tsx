@@ -33,6 +33,7 @@ type Props = {
   learnMoreUrl?: string;
   learnMoreIsInternal?: boolean;
   learnMoreIcon?: IconType;
+  testID?: string;
 };
 
 const alertPropsByType: Record<
@@ -111,7 +112,7 @@ export const LearnMoreLink = ({
   const IconComponent = Icon || IconsLegacy.ExternalLinkMedium;
   return (
     <LinkTouchable onPress={onPress}>
-      <BaseAlert.UnderlinedText mr="5px">
+      <BaseAlert.UnderlinedText testID="learn-more-link" mr="5px">
         <Trans i18nKey={learnMoreKey || "common.learnMore"} values={transValues} />
       </BaseAlert.UnderlinedText>
       {(Icon || !learnMoreIsInternal) && <IconComponent size={16} />}
@@ -139,6 +140,7 @@ export default function Alert(props: Props) {
     learnMoreIsInternal = false,
     learnMoreIcon,
     learnMoreTransValues,
+    testID,
   } = props;
 
   const dismissedBanners = useSelector(dismissedBannersSelector);
@@ -164,10 +166,14 @@ export default function Alert(props: Props) {
 
   return !isDismissed ? (
     <BaseAlert {...alertProps}>
-      <Container>
-        {title && <BaseAlert.BodyText>{title}</BaseAlert.BodyText>}
+      <Container testID={testID}>
+        {title && <BaseAlert.BodyText testID={`${testID}-title`}>{title}</BaseAlert.BodyText>}
         {description && (
-          <BaseAlert.BodyText mt={title ? 2 : undefined} mb={hasLearnMore ? 2 : undefined}>
+          <BaseAlert.BodyText
+            testID={`${testID}-description`}
+            mt={title ? 2 : undefined}
+            mb={hasLearnMore ? 2 : undefined}
+          >
             {description}
           </BaseAlert.BodyText>
         )}

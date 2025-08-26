@@ -1,16 +1,19 @@
-import { BigNumber } from "bignumber.js";
-import { CryptoCurrency, TokenCurrency } from "@ledgerhq/types-cryptoassets";
-import { Account, AccountLike, AccountRaw, AccountRawLike, Operation } from "@ledgerhq/types-live";
-import { Transaction, TransactionRaw } from "../../generated/types";
-import { Result as UseBridgeTransactionResult } from "../../bridge/useBridgeTransaction";
 import { DeviceModelId } from "@ledgerhq/devices";
+import { CryptoCurrency, CryptoOrTokenCurrency, TokenCurrency } from "@ledgerhq/types-cryptoassets";
+import { Account, AccountLike, AccountRaw, AccountRawLike, Operation } from "@ledgerhq/types-live";
+import { BigNumber } from "bignumber.js";
+import { Result as UseBridgeTransactionResult } from "../../bridge/useBridgeTransaction";
+import { Transaction, TransactionRaw } from "../../generated/types";
+
 export type { SwapLiveError } from "@ledgerhq/wallet-api-exchange-module";
 
 export type ExchangeSwap = {
   fromParentAccount: Account | null | undefined;
   fromAccount: AccountLike;
+  fromCurrency: CryptoOrTokenCurrency;
   toParentAccount: Account | null | undefined;
   toAccount: AccountLike;
+  toCurrency: CryptoOrTokenCurrency;
 };
 export type ExchangeSwapRaw = {
   fromParentAccount: AccountRaw | null | undefined;
@@ -173,6 +176,8 @@ type ValidSwapStatus = "pending" | "onhold" | "expired" | "finished" | "refunded
 export type SwapStatusRequest = {
   provider: string;
   swapId: string;
+  transactionId?: string;
+  operationId?: string;
 };
 export type SwapStatus = {
   provider: string;
@@ -194,6 +199,14 @@ type SwapStateRequest = {
   targetCurrencyId: string;
   hardwareWalletType: DeviceModelId;
   swapType: TradeMethod;
+  swapAppVersion?: string;
+  fromAccountId?: string;
+  toAccountId?: string;
+  amount?: string;
+  seedIdFrom?: string;
+  seedIdTo?: string;
+  refundAddress?: string;
+  payoutAddress?: string;
 }>;
 
 export type SwapStateAcceptedRequest = SwapStateRequest & {
@@ -331,4 +344,66 @@ export type SwapTransactionType = UseBridgeTransactionResult & {
   reverseSwap: () => void;
   fromAmountError?: Error;
   fromAmountWarning?: Error;
+};
+
+export type SwapPayloadRequestData = {
+  provider: string;
+  deviceTransactionId: string;
+  fromAccountAddress: string;
+  toAccountAddress: string;
+  fromAccountCurrency: string;
+  toAccountCurrency: string;
+  amount: string;
+  amountInAtomicUnit: BigNumber;
+  quoteId?: string;
+  toNewTokenId?: string;
+};
+export type SwapPayloadResponse = {
+  binaryPayload: string;
+  signature: string;
+  payinAddress: string;
+  swapId: string;
+  payinExtraId?: string;
+  extraTransactionParameters?: string;
+};
+
+export type ConfirmSwapRequest = {
+  provider: string;
+  swapId: string;
+  transactionId: string;
+  sourceCurrencyId?: string;
+  targetCurrencyId?: string;
+  hardwareWalletType?: string;
+};
+
+export type CancelSwapRequest = {
+  provider: string;
+  swapId: string;
+  statusCode?: string;
+  errorMessage?: string;
+  sourceCurrencyId?: string;
+  targetCurrencyId?: string;
+  hardwareWalletType?: string;
+  swapType?: string;
+  swapStep?: string;
+};
+
+export type SwapBackendResponse = {
+  provider: string;
+  swapId: string;
+  apiExtraFee: number;
+  apiFee: number;
+  refundAddress: string;
+  amountExpectedFrom: number;
+  amountExpectedTo: number;
+  status: string;
+  from: string;
+  to: string;
+  payinAddress: string;
+  payoutAddress: string;
+  createdAt: string; // ISO-8601
+  binaryPayload: string;
+  signature: string;
+  payinExtraId?: string;
+  extraTransactionParameters?: string;
 };

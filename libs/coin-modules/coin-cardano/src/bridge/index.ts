@@ -1,5 +1,6 @@
 import {
-  defaultUpdateTransaction,
+  getSerializedAddressParameters,
+  updateTransaction,
   makeAccountBridgeReceive,
   makeScanAccounts,
   makeSync,
@@ -10,7 +11,7 @@ import getAddressWrapper from "@ledgerhq/coin-framework/bridge/getAddressWrapper
 import type { CardanoAccount, Transaction, TransactionStatus } from "../types";
 import { assignToAccountRaw, assignFromAccountRaw } from "../serialization";
 import { estimateMaxSpendable } from "../estimateMaxSpendable";
-import { getTransactionStatus } from "../getTransactionStatus";
+import { getTransactionStatus } from "../getTransactionStatus/getTransactionStatus";
 import { prepareTransaction } from "../prepareTransaction";
 import { createTransaction } from "../createTransaction";
 import { makeGetAccountShape } from "../synchronisation";
@@ -19,6 +20,8 @@ import { postSyncPatch } from "../postSyncPatch";
 import { CardanoSigner } from "../signer";
 import { broadcast } from "../broadcast";
 import resolver from "../hw-getAddress";
+import { CoinConfig } from "@ledgerhq/coin-framework/lib/config";
+import cardanoCoinConfig, { CardanoCoinConfig } from "../config";
 
 export function buildCurrencyBridge(signerContext: SignerContext<CardanoSigner>): CurrencyBridge {
   const getAddress = resolver(signerContext);
@@ -49,7 +52,7 @@ export function buildAccountBridge(
   return {
     estimateMaxSpendable,
     createTransaction,
-    updateTransaction: defaultUpdateTransaction,
+    updateTransaction,
     getTransactionStatus,
     prepareTransaction,
     sync,
@@ -58,10 +61,15 @@ export function buildAccountBridge(
     broadcast,
     assignToAccountRaw,
     assignFromAccountRaw,
+    getSerializedAddressParameters,
   };
 }
 
-export function createBridges(signerContext: SignerContext<CardanoSigner>) {
+export function createBridges(
+  signerContext: SignerContext<CardanoSigner>,
+  coinConfig: CoinConfig<CardanoCoinConfig>,
+) {
+  cardanoCoinConfig.setCoinConfig(coinConfig);
   return {
     currencyBridge: buildCurrencyBridge(signerContext),
     accountBridge: buildAccountBridge(signerContext),

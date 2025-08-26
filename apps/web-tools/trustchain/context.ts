@@ -1,6 +1,7 @@
 import React, { useContext } from "react";
-import { TrustchainSDK } from "@ledgerhq/trustchain/types";
-import { getSdk } from "@ledgerhq/trustchain/index";
+import { withDevice } from "@ledgerhq/live-common/hw/deviceAccess";
+import { TrustchainSDK } from "@ledgerhq/ledger-key-ring-protocol/types";
+import { getSdk } from "@ledgerhq/ledger-key-ring-protocol/index";
 import { getEnv } from "@ledgerhq/live-env";
 
 export const defaultContext = {
@@ -10,7 +11,7 @@ export const defaultContext = {
 };
 
 export const TrustchainSDKContext = React.createContext<TrustchainSDK>(
-  getSdk(false, defaultContext),
+  getSdk(false, defaultContext, withDevice),
 );
 
 export const useTrustchainSDK = () => useContext(TrustchainSDKContext);

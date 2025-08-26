@@ -8,7 +8,7 @@ import type {
 } from "@ledgerhq/types-live";
 import type { Device } from "@ledgerhq/live-common/hw/actions/types";
 import type { DeviceModelId } from "@ledgerhq/devices";
-import type { CryptoCurrencyId, Currency, Unit } from "@ledgerhq/types-cryptoassets";
+import type { Currency, Unit } from "@ledgerhq/types-cryptoassets";
 import { MarketListRequestParams } from "@ledgerhq/live-common/market/utils/types";
 import { PostOnboardingState } from "@ledgerhq/types-live";
 import { AvailableProviderV3, ExchangeRate } from "@ledgerhq/live-common/exchange/swap/types";
@@ -23,12 +23,21 @@ import {
   NotificationContentCard,
   CategoryContentCard,
   BrazeContentCard,
+  LandingPageStickyCtaContentCard,
 } from "../dynamicContent/types";
 import { ProtectStateNumberEnum } from "../components/ServicesWidget/types";
 import { ImageType } from "../components/CustomImage/types";
 import { CLSSupportedDeviceModelId } from "@ledgerhq/live-common/device/use-cases/isCustomLockScreenSupported";
 import { WalletState } from "@ledgerhq/live-wallet/store";
-import { TrustchainStore } from "@ledgerhq/trustchain/store";
+import { TrustchainStore } from "@ledgerhq/ledger-key-ring-protocol/store";
+import { Steps } from "LLM/features/WalletSync/types/Activation";
+import { SupportedBlockchain } from "@ledgerhq/live-nft/supported";
+import { NftStatus } from "@ledgerhq/live-nft/types";
+import { type TabListType as TabPortfolioAssetsType } from "~/screens/Portfolio/useListsAnimation";
+import { CountervaluesState } from "./countervalues";
+import { ToastState } from "./toast";
+import { ModularDrawerState } from "./modularDrawer";
+import { assetsDataApi } from "@ledgerhq/live-common/modularDrawer/data/state-manager/api";
 
 // === ACCOUNT STATE ===
 
@@ -78,6 +87,14 @@ export type AppState = {
   isPasswordLockBlocked: boolean;
 };
 
+// === AUTH STATE ===
+
+export type AuthState = {
+  isLocked: boolean;
+  biometricsError: Error | null;
+  authModalOpen: boolean;
+};
+
 // === BLE STATE ===
 
 export type DeviceLike = {
@@ -125,8 +142,12 @@ export type DynamicContentState = {
   notificationCards: NotificationContentCard[];
   /** Dynamic content cards handling flexible categories throughout the app */
   categoriesCards: CategoryContentCard[];
+  /** Dynamic content cards displayed in the landing page as sticky CTA */
+  landingPageStickyCtaCards: LandingPageStickyCtaContentCard[];
   /** Dynamic content cards for Ledger Live Mobile */
   mobileCards: BrazeContentCard[];
+  /** Check if CC are loading */
+  isLoading: boolean;
 };
 
 // === RATINGS STATE ===
@@ -211,6 +232,8 @@ export type SettingsState = {
   filterTokenOperationsZeroAmount: boolean;
   blacklistedTokenIds: string[];
   hiddenNftCollections: string[];
+  whitelistedNftCollections: string[];
+  nftCollectionsStatusByNetwork: Record<SupportedBlockchain, Record<string, NftStatus>>;
   dismissedBanners: string[];
   hasAvailableUpdate: boolean;
   theme: Theme;
@@ -226,13 +249,14 @@ export type SettingsState = {
     acceptedProviders: string[];
     selectableCurrencies: string[];
   };
-  lastSeenDevice: DeviceModelInfo | null;
+  seenDevices: DeviceModelInfo[];
   knownDeviceModelIds: Record<DeviceModelId, boolean>;
   hasSeenStaxEnabledNftsPopup: boolean;
   lastConnectedDevice: Device | null;
   marketCounterCurrency: string | null | undefined;
   sensitiveAnalytics: boolean;
   onboardingHasDevice: boolean | null;
+  isReborn: boolean | null;
   onboardingType: OnboardingType | null;
   customLockScreenType: ImageType | null;
   customLockScreenBackup: {
@@ -252,7 +276,9 @@ export type SettingsState = {
   featureFlagsBannerVisible: boolean;
   debugAppLevelDrawerOpened: boolean;
   dateFormat: string;
+  /* NB: Protect is the former codename for Ledger Recover */
   hasBeenUpsoldProtect: boolean;
+  hasBeenRedirectedToPostOnboarding: boolean;
   generalTermsVersionAccepted?: string;
   depositFlow: {
     hasClosedNetworkBanner: boolean;
@@ -263,6 +289,9 @@ export type SettingsState = {
   hasSeenAnalyticsOptInPrompt: boolean;
   dismissedContentCards: { [id: string]: number };
   starredMarketCoins: string[];
+  fromLedgerSyncOnboarding: boolean;
+  mevProtection: boolean;
+  selectedTabPortfolioAssets: TabPortfolioAssetsType;
 };
 
 export type NotificationsSettings = {
@@ -290,11 +319,19 @@ export type SwapStateType = {
 
 // === EARN STATE ===
 
+export type OptionMetadata = { button: string; live_app: string; flow: string; link?: string };
+
 export type EarnState = {
   infoModal: {
     message?: string;
     messageTitle?: string;
+    learnMoreLink?: string;
   };
+  menuModal?: {
+    title?: string;
+    options: { label: string; metadata: OptionMetadata }[];
+  };
+  protocolInfoModal?: true;
 };
 
 // === PROTECT STATE ===
@@ -328,10 +365,7 @@ export type NftState = {
   galleryChainFilters: NftGalleryChainFiltersState;
 };
 
-export type NftGalleryChainFiltersState = Pick<
-  Record<CryptoCurrencyId, boolean>,
-  "polygon" | "ethereum"
->;
+export type NftGalleryChainFiltersState = Record<SupportedBlockchain, boolean>;
 
 // === MARKET STATE ===
 
@@ -345,12 +379,21 @@ export type MarketState = {
 
 export type WalletSyncState = {
   isManageKeyDrawerOpen: boolean;
+  isActivateDrawerOpen: boolean;
+  activateDrawerStep: Steps;
 };
 
+// === LARGEMOVER STATE ===
+
+export type LargeMoverState = {
+  tutorial: boolean;
+};
 // === ROOT STATE ===
 
 export type State = {
   accounts: AccountsState;
+  auth: AuthState;
+  countervalues: CountervaluesState;
   settings: SettingsState;
   appstate: AppState;
   ble: BleState;
@@ -367,4 +410,8 @@ export type State = {
   wallet: WalletState;
   trustchain: TrustchainStore;
   walletSync: WalletSyncState;
+  modularDrawer: ModularDrawerState;
+  largeMover: LargeMoverState;
+  toasts: ToastState;
+  assetsDataApi: ReturnType<typeof assetsDataApi.reducer>;
 };

@@ -10,8 +10,11 @@ import {
   sync,
   makeAccountBridgeReceive,
 } from "../../../bridge/mockHelpers";
-import { defaultUpdateTransaction } from "@ledgerhq/coin-framework/bridge/jsHelpers";
-import { getGasLimit } from "@ledgerhq/coin-evm/logic";
+import {
+  getSerializedAddressParameters,
+  updateTransaction,
+} from "@ledgerhq/coin-framework/bridge/jsHelpers";
+import { getGasLimit } from "@ledgerhq/coin-evm/utils";
 import { getTypedTransaction } from "@ledgerhq/coin-evm/transaction";
 const receive = makeAccountBridgeReceive();
 const defaultGetFees = (_a, t: any) => (t.gasPrice || new BigNumber(0)).times(getGasLimit(t));
@@ -108,7 +111,7 @@ const prepareTransaction = async (_a, t) => {
 
 const accountBridge: AccountBridge<Transaction> = {
   createTransaction,
-  updateTransaction: defaultUpdateTransaction,
+  updateTransaction,
   getTransactionStatus,
   estimateMaxSpendable,
   prepareTransaction,
@@ -116,6 +119,7 @@ const accountBridge: AccountBridge<Transaction> = {
   receive,
   signOperation,
   broadcast,
+  getSerializedAddressParameters,
 };
 const currencyBridge: CurrencyBridge = {
   preload: () => Promise.resolve({}),

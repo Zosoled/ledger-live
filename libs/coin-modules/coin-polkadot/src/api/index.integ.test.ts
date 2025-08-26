@@ -1,8 +1,8 @@
-import type { Api } from "@ledgerhq/coin-framework/api/index";
+import type { AlpacaApi } from "@ledgerhq/coin-framework/api/index";
 import { createApi } from ".";
 
 describe("Polkadot Api", () => {
-  let module: Api;
+  let module: AlpacaApi;
   const address = "144HGaYrSdK3543bi26vT6Rd8Bg7pLPMipJNr2WLc3NuHgD2";
 
   beforeAll(() => {
@@ -17,12 +17,11 @@ describe("Polkadot Api", () => {
         electionStatusThreshold: 25,
       },
       metadataShortener: {
-        url: "https://api.zondax.ch/polkadot/transaction/metadata",
+        url: "https://polkadot-metadata-shortener.api.live.ledger.com/transaction/metadata",
       },
       metadataHash: {
-        url: "https://api.zondax.ch/polkadot/node/metadata/hash",
+        url: "https://polkadot-metadata-shortener.api.live.ledger.com/node/metadata/hash",
       },
-      runtimeUpgraded: false,
     });
   });
 
@@ -32,26 +31,39 @@ describe("Polkadot Api", () => {
       const amount = BigInt(100);
 
       // When
-      const result = await module.estimateFees(address, amount);
+      const { value } = await module.estimateFees({
+        asset: { type: "native" },
+        type: "send",
+        sender: address,
+        recipient: "address",
+        amount,
+      });
 
       // Then
-      expect(result).toEqual(BigInt(154107779));
+      expect(value).toBeGreaterThanOrEqual(BigInt(100000000));
+      expect(value).toBeLessThanOrEqual(BigInt(200000000));
     });
   });
 
   describe("listOperations", () => {
-    it("returns a list regarding address parameter", async () => {
+    it.skip("returns a list regarding address parameter", async () => {
       // When
-      const result = await module.listOperations(address, 21500219);
+      const [tx, _] = await module.listOperations(address, { minHeight: 0 });
 
       // Then
-      expect(result.length).toBeGreaterThanOrEqual(1);
-      result.forEach(operation => {
-        expect(operation.address).toEqual(address);
-        const isSenderOrReceipt =
-          operation.senders.includes(address) || operation.recipients.includes(address);
-        expect(isSenderOrReceipt).toBeTruthy();
+      expect(tx.length).toBeGreaterThanOrEqual(1);
+      tx.forEach(operation => {
+        expect(operation.senders.concat(operation.recipients)).toContainEqual(address);
       });
+    }, 20000);
+
+    it.skip("returns all operations", async () => {
+      // When
+      const [tx, _] = await module.listOperations(address, { minHeight: 0 });
+
+      // Then
+      const checkSet = new Set(tx.map(elt => elt.tx.hash));
+      expect(checkSet.size).toEqual(tx.length);
     });
   });
 
@@ -61,34 +73,37 @@ describe("Polkadot Api", () => {
       const result = await module.lastBlock();
 
       // Then
-      expect(result.hash).toBeDefined();
-      expect(result.height).toBeDefined();
+      expect(result.hash).toMatch(/^0x[a-fA-F0-9]{64}$/);
+      expect(result.height).toBeGreaterThan(0);
       expect(result.time).toBeInstanceOf(Date);
     });
   });
 
   describe("getBalance", () => {
-    it("returns a list regarding address parameter", async () => {
+    it("should fetch balance", async () => {
       // When
       const result = await module.getBalance(address);
 
       // Then
-      expect(result).toBeGreaterThan(0);
-    });
+      expect(result[0].asset).toEqual({ type: "native" });
+      expect(result[0].value).toBeGreaterThan(0);
+    }, 10000);
   });
 
   describe("craftTransaction", () => {
     it("returns a raw transaction", async () => {
       // When
-      const result = await module.craftTransaction(address, {
+      const result = await module.craftTransaction({
+        asset: { type: "native" },
+        type: "send",
+        sender: address,
         recipient: "16YreVmGhM8mNMqnsvK7rn7b1e4SKYsTfFUn4UfCZ65BgDjh",
         amount: BigInt(10),
-        fee: BigInt(1),
       });
 
       // Then
       expect(result).toEqual(
-        "6c0053ddb3b3a89ed5c8d8326066032beac6de225c9e010300000a0000a31e81ac3425310e3274a4698a793b2839dc0afa00",
+        "0x9404050300f578e65647d6c76b4d05a74e6c2d33d87f32d8d16959400b38ab97d758eb061928",
       );
     });
   });

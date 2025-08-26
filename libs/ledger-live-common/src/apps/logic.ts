@@ -5,8 +5,10 @@ import semver from "semver";
 import { getDeviceModel } from "@ledgerhq/devices";
 import { AppOp, State, Action, ListAppsResult, AppsDistribution, SkipReason } from "./types";
 import { findCryptoCurrency, findCryptoCurrencyById, isCurrencySupported } from "../currencies";
-import { LatestFirmwareVersionRequired, NoSuchAppOnProvider } from "../errors";
+import { NoSuchAppOnProvider } from "../errors";
 import { App } from "@ledgerhq/types-live";
+import { getEnv } from "@ledgerhq/live-env";
+import { LatestFirmwareVersionRequired } from "@ledgerhq/errors";
 
 export const initState = (
   { deviceModelId, appsListNames, installed, appByName, ...listAppsResult }: ListAppsResult,
@@ -26,6 +28,7 @@ export const initState = (
     currentError: null,
     currentAppOp: null,
     skippedAppOps: [],
+    skipAppDataBackup: false,
   };
 
   if (appsToRestore) {
@@ -102,7 +105,7 @@ export const reducer = (state: State, action: Action): State => {
           state.currentProgressSubject.complete();
         }
 
-        let nextState;
+        let nextState: State;
 
         if (appOp.type === "install") {
           const app = state.apps.find(a => a.name === appOp.name);
@@ -196,6 +199,7 @@ export const reducer = (state: State, action: Action): State => {
       return {
         ...state,
         installed: [],
+        skipAppDataBackup: false,
       };
     case "wipe":
       return {
@@ -206,13 +210,17 @@ export const reducer = (state: State, action: Action): State => {
           state.appByName,
           state.installed.map(({ name }) => name),
         ),
+        skipAppDataBackup: true,
       };
 
     case "updateAll": {
       let installList = state.installQueue.slice(0);
       let uninstallList = state.uninstallQueue.slice(0);
+
       state.installed
-        .filter(({ updated, name }) => !updated && state.appByName[name])
+        .filter(
+          ({ updated, name }) => (getEnv("MOCK_APP_UPDATE") || !updated) && state.appByName[name],
+        )
         .forEach(app => {
           const dependents = state.installed
             .filter(a => {
@@ -223,6 +231,7 @@ export const reducer = (state: State, action: Action): State => {
           uninstallList = uninstallList.concat([app.name, ...dependents]);
           installList = installList.concat([app.name, ...dependents]);
         });
+
       const installQueue = reorderInstallQueue(state.appByName, installList);
       const uninstallQueue = reorderUninstallQueue(state.appByName, uninstallList);
 
@@ -366,7 +375,13 @@ export const reducer = (state: State, action: Action): State => {
         );
       }
 
-      return { ...state, currentError: null, installQueue, uninstallQueue };
+      return {
+        ...state,
+        currentError: null,
+        installQueue,
+        uninstallQueue,
+        skipAppDataBackup: true,
+      };
     }
   }
 };

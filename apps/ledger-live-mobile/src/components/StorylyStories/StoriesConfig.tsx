@@ -2,11 +2,10 @@ import { StorylyInstanceID } from "@ledgerhq/types-live";
 import { useFeatureFlags } from "@ledgerhq/live-common/featureFlags/index";
 import useFeature from "@ledgerhq/live-common/featureFlags/useFeature";
 import React, { useCallback, useState } from "react";
-import { Camera } from "expo-camera";
 import { Flex, Switch, BaseInput, Text, IconsLegacy } from "@ledgerhq/native-ui";
 import { TouchableOpacity } from "react-native";
 import { InputRenderRightContainer } from "@ledgerhq/native-ui/components/Form/Input/BaseInput/index";
-import { BarCodeScanningResult, CameraType } from "expo-camera/build/Camera.types";
+import { useCameraPermissions, CameraView, BarcodeScanningResult } from "expo-camera";
 import QueuedDrawer from "../QueuedDrawer";
 
 type Props = {
@@ -19,8 +18,7 @@ type Props = {
  * */
 const StoriesConfig: React.FC<Props> = ({ instanceID }) => {
   const [showCameraModal, setShowCameraModal] = useState(false);
-  const [permission, requestPermission] = Camera.useCameraPermissions();
-
+  const [permission, requestPermission] = useCameraPermissions();
   const { overrideFeature } = useFeatureFlags();
   const featureValue = useFeature("storyly");
   const stories = featureValue?.params?.stories;
@@ -60,7 +58,7 @@ const StoriesConfig: React.FC<Props> = ({ instanceID }) => {
   );
 
   const handleBarCodeScanned = useCallback(
-    ({ data }: BarCodeScanningResult) => {
+    ({ data }: BarcodeScanningResult) => {
       try {
         const parsedData = JSON.parse(data);
         const { token } = parsedData;
@@ -115,10 +113,10 @@ const StoriesConfig: React.FC<Props> = ({ instanceID }) => {
             Go to dashboard.storyly.io/settings/apps and open any instance QR code then you can scan
             it here
           </Text>
-          <Camera
-            type={CameraType.back}
+          <CameraView
+            facing="back"
             style={{ height: 250, width: 250, alignSelf: "center" }}
-            onBarCodeScanned={handleBarCodeScanned}
+            onBarcodeScanned={handleBarCodeScanned}
           />
         </Flex>
       </QueuedDrawer>

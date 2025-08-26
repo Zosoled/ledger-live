@@ -18,15 +18,12 @@ import {
   Transaction as CosmosTransaction,
 } from "@ledgerhq/live-common/families/cosmos/types";
 import {
-  CryptoOrgAccount,
-  Transaction as CryptoOrgTransaction,
-} from "@ledgerhq/live-common/families/crypto_org/types";
-import {
   SolanaAccount,
   Transaction as SolanaTransaction,
 } from "@ledgerhq/live-common/families/solana/types";
 import { Transaction as HederaTransaction } from "@ledgerhq/live-common/families/hedera/types";
 import type { Transaction as ICPTransaction } from "@ledgerhq/live-common/families/internet_computer/types";
+import type { Transaction as MinaTransaction } from "@ledgerhq/live-common/families/mina/types";
 import type { Transaction as RippleTransaction } from "@ledgerhq/live-common/families/xrp/types";
 import type { Transaction as StellarTransaction } from "@ledgerhq/live-common/families/stellar/types";
 import type { Transaction as StacksTransaction } from "@ledgerhq/live-common/families/stacks/types";
@@ -37,9 +34,9 @@ import { Account, Operation, SignedOperation } from "@ledgerhq/types-live";
 import BigNumber from "bignumber.js";
 import { ScreenName } from "~/const";
 
-type ListenersParams = {
-  error?: Error;
-  onError?: (err: Error) => void;
+type SharedParams = {
+  onSuccess: (signedOperation: SignedOperation) => void;
+  onError: (err: Error) => void;
 };
 
 export type SignTransactionNavigatorParamList = {
@@ -52,6 +49,8 @@ export type SignTransactionNavigatorParamList = {
     overrideAmountLabel?: string;
     hideTotal?: boolean;
     appName?: string;
+    dependencies?: string[];
+    isACRE?: boolean;
     currentNavigation:
       | ScreenName.SignTransactionSummary
       | ScreenName.SendSummary
@@ -60,26 +59,23 @@ export type SignTransactionNavigatorParamList = {
       | ScreenName.SignTransactionSelectDevice
       | ScreenName.SendSelectDevice
       | ScreenName.SwapForm;
-    onSuccess: (payload: { signedOperation: SignedOperation; transactionSignError: Error }) => void;
-  } & ListenersParams;
-  [ScreenName.SignTransactionSelectDevice]: ListenersParams;
+  } & SharedParams;
+  [ScreenName.SignTransactionSelectDevice]: {
+    forceSelectDevice?: boolean;
+  } & SharedParams;
   [ScreenName.SignTransactionConnectDevice]: {
     device: Device;
     accountId: string;
     transaction: Transaction;
     status: TransactionStatus;
     appName?: string;
-    onSuccess: (payload: unknown) => void;
-    onError: (_: Error) => void;
+    dependencies?: string[];
+    isACRE?: boolean;
     analyticsPropertyFlow?: string;
-  };
+  } & SharedParams;
   [ScreenName.SignTransactionValidationError]: {
-    accountId: string;
-    parentId: string;
-    deviceId: string;
-    transaction: Transaction;
-    onReject: (_: Error) => void;
-  } & ListenersParams;
+    error?: Error;
+  } & SharedParams;
 
   [ScreenName.AlgorandEditMemo]: {
     accountId?: string;
@@ -158,19 +154,6 @@ export type SignTransactionNavigatorParamList = {
       | ScreenName.SendSelectDevice
       | ScreenName.SwapForm;
   };
-  [ScreenName.XrpEditFee]: {
-    accountId: string;
-    parentId?: string;
-    transaction: RippleTransaction;
-    currentNavigation:
-      | ScreenName.SignTransactionSummary
-      | ScreenName.SendSummary
-      | ScreenName.SwapForm;
-    nextNavigation:
-      | ScreenName.SignTransactionSelectDevice
-      | ScreenName.SendSelectDevice
-      | ScreenName.SwapForm;
-  };
   [ScreenName.StellarEditCustomFees]: {
     accountId: string;
     parentId?: string;
@@ -202,20 +185,6 @@ export type SignTransactionNavigatorParamList = {
     parentId?: string;
     account: CosmosAccount;
     transaction: CosmosTransaction;
-    currentNavigation:
-      | ScreenName.SignTransactionSummary
-      | ScreenName.SendSummary
-      | ScreenName.SwapForm;
-    nextNavigation:
-      | ScreenName.SignTransactionSelectDevice
-      | ScreenName.SendSelectDevice
-      | ScreenName.SwapForm;
-  };
-  [ScreenName.CryptoOrgEditMemo]: {
-    accountId: string;
-    parentId?: string;
-    account: CryptoOrgAccount;
-    transaction: CryptoOrgTransaction;
     currentNavigation:
       | ScreenName.SignTransactionSummary
       | ScreenName.SendSummary
@@ -288,11 +257,23 @@ export type SignTransactionNavigatorParamList = {
     transaction: ICPTransaction;
     currentNavigation:
       | ScreenName.SignTransactionSummary
-      | ScreenName.SignTransactionSummary
       | ScreenName.SendSummary
       | ScreenName.SwapForm;
     nextNavigation:
       | ScreenName.SignTransactionSelectDevice
+      | ScreenName.SendSelectDevice
+      | ScreenName.SwapForm;
+  };
+  [ScreenName.MinaEditMemo]: {
+    accountId: string;
+    account: Account;
+    parentId?: string;
+    transaction: MinaTransaction;
+    currentNavigation:
+      | ScreenName.SignTransactionSummary
+      | ScreenName.SendSummary
+      | ScreenName.SwapForm;
+    nextNavigation:
       | ScreenName.SignTransactionSelectDevice
       | ScreenName.SendSelectDevice
       | ScreenName.SwapForm;

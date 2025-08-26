@@ -1,18 +1,13 @@
 import React, { useEffect, useMemo } from "react";
 import { Alert, Flex, Text } from "@ledgerhq/react-ui";
-import { createAction } from "@ledgerhq/live-common/hw/actions/app";
 import { Device } from "@ledgerhq/live-common/hw/actions/types";
 import { SkipReason } from "@ledgerhq/live-common/apps/types";
-import connectApp from "@ledgerhq/live-common/hw/connectApp";
 import { getDeviceModel } from "@ledgerhq/devices";
 import { useTranslation } from "react-i18next";
 import { UserRefusedAllowManager } from "@ledgerhq/errors";
-import { mockedEventEmitter } from "~/renderer/components/debug/DebugMock";
 import AppInstallItem, { ItemState } from "./AppInstallItem";
 import AllowManagerModal from "./AllowManagerModal";
-import { getEnv } from "@ledgerhq/live-env";
-
-const action = createAction(getEnv("MOCK") ? mockedEventEmitter : connectApp);
+import useConnectAppAction from "~/renderer/hooks/useConnectAppAction";
 
 type Props = {
   device: Device;
@@ -20,7 +15,6 @@ type Props = {
   setHeaderLoader: (hasLoader: boolean) => void;
   onComplete: () => void;
   onCancel: () => void;
-  onLocked: () => void;
   onError: (error: Error) => void;
 };
 
@@ -30,7 +24,6 @@ const InstallSetOfApps = ({
   setHeaderLoader,
   onComplete,
   onCancel,
-  onLocked,
   onError,
 }: Props) => {
   const { t } = useTranslation();
@@ -45,6 +38,7 @@ const InstallSetOfApps = ({
     }),
     [dependencies],
   );
+  const action = useConnectAppAction();
 
   const status = action.useHook(device, commandRequest);
 
@@ -57,16 +51,9 @@ const InstallSetOfApps = ({
     itemProgress,
     progress,
     opened,
-    isLocked,
     allowManagerGranted,
     isLoading,
   } = status;
-
-  useEffect(() => {
-    if (isLocked) {
-      onLocked();
-    }
-  }, [isLocked, onLocked]);
 
   useEffect(() => {
     if (error instanceof UserRefusedAllowManager) {

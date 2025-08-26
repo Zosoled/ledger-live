@@ -20,6 +20,7 @@ import type {
   CardanoAccount,
   CardanoDelegation,
   TransactionStatus,
+  Transaction,
 } from "@ledgerhq/live-common/families/cardano/types";
 import { Box, Text } from "@ledgerhq/native-ui";
 import { AccountLike } from "@ledgerhq/types-live";
@@ -40,6 +41,11 @@ import { StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
 import { CardanoDelegationFlowParamList } from "./types";
 import TranslatedError from "~/components/TranslatedError";
 import { useAccountUnit } from "~/hooks/useAccountUnit";
+import GenericErrorBottomModal from "~/components/GenericErrorBottomModal";
+import RetryButton from "~/components/RetryButton";
+import CancelButton from "~/components/CancelButton";
+import Config from "react-native-config";
+import SupportLinkError from "~/components/SupportLinkError";
 
 type Props = StackNavigatorProps<
   CardanoDelegationFlowParamList,
@@ -100,6 +106,21 @@ export default function DelegationSummary({ navigation, route }: Props) {
       return { account, transaction: tx };
     });
 
+  const [bridgeErr, setBridgeErr] = useState(bridgeError);
+  useEffect(() => setBridgeErr(bridgeError), [bridgeError]);
+
+  const onBridgeErrorCancel = useCallback(() => {
+    setBridgeErr(null);
+    const parent = navigation.getParent();
+    if (parent) parent.goBack();
+  }, [navigation]);
+  const onBridgeErrorRetry = useCallback(() => {
+    setBridgeErr(null);
+    if (!transaction) return;
+    const bridge = getAccountBridge(account, parentAccount);
+    setTransaction(bridge.updateTransaction(transaction, {}));
+  }, [setTransaction, account, parentAccount, transaction]);
+
   invariant(transaction, "transaction must be defined");
   invariant(transaction.family === "cardano", "transaction cardano");
 
@@ -117,7 +138,7 @@ export default function DelegationSummary({ navigation, route }: Props) {
         }),
       );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.params, updateTransaction, bridge, setTransaction, chosenPool]);
+  }, [route.params, updateTransaction, setTransaction, chosenPool]);
 
   const onChangePool = useCallback(() => {
     navigation.navigate(ScreenName.CardanoDelegationPoolSelect, {
@@ -140,6 +161,9 @@ export default function DelegationSummary({ navigation, route }: Props) {
 
   const displayError = useMemo(() => {
     return status.errors.amount ? status.errors.amount : "";
+  }, [status]);
+  const displayWarning = useMemo(() => {
+    return status.warnings.feeTooHigh ? status.warnings.feeTooHigh : "";
   }, [status]);
 
   return (
@@ -168,6 +192,7 @@ export default function DelegationSummary({ navigation, route }: Props) {
             chosenPool={chosenPool ?? undefined}
             account={account}
             status={status}
+            transaction={transaction}
           />
         </View>
       </View>
@@ -181,6 +206,28 @@ export default function DelegationSummary({ navigation, route }: Props) {
         ) : (
           <></>
         )}
+        {displayWarning ? (
+          <Box>
+            <Text fontSize={13} color="orange">
+              <TranslatedError error={displayWarning} field="title" />
+            </Text>
+          </Box>
+        ) : (
+          <></>
+        )}
+        {status.errors.sender ? (
+          <Box>
+            <Text fontSize={13} color="red">
+              <TranslatedError error={status.errors.sender} />
+            </Text>
+            <Text fontSize={12} color="red">
+              <TranslatedError error={status.errors.sender} field="description" />
+            </Text>
+            <SupportLinkError error={status.errors.sender} type="alert" />
+          </Box>
+        ) : (
+          <></>
+        )}
         <Button
           event="SummaryContinue"
           type="primary"
@@ -188,15 +235,29 @@ export default function DelegationSummary({ navigation, route }: Props) {
           containerStyle={styles.continueButton}
           onPress={onContinue}
           disabled={
-            !!displayError ||
+            Object.keys(status.errors).length > 0 ||
             bridgePending ||
             !!bridgeError ||
             !chosenPool ||
             (currentDelegation && currentDelegation.poolId === chosenPool.poolId)
           }
           pending={bridgePending}
+          testID="cardano-summary-continue-button"
         />
       </View>
+      <GenericErrorBottomModal
+        error={bridgeErr}
+        onClose={onBridgeErrorRetry}
+        footerButtons={
+          <>
+            <CancelButton containerStyle={styles.button} onPress={onBridgeErrorCancel} />
+            <RetryButton
+              containerStyle={[styles.button, styles.buttonRight]}
+              onPress={onBridgeErrorRetry}
+            />
+          </>
+        }
+      />
     </SafeAreaView>
   );
 }
@@ -275,6 +336,13 @@ const styles = StyleSheet.create({
   valueText: {
     fontSize: 14,
   },
+  button: {
+    flex: 1,
+    marginHorizontal: 8,
+  },
+  buttonRight: {
+    marginLeft: 8,
+  },
 });
 
 function SummaryWords({
@@ -284,6 +352,7 @@ function SummaryWords({
   isFetchingPoolDetails,
   onChangePool,
   status,
+  transaction,
 }: {
   chosenPool?: StakePool;
   account: AccountLike;
@@ -291,6 +360,7 @@ function SummaryWords({
   isFetchingPoolDetails: boolean;
   onChangePool: () => void;
   status: TransactionStatus;
+  transaction: Transaction;
 }) {
   const unit = useAccountUnit(account);
   const { t } = useTranslation();
@@ -298,26 +368,28 @@ function SummaryWords({
   const [rotateAnim] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: -1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.delay(1000),
-      ]),
-    ).start();
+    if (!Config.DETOX) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(rotateAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotateAnim, {
+            toValue: -1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotateAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.delay(1000),
+        ]),
+      ).start();
+    }
     return () => {
       rotateAnim.setValue(0);
     };
@@ -464,6 +536,7 @@ function SummaryWords({
                   ellipsizeMode="tail"
                   fontWeight={"semiBold"}
                   fontSize={18}
+                  testID="cardano-delegation-summary-validator"
                 >
                   {chosenPool
                     ? `${chosenPool?.ticker} - ${chosenPool?.name}`
@@ -501,7 +574,13 @@ function SummaryWords({
         <DataField
           label={t("cardano.delegation.networkFees")}
           Component={
-            <LText numberOfLines={1} semiBold ellipsizeMode="middle" style={[styles.valueText]}>
+            <LText
+              numberOfLines={1}
+              semiBold
+              ellipsizeMode="middle"
+              style={[styles.valueText]}
+              testID="cardano-delegation-summary-fees"
+            >
               {formatCurrencyUnit(unit, new BigNumber(status.estimatedFees), formatConfig)}
             </LText>
           }
@@ -513,9 +592,7 @@ function SummaryWords({
               <LText numberOfLines={1} semiBold ellipsizeMode="middle" style={[styles.valueText]}>
                 {formatCurrencyUnit(
                   unit,
-                  new BigNumber(
-                    (account as CardanoAccount).cardanoResources.protocolParams.stakeKeyDeposit,
-                  ),
+                  new BigNumber(transaction.protocolParams?.stakeKeyDeposit ?? "0"),
                   formatConfig,
                 )}
               </LText>

@@ -1,12 +1,13 @@
 import { SyncSkipUnderPriority } from "@ledgerhq/live-common/bridge/react/index";
 import { Action, Device } from "@ledgerhq/live-common/hw/actions/types";
 import { Alert, Flex } from "@ledgerhq/native-ui";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import styled from "styled-components/native";
 import { PartialNullable } from "~/types/helpers";
 import QueuedDrawer from "./QueuedDrawer";
 import DeviceAction from "./DeviceAction";
+import { HOOKS_TRACKING_LOCATIONS } from "~/analytics/hooks/variables";
 
 const DeviceActionContainer = styled(Flex).attrs({
   flexDirection: "row",
@@ -16,6 +17,7 @@ type Props<Req, Stt, Res> = {
   action: Action<Req, Stt, Res>;
   device: Device | null | undefined;
   request?: Req;
+  location?: HOOKS_TRACKING_LOCATIONS;
   onClose?: () => void;
   onError?: (error: Error) => void;
   onModalHide?: () => void;
@@ -23,12 +25,14 @@ type Props<Req, Stt, Res> = {
   renderOnResult?: (_: Res) => JSX.Element | null;
   onSelectDeviceLink?: () => void;
   analyticsPropertyFlow?: string;
+  registerDeviceSelection?: (onDeviceUpdated: () => void) => void;
 };
 
 export default function DeviceActionModal<Req, Stt, Res>({
   action,
   device,
   request,
+  location,
   onClose,
   onResult,
   onError,
@@ -36,6 +40,7 @@ export default function DeviceActionModal<Req, Stt, Res>({
   onModalHide,
   onSelectDeviceLink,
   analyticsPropertyFlow,
+  registerDeviceSelection,
 }: Props<Req, Stt, Res>) {
   const { t } = useTranslation();
   const showAlert = !device?.wired;
@@ -53,6 +58,10 @@ export default function DeviceActionModal<Req, Stt, Res>({
       onClose();
     }
   }, [onClose, result]);
+
+  useEffect(() => {
+    registerDeviceSelection?.(() => setResult(null));
+  }, [registerDeviceSelection]);
 
   return (
     <QueuedDrawer
@@ -74,6 +83,7 @@ export default function DeviceActionModal<Req, Stt, Res>({
                   renderOnResult={renderOnResult}
                   onSelectDeviceLink={onSelectDeviceLink}
                   analyticsPropertyFlow={analyticsPropertyFlow}
+                  location={location}
                 />
               </DeviceActionContainer>
               {showAlert && <Alert type="info" title={t("DeviceAction.stayInTheAppPlz")} />}

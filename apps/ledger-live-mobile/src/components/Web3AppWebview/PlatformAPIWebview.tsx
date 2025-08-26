@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useEffect, useMemo, forwardRef } from "react";
 import { useSelector } from "react-redux";
-import { ActivityIndicator, Linking, StyleSheet, View } from "react-native";
+import VersionNumber from "react-native-version-number";
+import { ActivityIndicator, Linking, Platform, StyleSheet, View } from "react-native";
 import { WebView as RNWebView, WebViewMessageEvent } from "react-native-webview";
 import { useNavigation } from "@react-navigation/native";
 import { JSONRPCRequest } from "json-rpc-2.0";
 import { UserRefusedOnDevice } from "@ledgerhq/errors";
-import { Account, AccountLike, Operation, SignedOperation } from "@ledgerhq/types-live";
+import { Account, AccountLike, Operation } from "@ledgerhq/types-live";
 import type {
   RawPlatformTransaction,
   RawPlatformSignedTransaction,
@@ -49,6 +50,13 @@ import { useWebviewState } from "./helpers";
 import { currentRouteNameRef } from "~/analytics/screenRefs";
 import { walletSelector } from "~/reducers/wallet";
 import { WebViewOpenWindowEvent } from "react-native-webview/lib/WebViewTypes";
+import {
+  ModularDrawerLocation,
+  useModularDrawerController,
+  useModularDrawerVisibility,
+} from "LLM/features/ModularDrawer";
+
+const APPLICATION_NAME = `ledgerlivemobile/${VersionNumber.appVersion} llm-${Platform.OS}/${VersionNumber.appVersion}`;
 
 function renderLoading() {
   return (
@@ -58,7 +66,7 @@ function renderLoading() {
   );
 }
 export const PlatformAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
-  ({ manifest, inputs = {}, onStateChange }, ref) => {
+  ({ manifest, inputs = {}, onStateChange, onScroll }, ref) => {
     const tracking = useMemo(
       () =>
         trackingWrapper((eventName: string, properties?: Record<string, unknown> | null) =>
@@ -93,6 +101,16 @@ export const PlatformAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
     const listAccounts = useListPlatformAccounts(walletState, accounts);
     const listPlatformCurrencies = useListPlatformCurrencies();
 
+    const { isModularDrawerVisible } = useModularDrawerVisibility({
+      modularDrawerFeatureFlagKey: "llmModularDrawer",
+    });
+    const modularDrawerVisible = isModularDrawerVisible({
+      location: ModularDrawerLocation.LIVE_APP,
+      liveAppId: manifest.id,
+    });
+
+    const { openDrawer: openModularDrawer } = useModularDrawerController();
+
     const requestAccount = useCallback(
       ({
         currencies: currencyIds,
@@ -115,12 +133,10 @@ export const PlatformAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
            * JSONRPC requests. So we need to make sure the array is properly typed.
            */
           const safeCurrencyIds = currencyIds?.filter(c => typeof c === "string") ?? undefined;
-
           const allCurrencies = listAndFilterCurrencies({
             currencies: safeCurrencyIds,
             includeTokens,
           });
-          // handle no curencies selected case
           const cryptoCurrencyIds =
             safeCurrencyIds && safeCurrencyIds.length > 0
               ? safeCurrencyIds
@@ -138,8 +154,6 @@ export const PlatformAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
             reject(new Error("No accounts found matching request"));
             return;
           }
-
-          // list of queried cryptoCurrencies with one or more accounts -> used in case of not allowAddAccount and multiple accounts selectable
           const currenciesDiff = allowAddAccount
             ? cryptoCurrencyIds
             : foundAccounts
@@ -154,46 +168,62 @@ export const PlatformAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
               ),
             );
           };
-
           const onClose = () => {
             tracking.platformRequestAccountFail(manifest);
             reject(new Error("User cancelled"));
           };
 
-          // if single currency available redirect to select account directly
-          if (currenciesDiff.length === 1) {
-            const currency = allCurrencies.find(c => c.id === currenciesDiff[0]);
-
-            if (!currency) {
-              tracking.platformRequestAccountFail(manifest);
-              // @TODO replace with correct error
-              reject(new Error("Currency not found"));
-              return;
-            }
-
-            navigation.navigate(NavigatorName.RequestAccount, {
-              screen: ScreenName.RequestAccountsSelectAccount,
-              params: {
-                currencies: allCurrencies,
-                currency,
-                allowAddAccount,
-                onSuccess,
-              },
-              onClose,
+          if (modularDrawerVisible) {
+            openModularDrawer({
+              currencies: allCurrencies,
+              enableAccountSelection: true,
+              onAccountSelected: onSuccess,
+              flow: manifest.name,
+              source:
+                currentRouteNameRef.current === "Platform Catalog"
+                  ? "Discover"
+                  : currentRouteNameRef.current ?? "Unknown",
             });
           } else {
-            navigation.navigate(NavigatorName.RequestAccount, {
-              screen: ScreenName.RequestAccountsSelectCrypto,
-              params: {
-                currencies: allCurrencies,
-                allowAddAccount,
-                onSuccess,
-              },
-              onClose,
-            });
+            if (currenciesDiff.length === 1) {
+              const currency = allCurrencies.find(c => c.id === currenciesDiff[0]);
+              if (!currency) {
+                tracking.platformRequestAccountFail(manifest);
+                reject(new Error("Currency not found"));
+                return;
+              }
+              navigation.navigate(NavigatorName.RequestAccount, {
+                screen: ScreenName.RequestAccountsSelectAccount,
+                params: {
+                  currencies: allCurrencies,
+                  currency,
+                  allowAddAccount,
+                  onSuccess,
+                },
+                onClose,
+              });
+            } else {
+              navigation.navigate(NavigatorName.RequestAccount, {
+                screen: ScreenName.RequestAccountsSelectCrypto,
+                params: {
+                  currencies: allCurrencies,
+                  allowAddAccount,
+                  onSuccess,
+                },
+                onClose,
+              });
+            }
           }
         }),
-      [manifest, accounts, walletState, navigation, tracking],
+      [
+        tracking,
+        manifest,
+        accounts,
+        modularDrawerVisible,
+        walletState,
+        openModularDrawer,
+        navigation,
+      ],
     );
 
     const receiveOnAccount = useCallback(
@@ -251,40 +281,33 @@ export const PlatformAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
             const tx = prepareSignTransaction(account, parentAccount, liveTx);
 
             return new Promise((resolve, reject) => {
+              let done = false;
+
+              const onError = (error: Error) => {
+                if (done) return;
+                done = true;
+                tracking.platformSignTransactionFail(manifest);
+                reject(error);
+              };
+
               navigation.navigate(NavigatorName.SignTransaction, {
                 screen: ScreenName.SignTransactionSummary,
                 params: {
                   currentNavigation: ScreenName.SignTransactionSummary,
                   nextNavigation: ScreenName.SignTransactionSelectDevice,
-                  transaction: tx as Transaction,
+                  transaction: tx,
                   accountId,
                   parentId: parentAccount?.id,
                   appName: params?.useApp,
-                  onSuccess: ({
-                    signedOperation,
-                    transactionSignError,
-                  }: {
-                    signedOperation: SignedOperation;
-                    transactionSignError: Error;
-                  }) => {
-                    if (transactionSignError) {
-                      tracking.platformSignTransactionFail(manifest);
-                      reject(transactionSignError);
-                    } else {
-                      tracking.platformSignTransactionSuccess(manifest);
-                      resolve(serializePlatformSignedTransaction(signedOperation));
-                      const n =
-                        navigation.getParent<
-                          StackNavigatorNavigation<BaseNavigatorStackParamList>
-                        >() || navigation;
-                      n.pop();
-                    }
+                  onSuccess: signedOperation => {
+                    if (done) return;
+                    done = true;
+                    tracking.platformSignTransactionSuccess(manifest);
+                    resolve(serializePlatformSignedTransaction(signedOperation));
                   },
-                  onError: (error: Error) => {
-                    tracking.platformSignTransactionFail(manifest);
-                    reject(error);
-                  },
+                  onError,
                 },
+                onError,
               });
             });
           },
@@ -433,7 +456,10 @@ export const PlatformAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
           ({ id: accountId }, message) =>
             new Promise((resolve, reject) => {
               navigation.navigate(NavigatorName.SignMessage, {
-                screen: ScreenName.SignSummary,
+                screen:
+                  message.standard === "EIP712"
+                    ? ScreenName.SignSelectDevice
+                    : ScreenName.SignSummary,
                 params: {
                   message,
                   accountId,
@@ -507,13 +533,9 @@ export const PlatformAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
 
     const onOpenWindow = useCallback((event: WebViewOpenWindowEvent) => {
       const { targetUrl } = event.nativeEvent;
-      Linking.canOpenURL(targetUrl).then(supported => {
-        if (supported) {
-          Linking.openURL(targetUrl);
-        } else {
-          console.error(`Don't know how to open URI: ${targetUrl}`);
-        }
-      });
+      // Don't use canOpenURL as we cannot check unknown apps on the phone
+      // Without listing everything in plist and android manifest
+      Linking.openURL(targetUrl);
     }, []);
 
     useEffect(() => {
@@ -527,6 +549,8 @@ export const PlatformAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
     return (
       <RNWebView
         ref={webviewRef}
+        onScroll={onScroll}
+        decelerationRate="normal"
         allowsBackForwardNavigationGestures
         startInLoadingState={true}
         showsHorizontalScrollIndicator={false}
@@ -545,6 +569,7 @@ export const PlatformAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
         style={styles.webview}
         javaScriptCanOpenWindowsAutomatically={javaScriptCanOpenWindowsAutomatically}
         webviewDebuggingEnabled={__DEV__}
+        applicationNameForUserAgent={APPLICATION_NAME}
         {...webviewProps}
       />
     );

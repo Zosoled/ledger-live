@@ -1,17 +1,17 @@
 import React, { Fragment, PureComponent } from "react";
-import { Trans } from "react-i18next";
+import { Trans, useTranslation } from "react-i18next";
 import { getMainAccount } from "@ledgerhq/live-common/account/index";
 import TrackPage from "~/renderer/analytics/TrackPage";
 import Box from "~/renderer/components/Box";
 import Button from "~/renderer/components/Button";
 import CurrencyDownStatusAlert from "~/renderer/components/CurrencyDownStatusAlert";
-import BuyButton from "~/renderer/components/BuyButton";
-import { NotEnoughGas } from "@ledgerhq/errors";
 import Alert from "~/renderer/components/Alert";
 import TranslatedError from "~/renderer/components/TranslatedError";
 import AccountFooter from "../AccountFooter";
 import SendAmountFields from "../SendAmountFields";
 import { StepProps } from "../types";
+import LowGasAlertBuyMore from "~/renderer/components/LowGasAlertBuyMore";
+import { closeAllModal } from "~/renderer/actions/modals";
 const StepAmount = ({
   account,
   parentAccount,
@@ -23,17 +23,32 @@ const StepAmount = ({
   bridgePending,
   updateTransaction,
 }: StepProps) => {
+  const { t } = useTranslation();
   if (!status) return null;
   const mainAccount = account ? getMainAccount(account, parentAccount) : null;
+  const { gasPrice: gasPriceError } = status.errors;
+
   return (
     <Box flow={4}>
       <TrackPage category="Sign Transaction Flow" name="Step Amount" />
       {mainAccount ? <CurrencyDownStatusAlert currencies={[mainAccount.currency]} /> : null}
-      {error || warning ? (
-        <Alert type={error ? "error" : "warning"}>
-          <TranslatedError error={error || warning} />
-        </Alert>
-      ) : null}
+      {error || warning
+        ? !gasPriceError && (
+            <Alert
+              type={status.errors.sender || error ? "error" : "warning"}
+              title={
+                status.errors.sender
+                  ? t("errors." + status.errors.sender.name + ".title")
+                  : undefined
+              }
+            >
+              <TranslatedError
+                error={status.errors.sender || error || warning}
+                field={status.errors.sender ? "description" : undefined}
+              />
+            </Alert>
+          )
+        : null}
       {account && transaction && mainAccount && (
         <Fragment key={account.id}>
           <SendAmountFields
@@ -46,6 +61,14 @@ const StepAmount = ({
             updateTransaction={updateTransaction}
           />
         </Fragment>
+      )}
+      {mainAccount && gasPriceError && (
+        <LowGasAlertBuyMore
+          account={mainAccount}
+          handleRequestClose={closeAllModal}
+          gasPriceError={gasPriceError}
+          trackingSource={"sign flow"}
+        />
       )}
     </Box>
   );
@@ -64,13 +87,9 @@ export class StepAmountFooter extends PureComponent<StepProps> {
     const isTerminated = mainAccount.currency.terminated;
     const hasErrors = Object.keys(errors).length;
     const canNext = !bridgePending && !hasErrors && !isTerminated;
-    const { gasPrice } = errors;
     return (
       <>
         <AccountFooter parentAccount={parentAccount} account={account} status={status} />
-        {gasPrice && gasPrice instanceof NotEnoughGas ? (
-          <BuyButton currency={mainAccount.currency} account={mainAccount} />
-        ) : null}
         <Button
           id={"sign-transaction-amount-continue-button"}
           isLoading={bridgePending}

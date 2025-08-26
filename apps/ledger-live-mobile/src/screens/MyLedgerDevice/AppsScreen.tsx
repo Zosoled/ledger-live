@@ -17,7 +17,7 @@ import {
   predictOptimisticState,
   reducer,
 } from "@ledgerhq/live-common/apps/index";
-import { App, DeviceInfo, FeatureId } from "@ledgerhq/types-live";
+import { App, DeviceInfo } from "@ledgerhq/types-live";
 import { useAppsSections } from "@ledgerhq/live-common/apps/react";
 
 import { Text, Flex } from "@ledgerhq/native-ui";
@@ -43,7 +43,7 @@ import NoResultsFound from "~/icons/NoResultsFound";
 import AppIcon from "./AppsList/AppIcon";
 import AppUpdateAll from "./AppsList/AppUpdateAll";
 import Search from "~/components/Search";
-import FirmwareUpdateBanner from "~/newArch/features/FirmwareUpdate/components/UpdateBanner";
+import FirmwareUpdateBanner from "LLM/features/FirmwareUpdate/components/UpdateBanner";
 import { TAB_BAR_SAFE_HEIGHT } from "~/components/TabBar/shared";
 import type { BaseComposite, StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
 import { MyLedgerNavigatorStackParamList } from "~/components/RootNavigator/types/MyLedgerNavigator";
@@ -51,10 +51,11 @@ import { ScreenName } from "~/const";
 import { lastSeenDeviceSelector } from "~/reducers/settings";
 import ProviderWarning from "./ProviderWarning";
 import { UpdateStep } from "../FirmwareUpdate";
-import { useFeatureFlags } from "@ledgerhq/live-common/featureFlags/index";
-import camelCase from "lodash/camelCase";
 import { useTheme } from "styled-components/native";
-import KeyboardView from "~/components/KeyboardView";
+import { getEnv } from "@ledgerhq/live-env";
+import LedgerSyncEntryPoint from "LLM/features/LedgerSyncEntryPoint";
+import { EntryPoint } from "LLM/features/LedgerSyncEntryPoint/types";
+import { LNSUpsellBanner } from "LLM/features/LNSUpsell";
 
 type NavigationProps = BaseComposite<
   StackNavigatorProps<MyLedgerNavigatorStackParamList, ScreenName.MyLedgerDevice>
@@ -153,16 +154,14 @@ const AppsScreen = ({
 
   const parentInstalled = useMemo(
     () =>
-      found &&
-      found.parentCurrency &&
+      found?.parentCurrency &&
       installed.find(({ name }) => name.toLowerCase() === found.parentCurrency.name.toLowerCase()),
     [found, installed],
   );
 
   const parent = useMemo(
     () =>
-      found &&
-      found.parentCurrency &&
+      found?.parentCurrency &&
       apps.find(({ name }) => name.toLowerCase() === found.parentCurrency.name.toLowerCase()),
     [found, apps],
   );
@@ -262,6 +261,9 @@ const AppsScreen = ({
   const latestFirmware = useLatestFirmware(lastSeenDevice?.deviceInfo);
   const showFwUpdateBanner = Boolean(latestFirmware);
 
+  const appsToUpdate = getEnv("MOCK_APP_UPDATE") ? deviceApps : update;
+  const showAppUpdate = appsToUpdate.length > 0;
+
   const sectionListRef = useRef<SectionList>(null);
 
   const { space } = useTheme();
@@ -318,13 +320,19 @@ const AppsScreen = ({
               <FirmwareUpdateBanner onBackFromUpdate={onBackFromUpdate} />
             </Flex>
           ) : null}
+          {!showAppUpdate && !showFwUpdateBanner ? (
+            <Flex m={6} mb={0}>
+              <LedgerSyncEntryPoint entryPoint={EntryPoint.manager} page="Manager" />
+              <LNSUpsellBanner location="manager" />
+            </Flex>
+          ) : null}
         </DeviceCard>
         <ProviderWarning />
         <Benchmarking state={state} />
         {
           <AppUpdateAll
             state={state}
-            appsToUpdate={update}
+            appsToUpdate={appsToUpdate}
             dispatch={dispatch}
             isModalOpened={updateModalOpened}
           />
@@ -332,6 +340,7 @@ const AppsScreen = ({
       </Flex>
     ),
     [
+      appsToUpdate,
       device,
       deviceApps,
       deviceId,
@@ -344,9 +353,9 @@ const AppsScreen = ({
       onLanguageChange,
       pendingInstalls,
       result,
+      showAppUpdate,
       showFwUpdateBanner,
       state,
-      update,
       updateModalOpened,
     ],
   );
@@ -370,36 +379,23 @@ const AppsScreen = ({
 
   const renderList = useCallback(
     (items?: App[]) => (
-      <KeyboardView behavior="padding">
-        <SectionList
-          style={{ width: "100%", height: "100%" }}
-          ref={sectionListRef}
-          testID="manager-deviceInfo-scrollView"
-          sections={[{ data: items ?? [], title: "" }]}
-          renderItem={renderRow}
-          renderSectionHeader={renderSearchBar}
-          stickySectionHeadersEnabled
-          onScroll={onScroll}
-          ListHeaderComponent={listHeader}
-          ListFooterComponent={renderFooter(items)}
-          keyExtractor={item => item.name}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.list}
-        />
-      </KeyboardView>
+      <SectionList
+        style={{ width: "100%", height: "100%" }}
+        ref={sectionListRef}
+        testID="manager-deviceInfo-scrollView"
+        sections={[{ data: items ?? [], title: "" }]}
+        renderItem={renderRow}
+        renderSectionHeader={renderSearchBar}
+        stickySectionHeadersEnabled
+        onScroll={onScroll}
+        ListHeaderComponent={listHeader}
+        ListFooterComponent={renderFooter(items)}
+        keyExtractor={item => item.name}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.list}
+      />
     ),
     [listHeader, onScroll, renderFooter, renderRow, renderSearchBar],
-  );
-
-  const { getFeature, isFeature } = useFeatureFlags();
-  const enabledApps = useMemo(
-    () =>
-      catalog.filter(({ currencyId }: App) => {
-        if (!currencyId) return true;
-        const currencyFeatureKey = camelCase(`currency_${currencyId}`) as FeatureId;
-        return isFeature(currencyFeatureKey) ? getFeature(currencyFeatureKey)?.enabled : true;
-      }),
-    [catalog, getFeature, isFeature],
   );
 
   return (
@@ -411,7 +407,7 @@ const AppsScreen = ({
           shouldSort: false,
         }}
         value={query.trim()}
-        items={enabledApps}
+        items={catalog}
         render={renderList}
         renderEmptySearch={renderList}
       />

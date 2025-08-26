@@ -5,10 +5,11 @@ import { Media } from "LLD/features/Collectibles/components";
 import { SideDrawer } from "~/renderer/components/SideDrawer";
 import styled from "styled-components";
 import { PositionProps, LayoutProps, SpaceProps, position, layout, space } from "styled-system";
-import { DetailDrawerProps, FieldStatus } from "LLD/features/Collectibles/types/DetailDrawer";
+import { DetailDrawerProps } from "LLD/features/Collectibles/types/DetailDrawer";
+import { FieldStatus } from "LLD/features/Collectibles/types/enum/DetailDrawer";
 import { createCollectibleObject } from "LLD/features/Collectibles/utils/createCollectibleObject";
 import { useTranslation } from "react-i18next";
-import { CollectibleTypeEnum } from "LLD/features/Collectibles/types/Collectibles";
+import { CollectibleTypeEnum } from "LLD/features/Collectibles/types/enum/Collectibles";
 
 type ChildComponentProps = {
   children: ReactElement;
@@ -119,7 +120,7 @@ const DetailDrawerComponent: React.FC<DetailDrawerProps> & {
     <SideDrawer
       withPaddingTop
       isOpen={isOpened}
-      direction={"left"}
+      direction="left"
       onRequestClose={handleRequestClose}
       forceDisableFocusTrap
     >
@@ -130,7 +131,7 @@ const DetailDrawerComponent: React.FC<DetailDrawerProps> & {
         <ViewerDrawerContent>
           <StickyWrapper top={0} pb={3} pt="24px">
             <CollectionName text={collectionName} isLoading={areFieldsLoading} />
-            <Title text={collectibleName} isLoading={areFieldsLoading} />
+            <Title id="nft-name-sendDrawer" text={collectibleName} isLoading={areFieldsLoading} />
           </StickyWrapper>
           {subtitle}
           <MediaContainer
@@ -146,7 +147,7 @@ const DetailDrawerComponent: React.FC<DetailDrawerProps> & {
             sectionTitle={tagTitle()}
             status={areFieldsLoading ? FieldStatus.Loading : FieldStatus.Loaded}
           />
-          {details.map(({ key, value, title, isCopyable, isHash }, index) => (
+          {details.map(({ key, value, title, isCopyable, isHash, id }, index) => (
             <DetailField
               key={key + value}
               label={title}
@@ -155,6 +156,7 @@ const DetailDrawerComponent: React.FC<DetailDrawerProps> & {
               hasSeparatorBottom={index !== details.length - 1}
               isCopyable={isCopyable}
               isHash={isHash}
+              id={id}
             />
           ))}
         </ViewerDrawerContent>

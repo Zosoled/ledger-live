@@ -1,5 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { StyleSheet } from "react-native";
+import { useSelector } from "react-redux";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TokenCurrency } from "@ledgerhq/types-cryptoassets";
 import { useBroadcast } from "@ledgerhq/live-common/hooks/useBroadcast";
@@ -8,8 +9,11 @@ import { StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
 import { PlatformExchangeNavigatorParamList } from "~/components/RootNavigator/types/PlatformExchangeNavigator";
 import { ScreenName } from "~/const";
 import { useTransactionDeviceAction, useCompleteExchangeDeviceAction } from "~/hooks/deviceActions";
+import { mevProtectionSelector } from "~/reducers/settings";
 import { SignedOperation } from "@ledgerhq/types-live";
 import { Transaction } from "@ledgerhq/live-common/generated/types";
+import { HOOKS_TRACKING_LOCATIONS } from "~/analytics/hooks/variables";
+import LoadingIndicator from "LLM/features/Web3Hub/components/ManifestsList/LoadingIndicator";
 
 type Props = StackNavigatorProps<
   PlatformExchangeNavigatorParamList,
@@ -18,19 +22,21 @@ type Props = StackNavigatorProps<
 
 const PlatformCompleteExchange: React.FC<Props> = ({
   route: {
-    params: { request, onResult, device },
+    params: { request, onResult, device, onClose },
   },
   navigation,
 }) => {
+  const mevProtected = useSelector(mevProtectionSelector);
   const { fromAccount: account, fromParentAccount: parentAccount } = request.exchange;
   let tokenCurrency: TokenCurrency | undefined;
 
   if (account.type === "TokenAccount") tokenCurrency = account.token;
 
-  const broadcast = useBroadcast({ account, parentAccount });
+  const broadcast = useBroadcast({ account, parentAccount, broadcastConfig: { mevProtected } });
   const [transaction, setTransaction] = useState<Transaction>();
   const [signedOperation, setSignedOperation] = useState<SignedOperation>();
   const [error, setError] = useState<Error>();
+  const hasPopped = useRef(false);
 
   useEffect(() => {
     if (signedOperation) {
@@ -46,9 +52,14 @@ const PlatformCompleteExchange: React.FC<Props> = ({
     }
   }, [onResult, error]);
 
-  const onClose = useCallback(() => {
-    navigation.pop();
-  }, [navigation]);
+  const onCloseHandler = useCallback(() => {
+    // Prevent onClose being called twice
+    if (!hasPopped.current) {
+      navigation.pop();
+    }
+    hasPopped.current = true;
+    onClose?.();
+  }, [navigation, onClose]);
 
   const onCompleteExchange = useCallback(
     (res: { completeExchangeResult: Transaction } | { completeExchangeError: Error }) => {
@@ -90,23 +101,26 @@ const PlatformCompleteExchange: React.FC<Props> = ({
 
   return (
     <SafeAreaView style={styles.root}>
+      <LoadingIndicator />
       {!signRequest ? (
         <DeviceActionModal
           key="completeExchange"
           device={device}
           action={exchangeAction}
-          onClose={onClose}
+          onClose={onCloseHandler}
           onResult={onCompleteExchange}
           request={request}
+          location={HOOKS_TRACKING_LOCATIONS.swapFlow}
         />
       ) : (
         <DeviceActionModal
           key="sign"
           device={device}
           action={sendAction}
-          onClose={onClose}
+          onClose={onCloseHandler}
           onResult={onSign}
           request={signRequest}
+          location={HOOKS_TRACKING_LOCATIONS.swapFlow}
         />
       )}
     </SafeAreaView>

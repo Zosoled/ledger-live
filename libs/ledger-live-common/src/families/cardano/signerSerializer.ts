@@ -11,8 +11,10 @@ import {
   TxInput,
   TxOutput,
   TxOutputDestination,
+  TxOutputFormat,
   TxOutputDestinationType,
   Withdrawal,
+  DRepParamsType,
 } from "@cardano-foundation/ledgerjs-hw-app-cardano";
 import { str_to_path } from "@cardano-foundation/ledgerjs-hw-app-cardano/dist/utils/address";
 import {
@@ -81,6 +83,7 @@ function prepareLedgerOutput(output: SignerTxOutput): TxOutput {
   const destination = convertDestination(output);
 
   return {
+    format: TxOutputFormat.MAP_BABBAGE,
     amount,
     destination,
     tokenBundle,
@@ -118,9 +121,10 @@ function prepareCertificate(cert: SignerTxCertificate): Certificate {
   switch (cert.type) {
     case "REGISTRATION":
       return {
-        type: CertificateType.STAKE_REGISTRATION,
+        type: CertificateType.STAKE_REGISTRATION_CONWAY,
         params: {
           stakeCredential,
+          deposit: cert.params.deposit,
         },
       };
     case "DELEGATION":
@@ -133,9 +137,20 @@ function prepareCertificate(cert: SignerTxCertificate): Certificate {
       };
     case "DEREGISTRATION":
       return {
-        type: CertificateType.STAKE_DEREGISTRATION,
+        type: CertificateType.STAKE_DEREGISTRATION_CONWAY,
         params: {
           stakeCredential,
+          deposit: cert.params.deposit,
+        },
+      };
+    case "VOTE_DELEGATION_ABSTAIN":
+      return {
+        type: CertificateType.VOTE_DELEGATION,
+        params: {
+          stakeCredential,
+          dRep: {
+            type: DRepParamsType.ABSTAIN,
+          },
         },
       };
     default:

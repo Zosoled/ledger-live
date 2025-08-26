@@ -199,6 +199,17 @@ class Xpub {
       sequence,
     } = params;
 
+    if (opReturnData) {
+      const opReturnOutput: OutputInfo = {
+        script: this.crypto.toOpReturnOutputScript(opReturnData),
+        value: new BigNumber(0),
+        address: null,
+        isChange: false,
+      };
+
+      outputs.push(opReturnOutput);
+    }
+
     // outputs splitting
     // btc only support value fitting in uint64 and the lib
     // we use to serialize output only take js number in params
@@ -223,17 +234,6 @@ class Xpub {
 
     if (desiredOutputLeftToFit.value.gt(0)) {
       outputs.push(desiredOutputLeftToFit);
-    }
-
-    if (opReturnData) {
-      const opReturnOutput: OutputInfo = {
-        script: this.crypto.toOpReturnOutputScript(opReturnData),
-        value: new BigNumber(0),
-        address: null,
-        isChange: false,
-      };
-
-      outputs.push(opReturnOutput);
     }
 
     // now we select only the output needed to cover the amount + fee
@@ -262,11 +262,12 @@ class Xpub {
         output_hash: utxo.output_hash,
         output_index: utxo.output_index,
         sequence,
+        block_height: utxo.block_height || null,
       };
     });
 
     const associatedDerivations: [number, number][] = unspentUtxoSelected.map((_utxo, index) => {
-      if (txs[index] == null) {
+      if (!txs[index]) {
         throw new Error("Invalid index in txs[index]");
       }
       return [txs[index]?.account || 0, txs[index]?.index || 0];
@@ -303,7 +304,7 @@ class Xpub {
     };
   }
 
-  async broadcastTx(rawTxHex: string): Promise<any> {
+  async broadcastTx(rawTxHex: string): Promise<{ data: { result: string } }> {
     return this.explorer.broadcast(rawTxHex);
   }
 

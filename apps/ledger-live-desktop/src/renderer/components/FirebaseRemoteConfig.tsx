@@ -14,7 +14,10 @@ import { getFirebaseConfig } from "~/firebase-setup";
 import isMatch from "lodash/isMatch";
 import * as fs from "fs";
 
-export const FirebaseRemoteConfigContext = React.createContext<RemoteConfig | null>(null);
+export const FirebaseRemoteConfigContext = React.createContext<{
+  config: RemoteConfig | null;
+  lastFetchTime: number;
+}>({ config: null, lastFetchTime: 0 });
 
 export const useFirebaseRemoteConfig = () => useContext(FirebaseRemoteConfigContext);
 
@@ -38,6 +41,7 @@ export const FirebaseRemoteConfigProvider = ({
 }): JSX.Element | null => {
   const [config, setConfig] = useState<RemoteConfig | null>(null);
   const [loaded, setLoaded] = useState<boolean>(false);
+  const [lastFetchTime, setLastFetchTime] = useState<number>(0);
 
   useEffect(() => {
     try {
@@ -127,6 +131,7 @@ export const FirebaseRemoteConfigProvider = ({
       }
       try {
         await fetchAndActivate(remoteConfig);
+        setLastFetchTime(Date.now());
       } catch (error) {
         console.error(`Failed to fetch Firebase remote config with error: ${error}`);
       } finally {
@@ -134,8 +139,8 @@ export const FirebaseRemoteConfigProvider = ({
       }
     };
     fetchAndActivateConfig();
-    // 1 hour fetch interval. TODO: make this configurable
-    const intervalId = window.setInterval(fetchAndActivateConfig, 1 * 60 * 60 * 1000);
+    // 5 minutes fetch interval. TODO: make this configurable
+    const intervalId = window.setInterval(fetchAndActivateConfig, 5 * 60 * 1000);
     return () => clearInterval(intervalId);
   }, [setConfig]);
 
@@ -144,7 +149,7 @@ export const FirebaseRemoteConfigProvider = ({
   }
 
   return (
-    <FirebaseRemoteConfigContext.Provider value={config}>
+    <FirebaseRemoteConfigContext.Provider value={{ config, lastFetchTime }}>
       {children}
     </FirebaseRemoteConfigContext.Provider>
   );

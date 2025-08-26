@@ -1,10 +1,10 @@
 import React, { useCallback, useMemo } from "react";
 import { View, StyleSheet, FlatList, SafeAreaView, ListRenderItem } from "react-native";
 import { Trans } from "react-i18next";
-import type { Account, AccountLike, SubAccount } from "@ledgerhq/types-live";
+import type { Account, AccountLike, TokenAccount } from "@ledgerhq/types-live";
 import { useSelector } from "react-redux";
 import { CompositeScreenProps, useTheme } from "@react-navigation/native";
-import { CryptoOrTokenCurrency } from "@ledgerhq/types-cryptoassets";
+import { CryptoCurrency } from "@ledgerhq/types-cryptoassets";
 import { useGetAccountIds } from "@ledgerhq/live-common/wallet-api/react";
 import { accountsByCryptoCurrencyScreenSelector } from "~/reducers/accounts";
 import { TrackScreen } from "~/analytics";
@@ -23,6 +23,8 @@ import type {
 import { RequestAccountNavigatorParamList } from "~/components/RootNavigator/types/RequestAccountNavigator";
 import { BaseNavigatorStackParamList } from "~/components/RootNavigator/types/BaseNavigator";
 import { Flex } from "@ledgerhq/native-ui";
+import { AddAccountContexts } from "LLM/features/Accounts/screens/AddAccount/enums";
+import { withDiscreetMode } from "~/context/DiscreetModeContext";
 
 const SEARCH_KEYS = [
   "name",
@@ -75,7 +77,7 @@ const List = ({
   renderItem,
   renderFooter,
 }: {
-  items: { account: AccountLike; subAccount?: SubAccount | null }[];
+  items: { account: AccountLike; subAccount?: TokenAccount | null }[];
   renderItem: ListRenderItem<SearchResult>;
   renderFooter: React.ComponentType | React.ReactElement | null | undefined;
 }) => {
@@ -98,11 +100,7 @@ function SelectAccount({ navigation, route }: Props) {
   const { colors } = useTheme();
   const { accounts$, currency, allowAddAccount, onSuccess } = route.params;
   const accountIds = useGetAccountIds(accounts$);
-  const accounts = useSelector(accountsByCryptoCurrencyScreenSelector(currency, accountIds)) as {
-    account: AccountLike;
-    subAccount: SubAccount | null;
-    name: string;
-  }[];
+  const accounts = useSelector(accountsByCryptoCurrencyScreenSelector(currency, accountIds));
   const onSelect = useCallback(
     (account: AccountLike, parentAccount?: Account) => {
       onSuccess && onSuccess(account, parentAccount);
@@ -118,15 +116,30 @@ function SelectAccount({ navigation, route }: Props) {
     [onSelect],
   );
 
-  const onAddAccount = useCallback(() => {
-    navigation.navigate(NavigatorName.RequestAccountsAddAccounts, {
-      screen: ScreenName.AddAccountsSelectDevice,
+  const navigateOnAddAccountSuccess = useCallback(() => {
+    navigation.navigate(NavigatorName.RequestAccount, {
+      screen: ScreenName.RequestAccountsSelectAccount,
       params: {
-        currency: currency as CryptoOrTokenCurrency,
-        onSuccess: () => navigation.navigate(ScreenName.RequestAccountsSelectAccount, route.params),
+        ...route.params,
       },
     });
-  }, [currency, navigation, route.params]);
+  }, [route.params, navigation]);
+
+  const onAddAccount = useCallback(() => {
+    navigation.navigate(NavigatorName.DeviceSelection, {
+      screen: ScreenName.SelectDevice,
+      params: {
+        currency:
+          currency.type === "TokenCurrency"
+            ? currency.parentCurrency
+            : (currency as CryptoCurrency),
+        context: AddAccountContexts.AddAccounts,
+        inline: true,
+        sourceScreenName: ScreenName.RequestAccountsSelectAccount,
+        onSuccess: navigateOnAddAccountSuccess,
+      },
+    });
+  }, [currency, navigation, navigateOnAddAccountSuccess]);
 
   const renderFooter = useCallback(
     () =>
@@ -138,7 +151,7 @@ function SelectAccount({ navigation, route }: Props) {
             type="primary"
             title={
               <Trans
-                i18nKey="requestAccount.selectAccount.addAccount"
+                i18nKey={"addAccounts.addNewOrExisting"}
                 values={{
                   currency: currency.name,
                 }}
@@ -152,7 +165,7 @@ function SelectAccount({ navigation, route }: Props) {
   );
 
   const renderList = useCallback(
-    (items: { account: AccountLike; subAccount?: SubAccount | null }[]) => (
+    (items: { account: AccountLike; subAccount?: TokenAccount | null }[]) => (
       <List items={items} renderItem={renderItem} renderFooter={renderFooter} />
     ),
     [renderFooter, renderItem],
@@ -237,4 +250,4 @@ const styles = StyleSheet.create({
     flexDirection: "row",
   },
 });
-export default SelectAccount;
+export default withDiscreetMode(SelectAccount);

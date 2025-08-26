@@ -41,6 +41,7 @@ export default function AssetPage({ match }: Props) {
   const accounts = useFlattenSortAccounts({
     enforceHideEmptySubAccounts: true,
   }).filter(a => getAccountCurrency(a).id === match.params.assetId);
+
   const lookupParentAccount = useCallback(
     (id: string): Account | undefined | null => allAccounts.find(a => a.id === id) || null,
     [allAccounts],
@@ -59,6 +60,7 @@ export default function AssetPage({ match }: Props) {
         <AssetHeader account={accounts[0]} parentAccount={parentAccount} />
       </Box>
       <BalanceSummary
+        account={accounts[0]}
         key={currency.id}
         countervalueFirst={countervalueFirst}
         currency={currency}
@@ -71,12 +73,7 @@ export default function AssetPage({ match }: Props) {
         <AccountDistribution accounts={accounts} />
       </Box>
       <Box mt={40}>
-        <OperationsList
-          accounts={accounts}
-          title={t("dashboard.recentActivity")}
-          t={t}
-          withAccount
-        />
+        <OperationsList accounts={accounts} title={t("dashboard.recentActivity")} withAccount />
       </Box>
     </Box>
   );

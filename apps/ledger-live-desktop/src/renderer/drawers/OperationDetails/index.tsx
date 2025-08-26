@@ -188,7 +188,10 @@ const OperationD = (props: Props) => {
     ? getTransactionExplorer(getDefaultExplorerView(mainAccount.currency), operation)
     : getDefaultTransactionExplorer(getDefaultExplorerView(mainAccount.currency), operation.hash);
 
+  const OpDetailsPostAccountSection =
+    specific?.operationDetails?.OperationDetailsPostAccountSection;
   const OpDetailsExtra = specific?.operationDetails?.OperationDetailsExtra || OperationDetailsExtra;
+  const OpDetailsPostAlert = specific?.operationDetails?.OperationDetailsPostAlert;
   const { hasFailed } = operation;
   const subOperations: Operation[] = useMemo(
     () => operation.subOperations || [],
@@ -325,6 +328,7 @@ const OperationD = (props: Props) => {
         color="palette.text.shade60"
         mt={0}
         mb={1}
+        data-testid="transaction-type"
       >
         <Trans i18nKey={`operation.type.${editable ? "SENDING" : operation.type}`} />
       </Text>
@@ -358,6 +362,7 @@ const OperationD = (props: Props) => {
                     showCode
                     val={amount}
                     fontSize={7}
+                    data-testid="amountReceived-drawer"
                     disableRounding
                   />
                 </ToolTip>
@@ -368,7 +373,13 @@ const OperationD = (props: Props) => {
       ) : (
         <Box flex={1} mb={2} alignItems="center">
           <Skeleton show={show} width={160} barHeight={16} minHeight={32}>
-            <Text ff="Inter|SemiBold" textAlign="center" fontSize={7} color="palette.text.shade80">
+            <Text
+              data-testid="nft-name-operationDrawer"
+              ff="Inter|SemiBold"
+              textAlign="center"
+              fontSize={7}
+              color="palette.text.shade80"
+            >
               {(metadata as NFTMetadata)?.nftName || "-"}
             </Text>
           </Skeleton>
@@ -416,6 +427,7 @@ const OperationD = (props: Props) => {
               <Box mr={2}>
                 {hasFailed ? null : (
                   <CounterValue
+                    data-testid="operation-amount"
                     alwaysShowSign
                     color="palette.text.shade60"
                     fontSize={3}
@@ -491,7 +503,13 @@ const OperationD = (props: Props) => {
               />
             </Box>
           ) : undefined}
-          <Text ff="Inter|SemiBold" textAlign="center" fontSize={4} color="palette.text.shade60">
+          <Text
+            data-testid="operation-type"
+            ff="Inter|SemiBold"
+            textAlign="center"
+            fontSize={4}
+            color="palette.text.shade60"
+          >
             <Trans i18nKey={`operation.type.${operation.type}`} />
           </Text>
         </OpDetailsData>
@@ -601,7 +619,9 @@ const OperationD = (props: Props) => {
               </Box>
 
               <TextEllipsis>
-                <Link onClick={goToMainAccount}>{name}</Link>
+                <Link data-testId="account-name" onClick={goToMainAccount}>
+                  {name}
+                </Link>
               </TextEllipsis>
               <AccountTagDerivationMode account={account} />
             </Box>
@@ -623,16 +643,23 @@ const OperationD = (props: Props) => {
           </Box>
         </OpDetailsData>
       </OpDetailsSection>
+      {OpDetailsPostAccountSection && (
+        <OpDetailsPostAccountSection
+          operation={operation}
+          type={type}
+          account={account as Account}
+        />
+      )}
       {isNftOperation ? <NFTOperationDetails operation={operation} /> : null}
       <OpDetailsSection>
         <OpDetailsTitle>{t("operationDetails.date")}</OpDetailsTitle>
-        <OpDetailsData>{dateFormatted}</OpDetailsData>
+        <OpDetailsData data-testid="operation-date">{dateFormatted}</OpDetailsData>
       </OpDetailsSection>
       <B />
       <OpDetailsSection>
         <OpDetailsTitle>{t("operationDetails.identifier")}</OpDetailsTitle>
         <OpDetailsData>
-          <HashContainer>
+          <HashContainer data-testid="operation-id">
             <SplitAddress value={hash} />
           </HashContainer>
           <GradientHover>
@@ -674,6 +701,9 @@ const OperationD = (props: Props) => {
         <OpDetailsExtra operation={operation} type={type} account={account as Account} />
       )}
       <B />
+      {OpDetailsPostAlert && (
+        <OpDetailsPostAlert operation={operation} type={type} account={account as Account} />
+      )}
     </Box>
   );
 };

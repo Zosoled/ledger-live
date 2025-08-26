@@ -18,6 +18,11 @@ export type CardanoExtendedPublicKey = {
   publicKeyHex: string;
   chainCodeHex: string;
 };
+// Coming from @cardano-foundation/ledgerjs-hw-app-cardano code (type TxOutputFormat)
+export enum CardanoTxOutputFormat {
+  ARRAY_LEGACY = 0,
+  MAP_BABBAGE = 1,
+}
 export type GetAddressRequest = {
   path: string;
   stakingPathString: string;
@@ -31,6 +36,7 @@ export type SignerTxInput = {
   path: string | null;
 };
 export type SignerTxOutput = {
+  format: CardanoTxOutputFormat;
   amount: string;
   destination:
     | {
@@ -54,24 +60,52 @@ export type SignerTxOutput = {
     }>;
   }>;
 };
-export type SignerTxCertificate =
-  | {
-      type: "REGISTRATION" | "DEREGISTRATION";
-      params: {
-        stakeCredential: {
-          keyPath: string;
-        };
-      };
-    }
-  | {
-      type: "DELEGATION";
-      params: {
-        stakeCredential: {
-          keyPath: string;
-        };
-        poolKeyHashHex: string;
-      };
+
+export type RegistrationCertificate = {
+  type: "REGISTRATION";
+  params: {
+    stakeCredential: {
+      keyPath: string;
     };
+    deposit: string;
+  };
+};
+
+export type DeregistrationCertificate = {
+  type: "DEREGISTRATION";
+  params: {
+    stakeCredential: {
+      keyPath: string;
+    };
+    deposit: string;
+  };
+};
+
+export type DelegationCertificate = {
+  type: "DELEGATION";
+  params: {
+    stakeCredential: {
+      keyPath: string;
+    };
+    poolKeyHashHex: string;
+  };
+};
+
+export type VoteDelegationCertificate = {
+  type: "VOTE_DELEGATION_ABSTAIN";
+  params: {
+    stakeCredential: {
+      keyPath: string;
+    };
+  };
+};
+
+export type SignerTxCertificate =
+  | RegistrationCertificate
+  | DeregistrationCertificate
+  | DelegationCertificate
+  | VoteDelegationCertificate;
+
 export type SignerTxWithdrawal = {
   stakeCredential: {
     keyPath: string;

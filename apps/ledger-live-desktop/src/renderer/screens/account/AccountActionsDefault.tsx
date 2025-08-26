@@ -7,6 +7,8 @@ import IconSell from "~/renderer/icons/Plus";
 import IconReceive from "~/renderer/icons/Receive";
 import IconSend from "~/renderer/icons/Send";
 import IconSwap from "~/renderer/icons/Swap";
+import IconCoins from "~/renderer/icons/Coins";
+import { useGetStakeLabelLocaleBased } from "~/renderer/hooks/useGetStakeLabelLocaleBased";
 
 type Props = {
   onClick: () => void;
@@ -45,6 +47,7 @@ export const SendActionDefault = ({ onClick }: { onClick: () => void }) => (
     onClick={onClick}
     iconComponent={<IconSend size={14} />}
     labelComponent={<Trans i18nKey="send.title" />}
+    accountActionsTestId={"send-button"}
   />
 );
 export const ReceiveActionDefault = ({ onClick }: { onClick: () => void }) => (
@@ -82,6 +85,25 @@ export const SellActionDefault = ({ onClick }: { onClick: () => void }) => {
       iconComponent={<IconSell size={14} />}
       labelComponent={<Trans i18nKey="accounts.contextMenu.sell" />}
       accountActionsTestId={"sell-button"}
+    />
+  );
+};
+export const StakeActionDefault = ({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void;
+  disabled: boolean;
+}) => {
+  const label = useGetStakeLabelLocaleBased();
+  return (
+    <ActionDefault
+      key="stake"
+      onClick={onClick}
+      disabled={disabled}
+      iconComponent={<IconCoins size={14} />}
+      labelComponent={label}
+      accountActionsTestId={"stake-button"}
     />
   );
 };

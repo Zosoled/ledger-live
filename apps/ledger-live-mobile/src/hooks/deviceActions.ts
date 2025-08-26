@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { createAction as appCreateAction } from "@ledgerhq/live-common/hw/actions/app";
 import { createAction as transactionCreateAction } from "@ledgerhq/live-common/hw/actions/transaction";
 import { createAction as startExchangeCreateAction } from "@ledgerhq/live-common/hw/actions/startExchange";
@@ -11,14 +11,15 @@ import { createAction as staxFetchImageCreateAction } from "@ledgerhq/live-commo
 import { createAction as installLanguageCreateAction } from "@ledgerhq/live-common/hw/actions/installLanguage";
 import { createAction as staxRemoveImageCreateAction } from "@ledgerhq/live-common/hw/actions/customLockScreenRemove";
 import { createAction as renameDeviceCreateAction } from "@ledgerhq/live-common/hw/actions/renameDevice";
+import type { Device } from "@ledgerhq/live-common/hw/actions/types";
 import renameDevice from "@ledgerhq/live-common/hw/renameDevice";
 import customLockScreenLoad from "@ledgerhq/live-common/hw/customLockScreenLoad";
 import installLanguage from "@ledgerhq/live-common/hw/installLanguage";
 import customLockScreenFetch from "@ledgerhq/live-common/hw/customLockScreenFetch";
 import customLockScreenRemove from "@ledgerhq/live-common/hw/customLockScreenRemove";
-import connectManager from "@ledgerhq/live-common/hw/connectManager";
+import connectManagerFactory from "@ledgerhq/live-common/hw/connectManager";
 import initSwap from "@ledgerhq/live-common/exchange/swap/initSwap";
-import connectApp from "@ledgerhq/live-common/hw/connectApp";
+import connectAppFactory from "@ledgerhq/live-common/hw/connectApp";
 import useEnv from "@ledgerhq/live-common/hooks/useEnv";
 import startExchange from "@ledgerhq/live-common/exchange/platform/startExchange";
 import completeExchange from "@ledgerhq/live-common/exchange/platform/completeExchange";
@@ -34,36 +35,66 @@ import {
   staxRemoveImageExecMock,
   renameDeviceExecMock,
 } from "../../e2e/bridge/types";
+import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
 
 export function useAppDeviceAction() {
-  const mock = useEnv("MOCK");
-  return useMemo(() => appCreateAction(mock ? connectAppExecMock : connectApp), [mock]);
+  const envMock = useEnv("MOCK");
+  const deviceProxy = useEnv("DEVICE_PROXY_URL");
+  const mock = envMock && !deviceProxy;
+  const isLdmkConnectAppEnabled = useFeature("ldmkConnectApp")?.enabled ?? false;
+  return useMemo(
+    () =>
+      appCreateAction(mock ? connectAppExecMock : connectAppFactory({ isLdmkConnectAppEnabled })),
+    [isLdmkConnectAppEnabled, mock],
+  );
 }
 
 export function useTransactionDeviceAction() {
   const mock = useEnv("MOCK");
-  return useMemo(() => transactionCreateAction(mock ? connectAppExecMock : connectApp), [mock]);
+  const isLdmkConnectAppEnabled = useFeature("ldmkConnectApp")?.enabled ?? false;
+  return useMemo(
+    () =>
+      transactionCreateAction(
+        mock ? connectAppExecMock : connectAppFactory({ isLdmkConnectAppEnabled }),
+      ),
+    [isLdmkConnectAppEnabled, mock],
+  );
 }
 
 export function useInitSwapDeviceAction() {
   const mock = useEnv("MOCK");
+  const isLdmkConnectAppEnabled = useFeature("ldmkConnectApp")?.enabled ?? false;
   return useMemo(
     () =>
       mock
         ? initSwapCreateAction(connectAppExecMock, initSwapExecMock)
-        : initSwapCreateAction(connectApp, initSwap),
-    [mock],
+        : initSwapCreateAction(connectAppFactory({ isLdmkConnectAppEnabled }), initSwap),
+    [isLdmkConnectAppEnabled, mock],
   );
 }
 
 export function useManagerDeviceAction() {
   const mock = useEnv("MOCK");
-  return useMemo(() => managerCreateAction(mock ? connectManagerExecMock : connectManager), [mock]);
+  const isLdmkConnectAppEnabled = useFeature("ldmkConnectApp")?.enabled ?? false;
+  return useMemo(
+    () =>
+      managerCreateAction(
+        mock ? connectManagerExecMock : connectManagerFactory({ isLdmkConnectAppEnabled }),
+      ),
+    [isLdmkConnectAppEnabled, mock],
+  );
 }
 
 export function useSignMessageDeviceAction() {
   const mock = useEnv("MOCK");
-  return useMemo(() => signMessageCreateAction(mock ? connectAppExecMock : connectApp), [mock]);
+  const isLdmkConnectAppEnabled = useFeature("ldmkConnectApp")?.enabled ?? false;
+  return useMemo(
+    () =>
+      signMessageCreateAction(
+        mock ? connectAppExecMock : connectAppFactory({ isLdmkConnectAppEnabled }),
+      ),
+    [isLdmkConnectAppEnabled, mock],
+  );
 }
 
 export function useInstallLanguageDeviceAction() {
@@ -100,12 +131,13 @@ export function useStaxRemoveImageDeviceAction() {
 
 export function useStartExchangeDeviceAction() {
   const mock = useEnv("MOCK");
+  const isLdmkConnectAppEnabled = useFeature("ldmkConnectApp")?.enabled ?? false;
   return useMemo(
     () =>
       mock
         ? startExchangeCreateAction(connectAppExecMock, startExchangeExecMock)
-        : startExchangeCreateAction(connectApp, startExchange),
-    [mock],
+        : startExchangeCreateAction(connectAppFactory({ isLdmkConnectAppEnabled }), startExchange),
+    [isLdmkConnectAppEnabled, mock],
   );
 }
 
@@ -123,4 +155,19 @@ export function useRenameDeviceAction() {
     () => renameDeviceCreateAction(mock ? renameDeviceExecMock : renameDevice),
     [mock],
   );
+}
+
+export function useSelectDevice() {
+  const [device, setDevice] = useState<Device | null | undefined>(null);
+
+  const onDeviceUpdated = useRef<() => void>();
+  const registerDeviceSelection = useCallback((handler: () => void) => {
+    onDeviceUpdated.current = handler;
+  }, []);
+  const selectDevice = useCallback((device: Device | null | undefined) => {
+    setDevice(device);
+    onDeviceUpdated.current?.();
+  }, []);
+
+  return { device, selectDevice, registerDeviceSelection };
 }

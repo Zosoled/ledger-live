@@ -1,5 +1,6 @@
 import "./polyfill";
 import "./live-common-setup";
+import "./iosWebsocketFix";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import React, { Component, useCallback, useMemo, useEffect } from "react";
 import { StyleSheet, LogBox, Appearance, AppState } from "react-native";
@@ -10,11 +11,8 @@ import Transport from "@ledgerhq/hw-transport";
 import { NotEnoughBalance } from "@ledgerhq/errors";
 import { log } from "@ledgerhq/logs";
 import { checkLibs } from "@ledgerhq/live-common/sanityChecks";
-import { useCountervaluesExport } from "@ledgerhq/live-countervalues-react";
-import { pairId } from "@ledgerhq/live-countervalues/helpers";
 import "./config/configInit";
-import isEqual from "lodash/isEqual";
-import { postOnboardingSelector } from "@ledgerhq/live-common/postOnboarding/reducer";
+import "./config/bridge-setup";
 import Config from "react-native-config";
 import { LogLevel, PerformanceProfiler, RenderPassReport } from "@shopify/react-native-performance";
 import useEnv from "@ledgerhq/live-common/hooks/useEnv";
@@ -22,23 +20,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { init } from "../e2e/bridge/client";
 import logger from "./logger";
 import {
-  saveAccounts,
-  saveBle,
-  saveSettings,
-  saveCountervalues,
-  savePostOnboardingState,
-  saveMarketState,
-  saveTrustchainState,
-  saveWalletExportState,
-} from "./db";
-import {
-  exportSelector as settingsExportSelector,
   osThemeSelector,
   hasSeenAnalyticsOptInPromptSelector,
   hasCompletedOnboardingSelector,
+  trackingEnabledSelector,
+  reportErrorsEnabledSelector,
 } from "~/reducers/settings";
-import { accountsSelector, exportSelector as accountsExportSelector } from "~/reducers/accounts";
-import { exportSelector as bleSelector } from "~/reducers/ble";
+import { accountsSelector } from "~/reducers/accounts";
 import LocaleProvider, { i18n } from "~/context/Locale";
 import RebootProvider from "~/context/Reboot";
 import AuthPass from "~/context/AuthPass";
@@ -48,23 +36,17 @@ import LoadingApp from "~/components/LoadingApp";
 import StyledStatusBar from "~/components/StyledStatusBar";
 import AnalyticsConsole from "~/components/AnalyticsConsole";
 import DebugTheme from "~/components/DebugTheme";
-import useDBSaveEffect from "~/components/DBSave";
-import useAppStateListener from "~/components/useAppStateListener";
 import SyncNewAccounts from "~/bridge/SyncNewAccounts";
-
 import SegmentSetup from "~/analytics/SegmentSetup";
 import HookSentry from "~/components/HookSentry";
 import HookNotifications from "~/notifications/HookNotifications";
 import RootNavigator from "~/components/RootNavigator";
 import SetEnvsFromSettings from "~/components/SetEnvsFromSettings";
-import type { State } from "~/reducers/types";
-import { useTrackingPairs } from "~/actions/general";
 import ExperimentalHeader from "~/screens/Settings/Experimental/ExperimentalHeader";
 import Modals from "~/screens/Modals";
 import NavBarColorHandler from "~/components/NavBarColorHandler";
 import { FirebaseRemoteConfigProvider } from "~/components/FirebaseRemoteConfig";
 import { FirebaseFeatureFlagsProvider } from "~/components/FirebaseFeatureFlags";
-import AdjustSetup from "~/components/AdjustSetup";
 import { TermsAndConditionMigrateLegacyData } from "~/logic/terms";
 import HookDynamicContentCards from "~/dynamicContent/useContentCards";
 import PlatformAppProviderWrapper from "./PlatformAppProviderWrapper";
@@ -81,19 +63,44 @@ import {
 } from "@ledgerhq/live-common/exchange/swap/hooks/index";
 import useAccountsWithFundsListener from "@ledgerhq/live-common/hooks/useAccountsWithFundsListener";
 import { updateIdentify } from "./analytics";
-import { getFeature, useFeature } from "@ledgerhq/live-common/featureFlags/index";
+import { FeatureToggle, getFeature, useFeature } from "@ledgerhq/live-common/featureFlags/index";
 import { StorylyProvider } from "./components/StorylyStories/StorylyProvider";
 import { useSettings } from "~/hooks";
 import AppProviders from "./AppProviders";
 import { useAutoDismissPostOnboardingEntryPoint } from "@ledgerhq/live-common/postOnboarding/hooks/index";
-import QueuedDrawersContextProvider from "~/newArch/components/QueuedDrawer/QueuedDrawersContextProvider";
-import { exportMarketSelector } from "./reducers/market";
-import { trustchainStoreSelector } from "@ledgerhq/trustchain/store";
-import { walletSelector } from "~/reducers/wallet";
-import { exportWalletState, walletStateExportShouldDiffer } from "@ledgerhq/live-wallet/store";
+import QueuedDrawersContextProvider from "LLM/components/QueuedDrawer/QueuedDrawersContextProvider";
+import { registerTransports } from "~/services/registerTransports";
+import { useDeviceManagementKitEnabled } from "@ledgerhq/live-dmk-mobile";
+import { StoragePerformanceOverlay } from "./newArch/storage/screens/PerformanceMonitor";
+import { useDeviceManagementKit } from "@ledgerhq/live-dmk-mobile";
+import AppVersionBlocker from "LLM/features/AppBlockers/components/AppVersionBlocker";
+import AppGeoBlocker from "LLM/features/AppBlockers/components/AppGeoBlocker";
+import {
+  TrackingConsent,
+  DatadogProvider,
+  AutoInstrumentationConfiguration,
+  DdSdkReactNative,
+  PropagatorType,
+} from "@datadog/mobile-react-native";
+import { PartialInitializationConfiguration } from "@datadog/mobile-react-native/lib/typescript/DdSdkReactNativeConfiguration";
+import {
+  customActionEventMapper,
+  customErrorEventMapper,
+  customLogEventMapper,
+  initializeDatadogProvider,
+} from "./datadog";
+import { initSentry } from "./sentry";
+import getOrCreateUser from "./user";
+import { FIRST_PARTY_MAIN_HOST_DOMAIN } from "./utils/constants";
+import useNativeStartupInfo from "./hooks/useNativeStartupInfo";
+import { ConfigureDBSaveEffects } from "./components/DBSave";
 
 if (Config.DISABLE_YELLOW_BOX) {
   LogBox.ignoreAllLogs();
+}
+
+if (__DEV__) {
+  require("./ReactotronConfig");
 }
 
 checkLibs({
@@ -109,16 +116,48 @@ const styles = StyleSheet.create({
   },
 });
 
-function walletExportSelector(state: State) {
-  return exportWalletState(walletSelector(state));
-}
-
 function App() {
   const accounts = useSelector(accountsSelector);
   const analyticsFF = useFeature("llmAnalyticsOptInPrompt");
+  const datadogFF = useFeature("llmDatadog");
+  const sentryFF = useFeature("llmSentry");
+  const isLDMKEnabled = useDeviceManagementKitEnabled();
+  const providerNumber = useEnv("FORCE_PROVIDER");
   const hasSeenAnalyticsOptInPrompt = useSelector(hasSeenAnalyticsOptInPromptSelector);
   const hasCompletedOnboarding = useSelector(hasCompletedOnboardingSelector);
+  const dmk = useDeviceManagementKit();
   const dispatch = useDispatch();
+  const isTrackingEnabled = useSelector(trackingEnabledSelector);
+  const automaticBugReportingEnabled = useSelector(reportErrorsEnabledSelector);
+  useNativeStartupInfo();
+
+  const datadogAutoInstrumentation: AutoInstrumentationConfiguration = useMemo(
+    () => ({
+      trackErrors: datadogFF?.params?.trackErrors ?? false,
+      trackInteractions: datadogFF?.params?.trackInteractions ?? false,
+      trackResources: datadogFF?.params?.trackResources ?? false,
+      errorEventMapper: customErrorEventMapper(!automaticBugReportingEnabled),
+      actionEventMapper: customActionEventMapper,
+      logEventMapper: customLogEventMapper,
+      firstPartyHosts: [
+        {
+          match: FIRST_PARTY_MAIN_HOST_DOMAIN,
+          propagatorTypes: [PropagatorType.DATADOG, PropagatorType.TRACECONTEXT],
+        },
+      ],
+    }),
+    [datadogFF?.params, automaticBugReportingEnabled],
+  );
+
+  useEffect(() => {
+    if (providerNumber && isLDMKEnabled) {
+      dmk?.setProvider(providerNumber);
+    }
+    // setting provider only at initialisation
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLDMKEnabled, dmk]);
+
+  useEffect(() => registerTransports(isLDMKEnabled), [isLDMKEnabled]);
 
   useEffect(() => {
     if (
@@ -137,113 +176,61 @@ function App() {
     hasCompletedOnboarding,
   ]);
 
+  useEffect(() => {
+    if (!datadogFF?.enabled) return;
+    const setUserEquipmentId = async () => {
+      const { user } = await getOrCreateUser();
+      if (!user) return;
+      const { id } = user; // id is the user uuid aka equipment ID (used
+      // in segment)
+      DdSdkReactNative.setUserInfo({
+        id,
+      });
+    };
+    initializeDatadogProvider(
+      datadogFF?.params as Partial<PartialInitializationConfiguration>,
+      isTrackingEnabled ? TrackingConsent.GRANTED : TrackingConsent.NOT_GRANTED,
+    )
+      .then(setUserEquipmentId)
+      .catch(e => {
+        console.error("Datadog initialization failed", e);
+      });
+  }, [datadogFF?.params, datadogFF?.enabled, isTrackingEnabled]);
+
+  useEffect(() => {
+    if (sentryFF?.enabled) {
+      initSentry(automaticBugReportingEnabled);
+    }
+  }, [sentryFF?.enabled, automaticBugReportingEnabled]);
+
   useAccountsWithFundsListener(accounts, updateIdentify);
-  useAppStateListener();
   useFetchCurrencyAll();
   useFetchCurrencyFrom();
   useListenToHidDevices();
   useAutoDismissPostOnboardingEntryPoint();
 
-  const getSettingsChanged = useCallback((a: State, b: State) => a.settings !== b.settings, []);
-  const getAccountsChanged = useCallback(
-    (
-      oldState: State,
-      newState: State,
-    ):
-      | {
-          changed: string[];
-        }
-      | null
-      | undefined => {
-      if (oldState.accounts !== newState.accounts) {
-        return {
-          changed: newState.accounts.active
-            .filter(a => {
-              const old = oldState.accounts.active.find(b => a.id === b.id);
-              return !old || old !== a;
-            })
-            .map(a => a.id),
-        };
-      }
-      return null;
-    },
-    [],
-  );
-
-  const getPostOnboardingStateChanged = useCallback(
-    (a: State, b: State) => !isEqual(a.postOnboarding, b.postOnboarding),
-    [],
-  );
-
-  const rawState = useCountervaluesExport();
-  const trackingPairs = useTrackingPairs();
-  const pairIds = useMemo(() => trackingPairs.map(p => pairId(p)), [trackingPairs]);
-  useDBSaveEffect({
-    save: saveCountervalues,
-    throttle: 2000,
-    getChangesStats: () => ({
-      changed: !!Object.keys(rawState.status).length,
-      pairIds,
-    }),
-    lense: () => rawState,
-  });
-  useDBSaveEffect({
-    save: saveSettings,
-    throttle: 400,
-    getChangesStats: getSettingsChanged,
-    lense: settingsExportSelector,
-  });
-  useDBSaveEffect({
-    save: saveAccounts,
-    throttle: 500,
-    getChangesStats: getAccountsChanged,
-    lense: accountsExportSelector,
-  });
-  useDBSaveEffect({
-    save: saveBle,
-    throttle: 500,
-    getChangesStats: (a, b) => a.ble !== b.ble,
-    lense: bleSelector,
-  });
-  useDBSaveEffect({
-    save: savePostOnboardingState,
-    throttle: 500,
-    getChangesStats: getPostOnboardingStateChanged,
-    lense: postOnboardingSelector,
-  });
-
-  useDBSaveEffect({
-    save: saveMarketState,
-    throttle: 500,
-    getChangesStats: (a, b) => a.market !== b.market,
-    lense: exportMarketSelector,
-  });
-
-  useDBSaveEffect({
-    save: saveTrustchainState,
-    throttle: 500,
-    getChangesStats: (a, b) => a.trustchain !== b.trustchain,
-    lense: trustchainStoreSelector,
-  });
-
-  useDBSaveEffect({
-    save: saveWalletExportState,
-    throttle: 500,
-    getChangesStats: (a, b) => walletStateExportShouldDiffer(a.wallet, b.wallet),
-    lense: walletExportSelector,
-  });
-
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <>
+      <ConfigureDBSaveEffects />
       <SyncNewAccounts priority={5} />
       <TransactionsAlerts />
       <ExperimentalHeader />
-      <RootNavigator />
+      {datadogFF?.enabled ? (
+        <DatadogProvider configuration={datadogAutoInstrumentation}>
+          <RootNavigator />
+        </DatadogProvider>
+      ) : (
+        <RootNavigator />
+      )}
+
       <AnalyticsConsole />
       <PerformanceConsole />
       <DebugTheme />
       <Modals />
-    </GestureHandlerRootView>
+      <FeatureToggle featureId="llmMmkvMigration">
+        <StoragePerformanceOverlay />
+      </FeatureToggle>
+    </>
   );
 }
 
@@ -311,7 +298,7 @@ export default class Root extends Component {
   }
 
   onInitFinished = () => {
-    if (Config.MOCK) {
+    if (Config.DETOX) {
       init();
     }
   };
@@ -329,18 +316,18 @@ export default class Root extends Component {
             ready ? (
               <>
                 <SetEnvsFromSettings />
+                {/* TODO: delete the following HookSentry when Sentry will be completelyy switched off */}
                 <HookSentry />
-                <AdjustSetup />
                 <SegmentSetup />
                 <HookNotifications />
                 <HookDynamicContentCards />
                 <TermsAndConditionMigrateLegacyData />
                 <QueuedDrawersContextProvider>
-                  <I18nextProvider i18n={i18n}>
-                    <LocaleProvider>
-                      <PlatformAppProviderWrapper>
-                        <FirebaseRemoteConfigProvider>
-                          <FirebaseFeatureFlagsProvider getFeature={getFeature}>
+                  <FirebaseRemoteConfigProvider>
+                    <FirebaseFeatureFlagsProvider getFeature={getFeature}>
+                      <I18nextProvider i18n={i18n}>
+                        <LocaleProvider>
+                          <PlatformAppProviderWrapper>
                             <SafeAreaProvider>
                               <PerformanceProvider>
                                 <StorylyProvider>
@@ -348,19 +335,25 @@ export default class Root extends Component {
                                     <StyledStatusBar />
                                     <NavBarColorHandler />
                                     <AuthPass>
-                                      <AppProviders initialCountervalues={initialCountervalues}>
-                                        <App />
-                                      </AppProviders>
+                                      <GestureHandlerRootView style={styles.root}>
+                                        <AppProviders initialCountervalues={initialCountervalues}>
+                                          <AppGeoBlocker>
+                                            <AppVersionBlocker>
+                                              <App />
+                                            </AppVersionBlocker>
+                                          </AppGeoBlocker>
+                                        </AppProviders>
+                                      </GestureHandlerRootView>
                                     </AuthPass>
                                   </StylesProvider>
                                 </StorylyProvider>
                               </PerformanceProvider>
                             </SafeAreaProvider>
-                          </FirebaseFeatureFlagsProvider>
-                        </FirebaseRemoteConfigProvider>
-                      </PlatformAppProviderWrapper>
-                    </LocaleProvider>
-                  </I18nextProvider>
+                          </PlatformAppProviderWrapper>
+                        </LocaleProvider>
+                      </I18nextProvider>
+                    </FirebaseFeatureFlagsProvider>
+                  </FirebaseRemoteConfigProvider>
                 </QueuedDrawersContextProvider>
               </>
             ) : (

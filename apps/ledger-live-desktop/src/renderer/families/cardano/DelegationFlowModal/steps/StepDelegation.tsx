@@ -36,6 +36,7 @@ export default function StepDelegation({
     setSelectedPool(stakePool);
     const bridge: AccountBridge<CardanoTransaction> = getAccountBridge(account);
     onUpdateTransaction(() => {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       const updatedTransaction = bridge.updateTransaction(transaction as CardanoTransaction, {
         mode: "delegate",
         poolId: stakePool.poolId,
@@ -44,6 +45,7 @@ export default function StepDelegation({
     });
   };
 
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const selectedPoolId = (transaction as CardanoTransaction).poolId;
 
   return (
@@ -56,6 +58,7 @@ export default function StepDelegation({
         t={t}
         delegation={delegation}
         onChangeValidator={selectPool}
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         selectedPoolId={selectedPoolId as string}
       />
       {displayError ? (
@@ -77,7 +80,7 @@ export function StepDelegationFooter({
 }: StepProps) {
   invariant(account, "account required");
   const { errors } = status;
-  const canNext = !bridgePending && !errors.amount && transaction;
+  const canNext = !bridgePending && Object.keys(errors).length === 0 && transaction;
 
   return (
     <Box horizontal justifyContent="flex-end" flow={2} grow>

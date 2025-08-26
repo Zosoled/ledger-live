@@ -20,20 +20,25 @@ const KeyboardView = React.memo<Props>(
   }: Props) => {
     const isExperimental = useExperimental();
     const headerHeight = React.useContext(HeaderHeightContext) || 0;
-    let behaviorParam: KeyboardAvoidingViewProps["behavior"] | undefined;
-    const keyboardVerticalOffset = isExperimental || Config.MOCK ? ExperimentalHeaderHeight : 0;
-
-    if (Platform.OS === "ios") {
-      behaviorParam = behavior || "height";
-    }
+    const isAndroid35 = Platform.OS === "android" && Platform.Version >= 35;
+    const experimentalHeaderHeight = isExperimental || Config.DETOX ? ExperimentalHeaderHeight : 0;
+    const keyboardVerticalOffset = isAndroid35
+      ? headerHeight + experimentalHeaderHeight
+      : headerHeight + (StatusBar.currentHeight || 0) + experimentalHeaderHeight;
+    const behaviorParam = behavior ?? "height";
+    const behaviorProp: KeyboardAvoidingViewProps["behavior"] = Platform.select({
+      ios: behaviorParam,
+      // On Android 34 or below, we leave it undefined to use the default behavior
+      // otherwise it can cause the keyboard avoiding to re-render infinitely in
+      // some cases like going back from a modal.
+      android: isAndroid35 ? "height" : undefined,
+    });
 
     return (
       <KeyboardAvoidingView
-        style={style}
-        keyboardVerticalOffset={
-          headerHeight + (StatusBar.currentHeight || 0) + keyboardVerticalOffset
-        }
-        behavior={behaviorParam}
+        style={[style]}
+        keyboardVerticalOffset={keyboardVerticalOffset}
+        behavior={behaviorProp}
         enabled
       >
         {children}

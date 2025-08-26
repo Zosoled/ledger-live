@@ -10,7 +10,7 @@ import { Account, AccountLike } from "@ledgerhq/types-live";
 import React, { useCallback, useMemo } from "react";
 import { TFunction } from "i18next";
 import { withTranslation } from "react-i18next";
-import { connect } from "react-redux";
+import { connect, useSelector } from "react-redux";
 import { useHistory } from "react-router-dom";
 import { compose } from "redux";
 import styled from "styled-components";
@@ -31,6 +31,7 @@ import {
   SellActionDefault,
   SendActionDefault,
   SwapActionDefault,
+  StakeActionDefault,
 } from "./AccountActionsDefault";
 import { useGetSwapTrackingProperties } from "~/renderer/screens/exchange/Swap2/utils/index";
 import { CryptoCurrency, TokenCurrency } from "@ledgerhq/types-cryptoassets";
@@ -39,6 +40,9 @@ import { ManageAction } from "~/renderer/families/types";
 import { getAvailableProviders } from "@ledgerhq/live-common/exchange/swap/index";
 import { useFetchCurrencyAll } from "@ledgerhq/live-common/exchange/swap/hooks/index";
 import { isWalletConnectSupported } from "@ledgerhq/live-common/walletConnect/index";
+import { WC_ID } from "@ledgerhq/live-common/wallet-api/constants";
+import { walletSelector } from "~/renderer/reducers/wallet";
+import { useStake } from "LLD/hooks/useStake";
 
 type RenderActionParams = {
   label: React.ReactNode;
@@ -137,7 +141,7 @@ const AccountHeaderSettingsButtonComponent = ({ account, parentAccount, openModa
       initialAccountId: mainAccount.id,
     };
     history.push({
-      pathname: "/platform/ledger-wallet-connect",
+      pathname: `/platform/${WC_ID}`,
       state: params,
     });
   }, [mainAccount.id, history]);
@@ -204,6 +208,15 @@ const AccountHeaderActions = ({ account, parentAccount, openModal }: Props) => {
   const availableOnBuy = !!currency && isCurrencyAvailable(currency.id, "onRamp");
   const availableOnSell = !!currency && isCurrencyAvailable(currency.id, "offRamp");
 
+  const { getCanStakeUsingLedgerLive, getCanStakeUsingPlatformApp, getRouteToPlatformApp } =
+    useStake();
+
+  const canStakeUsingLedgerLive = getCanStakeUsingLedgerLive(currency.id);
+  const canStakeUsingPlatformApp = getCanStakeUsingPlatformApp(currency.id);
+  const canOnlyStakeUsingLedgerLive = canStakeUsingLedgerLive && !canStakeUsingPlatformApp;
+  const walletState = useSelector(walletSelector);
+  const routeToStakePlatformApp = getRouteToPlatformApp(account, walletState, parentAccount);
+
   // don't show buttons until we know whether or not we can show swap button, otherwise possible click jacking
   const showButtons = !!getAvailableProviders();
   const availableOnSwap = currenciesAll.includes(currency.id);
@@ -217,6 +230,25 @@ const AccountHeaderActions = ({ account, parentAccount, openModal }: Props) => {
     }),
     [currency],
   );
+
+  const onStakeViaPlatformApp = useCallback(() => {
+    setTrackingSource("account header actions");
+    track("button_clicked2", {
+      button: "stake",
+      partner: routeToStakePlatformApp?.state.appId,
+      isRedirectConfig: true,
+      ...buttonSharedTrackingFields,
+    });
+    history.push({
+      pathname: routeToStakePlatformApp?.pathname,
+      state: routeToStakePlatformApp?.state,
+    });
+  }, [
+    routeToStakePlatformApp?.state,
+    routeToStakePlatformApp?.pathname,
+    buttonSharedTrackingFields,
+    history,
+  ]);
 
   const onBuySell = useCallback(
     (mode = "buy") => {
@@ -250,6 +282,8 @@ const AccountHeaderActions = ({ account, parentAccount, openModal }: Props) => {
         defaultCurrency: currency,
         defaultAccount: account,
         defaultParentAccount: parentAccount,
+        defaultAmountFrom: "0",
+        from: history.location.pathname,
       },
     });
   }, [currency, swapDefaultTrack, history, account, parentAccount, buttonSharedTrackingFields]);
@@ -276,8 +310,9 @@ const AccountHeaderActions = ({ account, parentAccount, openModal }: Props) => {
     });
   }, [openModal, parentAccount, account, buttonSharedTrackingFields]);
 
-  const manageActions: RenderActionParams[] = [
-    ...manageList.map(item => ({
+  const manageActions: RenderActionParams[] = manageList
+    .filter(item => (canOnlyStakeUsingLedgerLive && item.key === "Stake") || item.key !== "Stake")
+    .map(item => ({
       ...item,
       contrastText,
       currency,
@@ -285,12 +320,18 @@ const AccountHeaderActions = ({ account, parentAccount, openModal }: Props) => {
         ...buttonSharedTrackingFields,
         ...item.eventProperties,
       },
-    })),
-  ];
+    }));
 
   const buyHeader = <BuyActionDefault onClick={() => onBuySell("buy")} />;
   const sellHeader = <SellActionDefault onClick={() => onBuySell("sell")} />;
   const swapHeader = <SwapActionDefault onClick={onSwap} />;
+
+  const stakeViaPlatformHeader = (
+    <StakeActionDefault
+      onClick={onStakeViaPlatformApp}
+      disabled={account.spendableBalance.isZero()}
+    />
+  );
   const manageActionsHeader = manageActions.map(item => (
     <ActionItem {...item} key={item.accountActionsTestId} />
   ));
@@ -298,6 +339,7 @@ const AccountHeaderActions = ({ account, parentAccount, openModal }: Props) => {
   const NonEmptyAccountHeader = (
     <FadeInButtonsContainer data-testid="account-buttons-group" show={showButtons}>
       {manageActions.length > 0 ? manageActionsHeader : null}
+      {canStakeUsingPlatformApp ? stakeViaPlatformHeader : null}
       {availableOnSwap ? swapHeader : null}
       {availableOnBuy ? buyHeader : null}
       {availableOnSell && sellHeader}

@@ -1,6 +1,6 @@
-import React, { useState, memo, useCallback, useEffect, useRef, useMemo } from "react";
+import React, { useState, memo, useCallback, useEffect, useRef } from "react";
 import { useLocation, useHistory } from "react-router-dom";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import styled from "styled-components";
 import { Trans } from "react-i18next";
 import { TFunction } from "i18next";
@@ -17,16 +17,16 @@ import Item from "./Item";
 import Filter from "./Filter";
 import Sort from "./Sort";
 import UninstallAllButton from "./UninstallAllButton";
-import { openModal } from "~/renderer/actions/modals";
 import debounce from "lodash/debounce";
 import InstallSuccessBanner from "./InstallSuccessBanner";
 import SearchBox from "../../../accounts/AccountList/SearchBox";
-import { App, FeatureId } from "@ledgerhq/types-live";
+import { App } from "@ledgerhq/types-live";
 import { AppType, SortOptions } from "@ledgerhq/live-common/apps/filtering";
 import NoResults from "~/renderer/icons/NoResults";
 import { CryptoOrTokenCurrency } from "@ledgerhq/types-cryptoassets";
-import { useFeatureFlags } from "@ledgerhq/live-common/featureFlags/index";
-import camelCase from "lodash/camelCase";
+import { getEnv } from "@ledgerhq/live-env";
+import { ModularDrawerLocation } from "LLD/features/ModularDrawer";
+import { useOpenAssetFlow } from "LLD/features/ModularDrawer/hooks/useOpenAssetFlow";
 
 // sticky top bar with extra width to cover card boxshadow underneath
 export const StickyTabBar = styled.div`
@@ -79,7 +79,6 @@ const AppsList = ({
 }: Props) => {
   const { push } = useHistory();
   const { search } = useLocation();
-  const reduxDispatch = useDispatch();
   const currenciesAccountsSetup = useSelector(currenciesSelector);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [query, setQuery] = useState("");
@@ -92,6 +91,11 @@ const AppsList = ({
   const onTextChange = useCallback(
     (evt: React.ChangeEvent<HTMLInputElement>) => setQuery(evt.target.value),
     [setQuery],
+  );
+
+  const { openAddAccountFlow } = useOpenAssetFlow(
+    { location: ModularDrawerLocation.ADD_ACCOUNT },
+    "manager",
   );
 
   /** clear search field on tab change */
@@ -109,15 +113,11 @@ const AppsList = ({
   }, [search]);
   const { installed: installedApps, uninstallQueue, apps } = state;
   const addAccount = useCallback(
-    (currency?: CryptoOrTokenCurrency) => {
+    (currency: CryptoOrTokenCurrency) => {
       push("/accounts");
-      reduxDispatch(
-        openModal("MODAL_ADD_ACCOUNTS", {
-          currency: currency || null,
-        }),
-      );
+      openAddAccountFlow(currency, true);
     },
-    [push, reduxDispatch],
+    [push, openAddAccountFlow],
   );
   const { update, device, catalog } = useAppsSections(state, {
     query,
@@ -126,17 +126,6 @@ const AppsList = ({
   });
 
   const displayedAppList = isDeviceTab ? device : catalog;
-
-  const { getFeature } = useFeatureFlags();
-  const enabledAppList = useMemo(
-    () =>
-      displayedAppList.filter(({ currencyId }: App) => {
-        if (!currencyId) return true;
-        const currencyFeatureKey = camelCase(`currency_${currencyId}`) as FeatureId;
-        return getFeature(currencyFeatureKey)?.enabled ?? true;
-      }),
-    [displayedAppList, getFeature],
-  );
 
   const mapApp = useCallback(
     (app: App, appStoreView: boolean, onlyUpdate?: boolean, showActions?: boolean) => {
@@ -168,6 +157,7 @@ const AppsList = ({
       addAccount,
     ],
   );
+
   return (
     <>
       <InstallSuccessBanner
@@ -177,7 +167,7 @@ const AppsList = ({
       />
       <UpdateAllApps
         optimisticState={optimisticState}
-        update={update}
+        update={getEnv("MOCK_APP_UPDATE") ? device : update}
         state={state}
         dispatch={dispatch}
         isIncomplete={isIncomplete}
@@ -236,8 +226,8 @@ const AppsList = ({
                 />
               )}
             </FilterHeader>
-            {enabledAppList.length ? (
-              enabledAppList.map((app: App) => mapApp(app, !isDeviceTab))
+            {displayedAppList.length ? (
+              displayedAppList.map((app: App) => mapApp(app, !isDeviceTab))
             ) : (
               <Placeholder
                 query={query}

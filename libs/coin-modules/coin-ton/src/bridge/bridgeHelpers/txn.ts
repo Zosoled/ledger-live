@@ -1,11 +1,18 @@
+import { decodeAccountId, encodeTokenAccountId } from "@ledgerhq/coin-framework/account/index";
 import { encodeOperationId } from "@ledgerhq/coin-framework/operation";
+import { findTokenByAddressInCurrency } from "@ledgerhq/cryptoassets/tokens";
 import { Operation } from "@ledgerhq/types-live";
-import { Address } from "@ton/ton";
+import { Address, BitReader, BitString, Cell, Slice } from "@ton/core";
 import BigNumber from "bignumber.js";
 import { TonOperation } from "../../types";
-import { isAddressValid } from "../../utils";
-import { fetchTransactions } from "./api";
-import { TonAddressBook, TonTransaction, TonTransactionsList } from "./api.types";
+import { addressesAreEqual, isAddressValid } from "../../utils";
+import { fetchJettonTransactions, fetchTransactions } from "./api";
+import {
+  TonAddressBook,
+  TonJettonTransfer,
+  TonTransaction,
+  TonTransactionsList,
+} from "./api.types";
 
 export async function getTransactions(
   addr: string,
@@ -29,6 +36,32 @@ export async function getTransactions(
     tmpTxs.transactions.shift(); // first element is repeated
     txs.transactions.push(...tmpTxs.transactions);
     txs.address_book = { ...txs.address_book, ...tmpTxs.address_book };
+  }
+  return txs;
+}
+
+export async function getJettonTransfers(
+  addr: string,
+  startLt?: string,
+): Promise<TonJettonTransfer[]> {
+  const txs = await fetchJettonTransactions(addr, { startLt });
+  if (txs.length === 0) return txs;
+  let tmpTxs: TonJettonTransfer[];
+  let isUncompletedResult = true;
+
+  while (isUncompletedResult) {
+    const { transaction_hash, transaction_lt } = txs[txs.length - 1];
+    tmpTxs = await fetchJettonTransactions(addr, { startLt, endLt: transaction_lt });
+    // we found the last transaction
+    if (tmpTxs.length === 1) {
+      isUncompletedResult = false;
+      break;
+    }
+    // it should always match
+    if (transaction_hash !== tmpTxs[0].transaction_hash)
+      throw Error("[ton] transaction hash does not match");
+    tmpTxs.shift(); // first element is repeated
+    txs.push(...tmpTxs);
   }
   return txs;
 }
@@ -136,7 +169,7 @@ export function mapTxToOps(
     if (isSending) {
       ops.push({
         id: encodeOperationId(accountId, hash, "OUT"),
-        hash: tx.out_msgs[0].hash, // this hash matches with in_msg.hash of IN transaction
+        hash: tx.out_msgs[0].hash,
         type: "OUT",
         value: BigNumber(tx.out_msgs[0].value ?? 0),
         fee: BigNumber(tx.total_fees),
@@ -163,4 +196,151 @@ export function mapTxToOps(
 
     return ops;
   };
+}
+
+export function mapJettonTxToOps(
+  accountId: string,
+  addr: string,
+  addressBook: TonAddressBook,
+  jettonTxMessageHashesMap?: Map<string, string>,
+): (tx: TonJettonTransfer) => TonOperation[] {
+  return (tx: TonJettonTransfer): TonOperation[] => {
+    const accountAddr = Address.parse(addr).toString({ urlSafe: true, bounceable: false });
+    if (accountAddr !== addr) throw Error(`[ton] unexpected address ${accountAddr} ${addr}`);
+
+    const jettonMasterAddr = Address.parse(tx.jetton_master).toString({
+      urlSafe: true,
+      bounceable: true,
+    });
+    const tokenCurrency = findTokenByAddressInCurrency(
+      jettonMasterAddr.toLowerCase(),
+      decodeAccountId(accountId).currencyId,
+    );
+    if (!tokenCurrency) return [];
+    const tokenAccountId = encodeTokenAccountId(accountId, tokenCurrency);
+
+    const ops: TonOperation[] = [];
+    const isReceiving = addressesAreEqual(
+      accountAddr,
+      Address.parse(tx.destination).toString({ urlSafe: true, bounceable: false }),
+    );
+    const isSending = addressesAreEqual(
+      accountAddr,
+      Address.parse(tx.source).toString({ urlSafe: true, bounceable: false }),
+    );
+    if (!isSending && !isReceiving) throw Error("[ton] unexpected addresses");
+
+    const date = new Date(tx.transaction_now * 1000); // now is defined in seconds
+    const hash = tx.transaction_hash;
+
+    if (isReceiving) {
+      ops.push({
+        id: encodeOperationId(tokenAccountId, hash, "IN"),
+        hash,
+        type: "IN",
+        value: BigNumber(tx.amount),
+        fee: BigNumber(0),
+        blockHeight: 1, // we don't have block info
+        blockHash: null,
+        hasFailed: false,
+        accountId: tokenAccountId,
+        senders: getFriendlyAddress(addressBook, tx.source),
+        recipients: [accountAddr],
+        date,
+        extra: {
+          lt: tx.transaction_lt,
+          explorerHash: hash,
+          comment: {
+            isEncrypted: false,
+            text: tx.forward_payload ? decodeForwardPayload(tx.forward_payload) : "",
+          },
+        },
+      });
+    }
+
+    if (isSending) {
+      const hash_message = jettonTxMessageHashesMap
+        ? jettonTxMessageHashesMap.get(hash) ?? hash
+        : hash;
+
+      ops.push({
+        id: encodeOperationId(tokenAccountId, hash_message, "OUT"),
+        hash,
+        type: "OUT",
+        value: BigNumber(tx.amount),
+        fee: BigNumber(0),
+        blockHeight: 1, // we don't have block info
+        blockHash: null,
+        hasFailed: false,
+        accountId: tokenAccountId,
+        senders: [accountAddr],
+        recipients: getFriendlyAddress(addressBook, tx.destination),
+        date,
+        extra: {
+          lt: tx.transaction_lt,
+          explorerHash: hash,
+          comment: {
+            isEncrypted: false,
+            text: tx.forward_payload ? decodeForwardPayload(tx.forward_payload) : "",
+          },
+        },
+      });
+    }
+    return ops;
+  };
+}
+
+// Export these functions for testing
+export function dataToSlice(data: string): Slice | undefined {
+  let buffer: Buffer;
+  if (typeof data === "string") {
+    buffer = Buffer.from(data, "base64");
+
+    try {
+      return Cell.fromBoc(buffer)[0].beginParse();
+    } catch (err) {
+      return new Slice(new BitReader(new BitString(buffer, 0, buffer.length * 8)), []);
+    }
+  }
+
+  return undefined;
+}
+
+export function loadSnakeBytes(slice: Slice): Buffer {
+  let buffer = Buffer.alloc(0);
+
+  while (slice.remainingBits >= 8) {
+    buffer = Buffer.concat([buffer, slice.loadBuffer(slice.remainingBits / 8)]);
+    if (slice.remainingRefs) {
+      slice = slice.loadRef().beginParse();
+    } else {
+      break;
+    }
+  }
+
+  return buffer;
+}
+
+export function decodeForwardPayload(payload: string | null): string {
+  if (!payload) return "";
+
+  try {
+    const slice = dataToSlice(payload);
+
+    if (!slice) return "";
+
+    const opcode = slice.loadUint(32);
+
+    // Format with opcode 0 followed by text
+    if (opcode !== 0) {
+      return "";
+    }
+    const buffer = loadSnakeBytes(slice);
+    const comment = buffer.toString("utf-8");
+
+    return comment;
+  } catch (error) {
+    // Silent failure, returning empty string
+    return "";
+  }
 }

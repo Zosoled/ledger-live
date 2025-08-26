@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import QueuedDrawer from "../../QueuedDrawer";
 import { useRootDrawerContext } from "~/context/RootDrawerContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import storage from "LLM/storage";
 import { InitialDrawerID } from "../types";
 import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
 import { Button, Checkbox, Flex, IconsLegacy, Link, Text } from "@ledgerhq/native-ui";
@@ -9,6 +9,7 @@ import { Linking, View } from "react-native";
 import styled from "styled-components/native";
 import { Trans, useTranslation } from "react-i18next";
 import { LEDGER_APPLE_WARNING_EXPLAINER_LINK } from "~/utils/constants";
+import Config from "react-native-config";
 
 const CheckboxContainer = styled(View)(
   ({ theme }) => `
@@ -36,14 +37,14 @@ export function PTXServicesAppleWarning() {
     () =>
       onClose(() => {
         if (persistentHide) {
-          AsyncStorage.setItem(InitialDrawerID.PTXServicesAppleDrawerKey, "true");
+          storage.save(InitialDrawerID.PTXServicesAppleDrawerKey, "true");
         }
       }),
     [persistentHide, onClose],
   );
 
   useEffect(() => {
-    if (!exchangeDrawerEnabled && !ctaScreensEnabled) {
+    if (!exchangeDrawerEnabled && !ctaScreensEnabled && !Config.DETOX) {
       openDrawer();
     } else {
       _onClose();

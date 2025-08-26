@@ -1,8 +1,9 @@
 /* eslint-disable consistent-return */
-import { Middleware } from "redux";
+import { Middleware } from "@reduxjs/toolkit";
 import { setKey } from "~/renderer/storage";
 import { postOnboardingSelector } from "@ledgerhq/live-common/postOnboarding/reducer";
 import { actionTypePrefix as postOnboardingActionTypePrefix } from "@ledgerhq/live-common/postOnboarding/actions";
+import { isActionWithType } from "./utils";
 
 import { settingsExportSelector, areSettingsLoaded } from "./../reducers/settings";
 import { State } from "../reducers";
@@ -15,7 +16,7 @@ import {
 import {
   trustchainStoreActionTypePrefix,
   trustchainStoreSelector,
-} from "@ledgerhq/trustchain/store";
+} from "@ledgerhq/ledger-key-ring-protocol/store";
 
 import { marketStoreSelector } from "../reducers/market";
 
@@ -39,6 +40,10 @@ function accountsExportSelector(state: State) {
 }
 
 const DBMiddleware: Middleware<{}, State> = store => next => action => {
+  if (!isActionWithType(action)) {
+    return next(action);
+  }
+
   if (DB_MIDDLEWARE_ENABLED && action.type.startsWith("DB:")) {
     const [, type] = action.type.split(":");
     store.dispatch({

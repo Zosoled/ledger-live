@@ -1,7 +1,39 @@
 /* eslint-disable */
 import { PublicKey } from "@solana/web3.js";
-import { LATEST_BLOCKHASH_MOCK, ChainAPI } from "@ledgerhq/coin-solana/api/index";
+import {
+  LATEST_BLOCKHASH_MOCK,
+  ChainAPI,
+  LAST_VALID_BLOCK_HEIGHT_MOCK,
+} from "@ledgerhq/coin-solana/network/index";
 import { Functions } from "@ledgerhq/coin-solana/utils";
+
+// Helper function to generate mock prioritization fees
+const generatePrioritizationFees = (
+  startSlot: number,
+  count: number = 150,
+  prioritizationFee: number = 0,
+) => {
+  return Array.from({ length: count }, (_, index) => ({
+    prioritizationFee,
+    slot: startSlot + index,
+  }));
+};
+
+// Helper function to generate nested prioritization fees format
+const generateNestedPrioritizationFees = (slot: number, prioritizationFee: number = 0) => {
+  return [
+    [
+      {
+        slot,
+        prioritizationFee,
+      },
+      {
+        slot,
+        prioritizationFee,
+      },
+    ],
+  ];
+};
 
 export const getMockedMethods = (): {
   method: Functions<ChainAPI>;
@@ -114,8 +146,8 @@ export const getMockedMethods = (): {
                   programId: new PublicKey(
                     Buffer.from(
                       "06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9",
-                      "hex"
-                    )
+                      "hex",
+                    ),
                   ),
                 },
               ],
@@ -139,9 +171,7 @@ export const getMockedMethods = (): {
             "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 20880 of 200000 compute units",
             "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
           ],
-          postBalances: [
-            83389840, 10000000, 151314748907, 1, 1089991680, 1009200, 898174080,
-          ],
+          postBalances: [83389840, 10000000, 151314748907, 1, 1089991680, 1009200, 898174080],
           postTokenBalances: [
             {
               accountIndex: 1,
@@ -154,9 +184,7 @@ export const getMockedMethods = (): {
               },
             },
           ],
-          preBalances: [
-            93394840, 0, 151314748907, 1, 1089991680, 1009200, 898174080,
-          ],
+          preBalances: [93394840, 0, 151314748907, 1, 1089991680, 1009200, 898174080],
           preTokenBalances: [],
           rewards: [],
           status: { Ok: null },
@@ -169,8 +197,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "8bc4d3e507c0550e3d02ffb5f6daf0772240af8a09e32d236615b4a227243702",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: true,
                 writable: true,
@@ -179,8 +207,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "6e6279fa638560ce9c178033f5b88eacfb5fba6d46ec5902769f1b09eaabc017",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: true,
@@ -189,8 +217,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "069b8857feab8184fb687f634618c035dac439dc1aeb3b5598a0f00000000001",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: false,
@@ -204,8 +232,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: false,
@@ -214,8 +242,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "06a7d517192c5c51218cc94c3d4af17f58daee089ba1fd44e3dbd98a00000000",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: false,
@@ -224,8 +252,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "8c97258f4e2489f1bb3d1029148e0d830b5a1399daff1084048e7bd8dbe9f859",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: false,
@@ -261,8 +289,8 @@ export const getMockedMethods = (): {
                 programId: new PublicKey(
                   Buffer.from(
                     "8c97258f4e2489f1bb3d1029148e0d830b5a1399daff1084048e7bd8dbe9f859",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
               },
             ],
@@ -298,8 +326,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "5c1c77c3d1e8edad4cfb2b2f7e4497d0d83f19e176713876a1d01eeb30a9bf3f",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: true,
                 writable: true,
@@ -308,8 +336,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "8bc4d3e507c0550e3d02ffb5f6daf0772240af8a09e32d236615b4a227243702",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: true,
@@ -388,9 +416,7 @@ export const getMockedMethods = (): {
   {
     method: "getParsedTransactions",
     params: [
-      [
-        "A29zPnK1jPr2tGziTnaAvSnadYR2kLCv9sPywj9FJsaEFjtpwmUonspN3WJgz4u6XWmjtVpoFsDrygEnvW51cgk",
-      ],
+      ["A29zPnK1jPr2tGziTnaAvSnadYR2kLCv9sPywj9FJsaEFjtpwmUonspN3WJgz4u6XWmjtVpoFsDrygEnvW51cgk"],
     ],
     answer: [
       {
@@ -438,8 +464,8 @@ export const getMockedMethods = (): {
                   programId: new PublicKey(
                     Buffer.from(
                       "06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9",
-                      "hex"
-                    )
+                      "hex",
+                    ),
                   ),
                 },
               ],
@@ -463,9 +489,7 @@ export const getMockedMethods = (): {
             "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL consumed 20880 of 200000 compute units",
             "Program ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL success",
           ],
-          postBalances: [
-            83389840, 10000000, 151314748907, 1, 1089991680, 1009200, 898174080,
-          ],
+          postBalances: [83389840, 10000000, 151314748907, 1, 1089991680, 1009200, 898174080],
           postTokenBalances: [
             {
               accountIndex: 1,
@@ -478,9 +502,7 @@ export const getMockedMethods = (): {
               },
             },
           ],
-          preBalances: [
-            93394840, 0, 151314748907, 1, 1089991680, 1009200, 898174080,
-          ],
+          preBalances: [93394840, 0, 151314748907, 1, 1089991680, 1009200, 898174080],
           preTokenBalances: [],
           rewards: [],
           status: { Ok: null },
@@ -493,8 +515,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "8bc4d3e507c0550e3d02ffb5f6daf0772240af8a09e32d236615b4a227243702",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: true,
                 writable: true,
@@ -503,8 +525,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "6e6279fa638560ce9c178033f5b88eacfb5fba6d46ec5902769f1b09eaabc017",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: true,
@@ -513,8 +535,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "069b8857feab8184fb687f634618c035dac439dc1aeb3b5598a0f00000000001",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: false,
@@ -528,8 +550,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "06ddf6e1d765a193d9cbe146ceeb79ac1cb485ed5f5b37913a8cf5857eff00a9",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: false,
@@ -538,8 +560,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "06a7d517192c5c51218cc94c3d4af17f58daee089ba1fd44e3dbd98a00000000",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: false,
@@ -548,8 +570,8 @@ export const getMockedMethods = (): {
                 pubkey: new PublicKey(
                   Buffer.from(
                     "8c97258f4e2489f1bb3d1029148e0d830b5a1399daff1084048e7bd8dbe9f859",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
                 signer: false,
                 writable: false,
@@ -585,8 +607,8 @@ export const getMockedMethods = (): {
                 programId: new PublicKey(
                   Buffer.from(
                     "8c97258f4e2489f1bb3d1029148e0d830b5a1399daff1084048e7bd8dbe9f859",
-                    "hex"
-                  )
+                    "hex",
+                  ),
                 ),
               },
             ],
@@ -646,8 +668,7 @@ export const getMockedMethods = (): {
                 epoch: 304,
               },
             ],
-            authorizedWithdrawer:
-              "EvnRmnMrd69kFdbLMxWkTn1icZ7DCceRhvmb2SJXqDo4",
+            authorizedWithdrawer: "EvnRmnMrd69kFdbLMxWkTn1icZ7DCceRhvmb2SJXqDo4",
             commission: 7,
             epochCredits: [
               { credits: "83658257", epoch: 241, previousCredits: "83257955" },
@@ -833,10 +854,7 @@ export const getMockedMethods = (): {
       executable: false,
       lamports: 4207299066554,
       owner: new PublicKey(
-        Buffer.from(
-          "0761481d357474bb7c4d7624ebd3bdb3d8355e73d11043fc0da3538000000000",
-          "hex"
-        )
+        Buffer.from("0761481d357474bb7c4d7624ebd3bdb3d8355e73d11043fc0da3538000000000", "hex"),
       ),
       rentEpoch: 304,
     },
@@ -888,5 +906,151 @@ export const getMockedMethods = (): {
     answer: 5000,
   },
   // manual
-  { method: "getLatestBlockhash", params: [], answer: LATEST_BLOCKHASH_MOCK },
+  {
+    method: "getLatestBlockhash",
+    params: [],
+    answer: {
+      blockhash: LATEST_BLOCKHASH_MOCK,
+      lastValidBlockHeight: LAST_VALID_BLOCK_HEIGHT_MOCK,
+    },
+  },
+  {
+    method: "getRecentPrioritizationFees",
+    params: [["AQbkEagmPgmsdAfS4X8V8UyJnXXjVPMvjeD15etqQ3Jh"]],
+    answer: generateNestedPrioritizationFees(122422797),
+  },
+  {
+    method: "getAccountInfo",
+    params: ["So11111111111111111111111111111111111111112"],
+    answer: {
+      data: {
+        parsed: {
+          info: {
+            decimals: 9,
+            freezeAuthority: null,
+            isInitialized: true,
+            mintAuthority: null,
+            supply: 0,
+          },
+          type: "mint",
+        },
+        program: "spl-token",
+        space: 82,
+      },
+      executable: false,
+      lamports: 419787401967,
+      owner: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"),
+      rentEpoch: 304,
+    },
+  },
+  {
+    method: "getBalance",
+    params: ["63M7kPJvLsG46jbR2ZriEU8xwPqkMNKNoBBQ46pobbvo"],
+    answer: 19449267,
+  },
+  {
+    method: "getAccountInfo",
+    params: ["63M7kPJvLsG46jbR2ZriEU8xwPqkMNKNoBBQ46pobbvo"],
+    answer: {
+      data: { type: "Buffer", data: [] },
+      executable: false,
+      lamports: 19449267,
+      owner: new PublicKey(Buffer.from("00", "hex")),
+      rentEpoch: 18446744073709552000,
+      space: 0,
+    },
+  },
+  {
+    method: "getRecentPrioritizationFees",
+    params: [["4iWtrn54zi89sHQv6xHyYwDsrPJvqcSKRJGBLrbErCsx"]],
+    answer: generatePrioritizationFees(349496453),
+  },
+  {
+    method: "getSimulationComputeUnits",
+    params: [
+      [
+        {
+          keys: [
+            {
+              pubkey: "4iWtrn54zi89sHQv6xHyYwDsrPJvqcSKRJGBLrbErCsx",
+              isSigner: true,
+              isWritable: true,
+            },
+            {
+              pubkey: "4iWtrn54zi89sHQv6xHyYwDsrPJvqcSKRJGBLrbErCsx",
+              isSigner: false,
+              isWritable: true,
+            },
+          ],
+          programId: "11111111111111111111111111111111",
+          data: Buffer.from([2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]),
+        },
+      ],
+      "4iWtrn54zi89sHQv6xHyYwDsrPJvqcSKRJGBLrbErCsx",
+    ],
+    answer: 300,
+  },
+  {
+    method: "getFeeForMessage",
+    params: [
+      "AQACAzc1rOIrIJkfixB2PGXIAQSzJwuHJA9YroUmtv2PuvSPAwZGb+UhFzL/7K26csOb57yM5bvF9xJrLEObOkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMSjkK4MloYlzRPcf1wdkx+b53CpRgBUwgdyk+nPz78QAgEABQJKAQAAAgIAAAwCAAAAAAAAAAAAAAA=",
+    ],
+    answer: 5000,
+  },
+  {
+    method: "getRecentPrioritizationFees",
+    params: [
+      [
+        "4iWtrn54zi89sHQv6xHyYwDsrPJvqcSKRJGBLrbErCsx",
+        "63M7kPJvLsG46jbR2ZriEU8xwPqkMNKNoBBQ46pobbvo",
+      ],
+    ],
+    answer: generatePrioritizationFees(349496454),
+  },
+  {
+    method: "getSimulationComputeUnits",
+    params: [
+      [
+        {
+          keys: [
+            {
+              pubkey: "4iWtrn54zi89sHQv6xHyYwDsrPJvqcSKRJGBLrbErCsx",
+              isSigner: true,
+              isWritable: true,
+            },
+            {
+              pubkey: "63M7kPJvLsG46jbR2ZriEU8xwPqkMNKNoBBQ46pobbvo",
+              isSigner: false,
+              isWritable: true,
+            },
+          ],
+          programId: "11111111111111111111111111111111",
+          data: Buffer.from([2, 0, 0, 0, 64, 66, 15, 0, 0, 0, 0, 0]),
+        },
+      ],
+      "4iWtrn54zi89sHQv6xHyYwDsrPJvqcSKRJGBLrbErCsx",
+    ],
+    answer: 300,
+  },
+  {
+    method: "getFeeForMessage",
+    params: [
+      "gAEAAwo3NaziKyCZH4sQdjxlyAEEsycLhyQPWK6FJrb9j7r0jyRhB0FkC3pA/3bwHKZzD9v7Rt2mGOXiT8AiHUK2gDwsRJgSfTDFH6xNF2pMhFGZxLZWMl8EsYB3Ro87lHwnuWJUb9EWTtCgOsaT9mU8t4D2GHpAPhkXU2fcZBXT6D+pjfj05KOdlS9AiDNsbZdFpLzbJQ+lmsMa+8nfR2JZTeC89UIrAvAD7ZOgJ4wimZg0XyXSOCz2YXE8kINJuux17h3+Z4YL4MPru92uqdoO9qUoSbP2t3tFyBv0piXrLPXBPgMGRm/lIRcy/+ytunLDm+e8jOW7xfcSayxDmzpAAAAABHnVW/IxwG7udMVuzmgVB/2xst6j9I5RArHNola8E48G3fbh12Whk9nL4UbO63msHLSF7V9bN5E6jPWFfv8AqRa6MXuFOieWIcE2CMOB5dDllphXzarmndZ4yX86tmlPBQcABQL1qAQABwAJA5PxAgAAAAAACAUFAB0JGAmT8Xtk9ISudv0IPwkbAAMKCwUaHQgIGQghGwoLDA4NDyAiHycJJhsaKQoEExIQESQlIycJHioXKhUUBAsdKRYqGwkJKCoGAgEIHCzBIJszQdacgQADAAAAOV0AA08HAAImZAIDgIQeAAAAAAAxibAAAAAAADIAAAkDBQAAAQkEKb+VBypPvwTfcXWT5zi8zCEnKBXCRxqA2fn1VbDUhCUCKRgHEwAoAwIXFVl9OSuqqDQaRb6IYUBogcRuGRFfhgIEuha8cjU4fZPaBGAGBWUEAwkCAX3AxxcCHMtm5xM+0XoyZnzQ09ar0YPXd26YYBeNqWxqBHj0dPIF8W95dfO3dNOoPmZnmihT46QbLY1Y/HoBFLJX/wryNAMqjbbuHQTj5MrHA87Gyw==",
+    ],
+    answer: 5126,
+  },
+  {
+    method: "getFeeForMessage",
+    params: [
+      "AQABAzc1rOIrIJkfixB2PGXIAQSzJwuHJA9YroUmtv2PuvSPdaMhhWgGf/cOLK4MfSqKoh7TzOlbq+4eA+l1aEoKxIQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAC7eSTZPjADfAV2K5ZMTBC9Qv7DN/mRWMGcOHqHwTiqeAQICAAEMAgAAAICWmAAAAAAA",
+    ],
+    answer: 5000,
+  },
+  {
+    method: "getFeeForMessage",
+    params: [
+      "gAEAAQM3NaziKyCZH4sQdjxlyAEEsycLhyQPWK6FJrb9j7r0j3WjIYVoBn/3DiyuDH0qiqIe08zpW6vuHgPpdWhKCsSEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAXy8ypDosdfEh+2iQdH7SMOBblSXabBjQnkjkz87PSigECAgABDAIAAACAlpgAAAAAAAA=",
+    ],
+    answer: 5000,
+  },
 ];

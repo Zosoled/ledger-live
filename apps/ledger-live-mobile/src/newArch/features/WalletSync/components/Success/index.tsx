@@ -1,6 +1,8 @@
 import { Box, Button, Flex, Icons, Text } from "@ledgerhq/native-ui";
 import React from "react";
 import styled, { useTheme } from "styled-components/native";
+import { TrackScreen } from "~/analytics";
+import PreventNativeBack from "~/components/PreventNativeBack";
 import SafeAreaView from "~/components/SafeAreaView";
 type Props = {
   title: string;
@@ -8,20 +10,37 @@ type Props = {
   mainButton?: {
     label: string;
     onPress: () => void;
+    testID?: string;
   };
 
-  secondaryButton: {
+  secondaryButton?: {
     label: string;
     onPress: () => void;
+    testID?: string;
   };
+  analyticsPage: string;
 };
 
-export function Success({ title, desc, mainButton, secondaryButton }: Props) {
+export function Success({ title, desc, mainButton, secondaryButton, analyticsPage }: Props) {
   const { colors } = useTheme();
   return (
     <SafeAreaView edges={["top", "left", "right", "bottom"]} isFlex>
-      <Flex flexDirection="column" alignItems="center" justifyContent="space-between" flex={1}>
-        <Flex flexDirection="column" alignItems="center" justifyContent="center" rowGap={16}>
+      <PreventNativeBack />
+      <TrackScreen name={analyticsPage} />
+      <Flex
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="space-between"
+        flex={1}
+        px={2}
+      >
+        <Flex
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          rowGap={16}
+          testID="walletsync-success"
+        >
           <Container borderRadius={50}>
             <Icons.CheckmarkCircleFill size={"L"} color={colors.success.c60} />
           </Container>
@@ -34,14 +53,20 @@ export function Success({ title, desc, mainButton, secondaryButton }: Props) {
         </Flex>
         <Flex flexDirection="column" rowGap={10} mb={8} width={"100%"} px={"16px"}>
           {mainButton && (
-            <Button type="main" onPress={mainButton.onPress}>
+            <Button type="main" onPress={mainButton.onPress} testID={mainButton.testID}>
               {mainButton.label}
             </Button>
           )}
-
-          <Button type="main" outline onPress={secondaryButton.onPress}>
-            {secondaryButton.label}
-          </Button>
+          {secondaryButton && (
+            <Button
+              type="main"
+              outline
+              onPress={secondaryButton.onPress}
+              testID={secondaryButton.testID}
+            >
+              {secondaryButton.label}
+            </Button>
+          )}
         </Flex>
       </Flex>
     </SafeAreaView>

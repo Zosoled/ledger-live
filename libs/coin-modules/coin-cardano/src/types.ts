@@ -107,6 +107,10 @@ export type ProtocolParams = {
   collateralPercent: string;
   priceSteps: string;
   priceMem: string;
+  maxTxSize: string;
+  maxValueSize: string;
+  utxoCostPerByte: string;
+  minFeeRefScriptCostPerByte: string;
   languageView: TyphonTypes.LanguageView;
 };
 
@@ -118,23 +122,31 @@ export type ProtocolParamsRaw = {
   collateralPercent: string;
   priceSteps: string;
   priceMem: string;
+  maxTxSize: string;
+  maxValueSize: string;
+  utxoCostPerByte: string;
+  minFeeRefScriptCostPerByte: string;
   // TyphonTypes.LanguageView is already a raw type
   languageView: TyphonTypes.LanguageView;
 };
 
 export type CardanoDelegation = {
   status: boolean;
-  poolId: string;
-  ticker: string;
-  name: string;
+  deposit: string;
+  poolId: string | undefined;
+  ticker: string | undefined;
+  name: string | undefined;
+  dRepHex: string | undefined;
   rewards: BigNumber;
 };
 
 export type CardanoDelegationRaw = {
   status: boolean;
-  poolId: string;
-  ticker: string;
-  name: string;
+  deposit: string;
+  poolId: string | undefined;
+  ticker: string | undefined;
+  name: string | undefined;
+  dRepHex: string | undefined;
   rewards: string;
 };
 
@@ -171,6 +183,7 @@ export type Transaction = TransactionCommon & {
   fees?: BigNumber;
   memo?: string;
   poolId: string | undefined;
+  protocolParams?: ProtocolParams;
   // add here all transaction-specific fields if you implement other modes than "send"
 };
 
@@ -183,6 +196,7 @@ export type TransactionRaw = TransactionCommonRaw & {
   fees?: string;
   memo?: string;
   poolId: string | undefined;
+  protocolParams?: ProtocolParams;
   // also the transaction fields as raw JSON data
 };
 

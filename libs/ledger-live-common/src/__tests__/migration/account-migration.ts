@@ -35,7 +35,7 @@ setSupportedCurrencies([
   "dash",
   "tron",
   "tezos",
-  "elrond",
+  "elrond", // NOTE: legacy 'multiversx' name, kept for compatibility
   "ethereum_classic",
   "zcash",
   "decred",
@@ -45,7 +45,6 @@ setSupportedCurrencies([
   "qtum",
   "bitcoin_gold",
   "komodo",
-  "pivx",
   "zencash",
   "crypto_org",
   "crypto_org_croeseid",
@@ -89,6 +88,9 @@ setSupportedCurrencies([
   "base_sepolia",
   "stacks",
   "telos_evm",
+  "sei_network_evm",
+  "berachain",
+  "hyperevm",
   "coreum",
   "injective",
   "casper",
@@ -97,6 +99,7 @@ setSupportedCurrencies([
   "filecoin",
   "linea",
   "ton",
+  "mina",
 ]);
 
 LiveConfig.setConfig(liveConfig);

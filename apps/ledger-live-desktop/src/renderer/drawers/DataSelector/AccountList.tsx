@@ -58,7 +58,7 @@ export function AccountList({ currency, onAccountSelect, accounts$ }: Props) {
 
   return (
     <>
-      <RowContainer onClick={openAddAccounts} id="add-account">
+      <RowContainer onClick={openAddAccounts} id="add-account" data-testId="add-account-button">
         <RowInnerContainer>
           <Box horizontal alignItems="center">
             <AddIconContainer>
@@ -106,7 +106,7 @@ function Row({
   onAccountSelect: (account: AccountLike, parentAccount?: Account) => void;
 }) {
   const accountCurrency = getAccountCurrency(subAccount || account);
-  const accountName = useAccountName(subAccount || account);
+  const accountName = useAccountName(account);
   const unit = useAccountUnit(subAccount || account);
 
   return (
@@ -149,7 +149,7 @@ function Row({
         <Box horizontal alignItems="center" marginLeft="12px">
           <FormattedVal
             color="palette.text.shade50"
-            val={subAccount ? subAccount.balance : account.balance}
+            val={subAccount ? subAccount.spendableBalance : account.spendableBalance}
             unit={unit}
             showCode
           />

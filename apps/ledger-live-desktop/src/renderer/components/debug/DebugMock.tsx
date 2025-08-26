@@ -26,6 +26,9 @@ import { ListAppsResult } from "@ledgerhq/live-common/apps/types";
 import { AnnouncementDeviceModelId } from "@ledgerhq/live-common/notifications/AnnouncementProvider/types";
 import { getAllFeatureFlags } from "@ledgerhq/live-common/e2e/index";
 import { getAllEnvs } from "@ledgerhq/live-env";
+import { ipcRenderer } from "electron";
+import { memoryLogger } from "~/renderer/logger";
+import { getJSONStringifyReplacer } from "~/helpers/saveLogs";
 
 const mockListAppsResult = (
   appDesc: string,
@@ -281,6 +284,26 @@ interface RawEvents {
 }
 window.getAllFeatureFlags = getAllFeatureFlags;
 window.getAllEnvs = getAllEnvs;
+window.saveLogs = async (path: string): Promise<void> => {
+  const memoryLogs = memoryLogger.getMemoryLogs();
+
+  try {
+    // Serializes ourself with `stringify` to avoid "object could not be cloned" errors from the electron IPC serializer.
+    //Uses getJSONStringifyReplacer to replace circular references with "[Circular]"
+    const memoryLogsStr = JSON.stringify(memoryLogs, getJSONStringifyReplacer(), 2);
+    // Requests the main process to save logs in a file
+    await ipcRenderer.invoke(
+      "save-logs",
+      {
+        canceled: false,
+        filePath: path,
+      },
+      memoryLogsStr,
+    );
+  } catch (error) {
+    console.error("Error while requesting to save logs from the renderer process", error);
+  }
+};
 
 if (getEnv("MOCK")) {
   window.mock = {

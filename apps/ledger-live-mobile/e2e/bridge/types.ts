@@ -15,6 +15,8 @@ import { ExchangeRequestEvent } from "@ledgerhq/live-common/hw/actions/startExch
 import { CompleteExchangeRequestEvent } from "@ledgerhq/live-common/exchange/platform/types";
 import { RemoveImageEvent } from "@ledgerhq/live-common/hw/customLockScreenRemove";
 import { RenameDeviceEvent } from "@ledgerhq/live-common/hw/renameDevice";
+import { SettingsSetOverriddenFeatureFlagsPlayload } from "~/actions/types";
+import { Server, WebSocket } from "ws";
 
 export type ServerData =
   | {
@@ -26,6 +28,10 @@ export type ServerData =
       payload: string;
     }
   | {
+      type: "appFile";
+      payload: string;
+    }
+  | {
       type: "appFlags";
       payload: string;
     }
@@ -33,7 +39,9 @@ export type ServerData =
       type: "appEnvs";
       payload: string;
     }
-  | { type: "ACK"; id: string };
+  | { type: "ACK"; id: string }
+  | { type: "swapLiveAppReady" }
+  | { type: "earnLiveAppReady" };
 
 export type MessageData =
   | {
@@ -45,6 +53,8 @@ export type MessageData =
   | { type: "mockDeviceEvent"; id: string; payload: MockDeviceEvent[] }
   | { type: "acceptTerms"; id: string }
   | { type: "addUSB"; id: string; payload: DeviceUSB }
+  | { type: "addKnownSpeculos"; id: string; payload: string }
+  | { type: "removeKnownSpeculos"; id: string; payload: string }
   | { type: "getLogs"; id: string }
   | { type: "getFlags"; id: string }
   | { type: "getEnvs"; id: string }
@@ -59,7 +69,11 @@ export type MessageData =
       }[];
     }
   | { type: "importBle"; id: string; payload: BleState }
+  | { type: "overrideFeatureFlags"; id: string; payload: SettingsSetOverriddenFeatureFlagsPlayload }
   | { type: "setGlobals"; id: string; payload: { [key: string]: unknown } }
+  | { type: "swapSetup"; id: string }
+  | { type: "waitSwapReady"; id: string }
+  | { type: "waitEarnReady"; id: string }
   | { type: "ACK"; id: string };
 
 export type MockDeviceEvent =
@@ -99,3 +113,13 @@ export const completeExchangeExecMock = (): Observable<CompleteExchangeRequestEv
   mockDeviceEventSubject as Observable<CompleteExchangeRequestEvent>;
 export const renameDeviceExecMock = (): Observable<RenameDeviceEvent> =>
   mockDeviceEventSubject as Observable<RenameDeviceEvent>;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var webSocket: {
+    wss: Server | undefined;
+    ws: WebSocket | undefined;
+    messages: { [id: string]: MessageData };
+    e2eBridgeServer: Subject<ServerData>;
+  };
+}

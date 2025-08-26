@@ -20,12 +20,14 @@ import { NFTResource } from "@ledgerhq/live-nft/types";
 import { NFTMetadata } from "@ledgerhq/types-live";
 import { Device, DeviceModelId } from "@ledgerhq/types-devices";
 import { getDeviceModel } from "@ledgerhq/devices";
-import { getScreenVisibleAreaDimensions } from "@ledgerhq/live-common/device/use-cases/screenSpecs";
+import {
+  getScreenSpecs,
+  getScreenVisibleAreaDimensions,
+} from "@ledgerhq/live-common/device/use-cases/screenSpecs";
 import {
   CLSSupportedDeviceModelId,
   supportedDeviceModelIds,
 } from "@ledgerhq/live-common/device/use-cases/isCustomLockScreenSupported";
-import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
 
 import { BaseComposite, StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
 import { CustomImageNavigatorParamList } from "~/components/RootNavigator/types/CustomImageNavigator";
@@ -41,7 +43,7 @@ import ImageProcessor, {
   Props as ImageProcessorProps,
   ProcessorPreviewResult,
   ProcessorRawResult,
-} from "~/components/CustomImage/ImageProcessor";
+} from "~/components/CustomImage/ImageToDeviceProcessor";
 import useCenteredImage, {
   Params as ImageCentererParams,
   CenteredResult,
@@ -111,14 +113,6 @@ const PreviewPreEdit = ({ navigation, route }: NavigationProps) => {
     params.deviceModelId ?? DeviceModelId.stax,
   );
 
-  const supportDeviceEuropa = useFeature("supportDeviceEuropa")?.enabled;
-  const supportedAndEnabledDeviceModelIds = supportedDeviceModelIds.filter(() => {
-    const devicesSupported: Record<CLSSupportedDeviceModelId, boolean> = {
-      [DeviceModelId.stax]: true,
-      [DeviceModelId.europa]: Boolean(supportDeviceEuropa),
-    };
-    return devicesSupported[deviceModelId];
-  }, [supportDeviceEuropa]);
   const targetDisplayDimensions = useMemo(
     () => getScreenVisibleAreaDimensions(deviceModelId),
     [deviceModelId],
@@ -263,10 +257,19 @@ const PreviewPreEdit = ({ navigation, route }: NavigationProps) => {
         device,
         imageType,
         deviceModelId,
+        referral: params.referral,
       });
       setRawResultLoading(false);
     },
-    [navigation, setRawResultLoading, processorPreviewImage, device, imageType, deviceModelId],
+    [
+      navigation,
+      setRawResultLoading,
+      processorPreviewImage,
+      device,
+      imageType,
+      deviceModelId,
+      params.referral,
+    ],
   );
 
   const handlePreviewImageError = useCallback(
@@ -373,9 +376,9 @@ const PreviewPreEdit = ({ navigation, route }: NavigationProps) => {
   return (
     <SafeAreaView style={{ flex: 1 }} edges={["bottom"]}>
       <TrackScreen category={analyticsScreenName} />
-      {!params.deviceModelId && supportDeviceEuropa && (
+      {!params.deviceModelId && (
         <TabContainer>
-          {supportedAndEnabledDeviceModelIds.map(modelId => (
+          {supportedDeviceModelIds.map(modelId => (
             <Tab
               key={modelId}
               onPress={() => onChangeDeviceModelId(modelId)}
@@ -394,6 +397,7 @@ const PreviewPreEdit = ({ navigation, route }: NavigationProps) => {
           onError={handleError}
           onRawResult={handleRawResult}
           contrast={DEFAULT_CONTRAST}
+          bitsPerPixel={getScreenSpecs(deviceModelId).bitsPerPixel}
         />
       )}
       {previewLoading ? (

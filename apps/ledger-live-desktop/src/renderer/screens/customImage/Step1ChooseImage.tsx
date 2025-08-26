@@ -19,10 +19,7 @@ import useIsMounted from "@ledgerhq/live-common/hooks/useIsMounted";
 import TrackPage from "~/renderer/analytics/TrackPage";
 import { analyticsPageNames, analyticsFlowName } from "./shared";
 import { useTrack } from "~/renderer/analytics/segment";
-import { setDrawer } from "~/renderer/drawers/Provider";
-import RemoveCustomImage from "../manager/DeviceDashboard/DeviceInformationSummary/RemoveCustomImage";
-import { useSelector } from "react-redux";
-import { lastSeenCustomImageSelector } from "~/renderer/reducers/settings";
+import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
 
 type Props = StepProps & {
   onResult: (res: ImageBase64Data) => void;
@@ -30,6 +27,8 @@ type Props = StepProps & {
   isShowingNftGallery?: boolean;
   setIsShowingNftGallery: (_: boolean) => void;
   loading?: boolean;
+  hasCustomLockScreen?: boolean;
+  onClickRemoveCustomImage: () => void;
 };
 
 const defaultMediaTypes = ["original", "big", "preview"];
@@ -41,17 +40,27 @@ const extractNftBase64 = (metadata: NFTMetadata) => {
     : null;
   const customImageUri =
     (mediaSizeForCustomImage &&
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       metadata?.medias?.[mediaSizeForCustomImage as keyof NFTMedias]?.uri) ||
     null;
   return customImageUri;
 };
 
 const StepChooseImage: React.FC<Props> = props => {
-  const { loading, setLoading, onResult, onError, isShowingNftGallery, setIsShowingNftGallery } =
-    props;
+  const {
+    loading,
+    setLoading,
+    onResult,
+    onError,
+    isShowingNftGallery,
+    setIsShowingNftGallery,
+    hasCustomLockScreen,
+    onClickRemoveCustomImage,
+  } = props;
   const isMounted = useIsMounted();
   const { t } = useTranslation();
   const track = useTrack();
+  const llNftSupportEnabled = useFeature("llNftSupport")?.enabled ?? false;
 
   const [selectedNftId, setSelectedNftId] = useState<string>();
   const [selectedNftBase64Data, setSelectedNftBase64] = useState<ImageBase64Data | null>(null);
@@ -90,7 +99,7 @@ const StepChooseImage: React.FC<Props> = props => {
             setTimeout(
               () => {
                 if (!isMounted()) return;
-                setSelectedNftBase64({ imageBase64DataUri: res as string });
+                setSelectedNftBase64({ imageBase64DataUri: res });
               },
               Math.max(0, 400 - (Date.now() - t1)),
             );
@@ -102,12 +111,6 @@ const StepChooseImage: React.FC<Props> = props => {
     },
     [isMounted, onError, selectedNftId],
   );
-
-  const lastSeenCustomImage = useSelector(lastSeenCustomImageSelector);
-
-  const onRemove = useCallback(() => {
-    setDrawer(RemoveCustomImage, {});
-  }, []);
 
   return (
     <StepContainer
@@ -150,20 +153,22 @@ const StepChooseImage: React.FC<Props> = props => {
               })
             }
           />
-          <ImportNFTButton
-            onClick={() => {
-              setIsShowingNftGallery(true);
-              track("button_clicked2", {
-                button: "Choose from NFT gallery",
-              });
-            }}
-          />
-          {lastSeenCustomImage?.size ? (
+          {llNftSupportEnabled ? (
+            <ImportNFTButton
+              onClick={() => {
+                setIsShowingNftGallery(true);
+                track("button_clicked2", {
+                  button: "Choose from NFT gallery",
+                });
+              }}
+            />
+          ) : null}
+          {hasCustomLockScreen ? (
             <Link
               size="medium"
               color="error.c60"
               mt={10}
-              onClick={onRemove}
+              onClick={onClickRemoveCustomImage}
               Icon={IconsLegacy.TrashMedium}
             >
               {t("removeCurrentPicture.cta")}

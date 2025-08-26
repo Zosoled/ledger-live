@@ -32,10 +32,16 @@ import type {
   ProtectState,
   NftState,
   MarketState,
+  LargeMoverState,
 } from "../reducers/types";
 import type { Unpacked } from "../types/helpers";
 import { HandlersPayloads } from "@ledgerhq/live-wallet/store";
 import { ImportAccountsReduceInput } from "@ledgerhq/live-wallet/liveqr/importAccounts";
+import { Steps } from "LLM/features/WalletSync/types/Activation";
+import { NftStatus } from "@ledgerhq/live-nft/types";
+import { SupportedBlockchain } from "@ledgerhq/live-nft/supported";
+import type { CounterValuesState } from "@ledgerhq/live-countervalues/types";
+import { AnyAction } from "redux";
 
 //  === ACCOUNTS ACTIONS ===
 
@@ -83,7 +89,6 @@ export enum AppStateActionTypes {
   SET_BLOCK_PASSWORD_LOCK = "SET_BLOCK_PASSWORD_LOCK",
 }
 
-export type AppStateIsConnectedPayload = AppState["isConnected"];
 export type AppStateSetHasConnectedDevicePayload = AppState["hasConnectedDevice"];
 export type AppStateSetModalLockPayload = AppState["modalLock"];
 export type AppStateAddBackgroundEventPayload = {
@@ -93,7 +98,6 @@ export type AppStateBlockPasswordLockPayload = boolean;
 
 export type AppStateUpdateMainNavigatorVisibilityPayload = AppState["isMainNavigatorVisible"];
 export type AppStatePayload =
-  | AppStateIsConnectedPayload
   | AppStateSetHasConnectedDevicePayload
   | AppStateSetModalLockPayload
   | AppStateAddBackgroundEventPayload
@@ -122,6 +126,41 @@ export type BlePayload =
   | BleAddKnownDevicePayload
   | BleImportBlePayload
   | BleSaveDeviceNamePayload;
+
+// === COUNTERVALUES ACTIONS ===
+
+export enum CountervaluesActionTypes {
+  COUNTERVALUES_MARKETCAP_SET_IDS = "COUNTERVALUES_MARKETCAP_SET_IDS",
+  COUNTERVALUES_MARKETCAP_SET_LOADING = "COUNTERVALUES_MARKETCAP_SET_LOADING",
+  COUNTERVALUES_MARKETCAP_SET_ERROR = "COUNTERVALUES_MARKETCAP_SET_ERROR",
+  COUNTERVALUES_POLLING_SET_IS_POLLING = "COUNTERVALUES_POLLING_SET_IS_POLLING",
+  COUNTERVALUES_POLLING_SET_TRIGGER_LOAD = "COUNTERVALUES_POLLING_SET_TRIGGER_LOAD",
+  COUNTERVALUES_STATE_SET = "COUNTERVALUES_STATE_SET",
+  COUNTERVALUES_STATE_SET_PENDING = "COUNTERVALUES_STATE_PENDING_SET",
+  COUNTERVALUES_STATE_SET_ERROR = "COUNTERVALUES_STATE_ERROR_SET",
+  COUNTERVALUES_WIPE = "COUNTERVALUES_WIPE_STATE",
+}
+
+export type CountervaluesMarketcapFetchIdsPayload = void;
+export type CountervaluesMarketcapSetIdsPayload = string[];
+export type CountervaluesMarketcapSetLoadingPayload = boolean;
+export type CountervaluesMarketcapSetErrorPayload = string | null;
+export type CountervaluesPollingSetIsPollingPayload = boolean;
+export type CountervaluesPollingSetTriggerLoadPayload = boolean;
+export type CountervaluesStateSetPayload = CounterValuesState;
+export type CountervaluesStateSetPendingPayload = boolean;
+export type CountervaluesStateSetErrorPayload = Error;
+
+export type CountervaluesPayload =
+  | CountervaluesMarketcapFetchIdsPayload
+  | CountervaluesMarketcapSetIdsPayload
+  | CountervaluesMarketcapSetLoadingPayload
+  | CountervaluesMarketcapSetErrorPayload
+  | CountervaluesPollingSetIsPollingPayload
+  | CountervaluesPollingSetTriggerLoadPayload
+  | CountervaluesStateSetPayload
+  | CountervaluesStateSetPendingPayload
+  | CountervaluesStateSetErrorPayload;
 
 // === NOTIFICATIONS ACTIONS ===
 
@@ -164,7 +203,9 @@ export enum DynamicContentActionTypes {
   DYNAMIC_CONTENT_SET_LEARN_CARDS = "DYNAMIC_CONTENT_SET_LEARN_CARDS",
   DYNAMIC_CONTENT_SET_NOTIFICATION_CARDS = "DYNAMIC_CONTENT_SET_NOTIFICATION_CARDS",
   DYNAMIC_CONTENT_SET_CATEGORIES_CARDS = "DYNAMIC_CONTENT_SET_CATEGORIES_CARDS",
+  DYNAMIC_CONTENT_SET_LANDING_STICKY_CTA_CARDS = "DYNAMIC_CONTENT_SET_LANDING_STICKY_CTA_CARDS",
   DYNAMIC_CONTENT_SET_MOBILE_CARDS = "DYNAMIC_CONTENT_SET_MOBILE_CARDS",
+  DYNAMIC_CONTENT_IS_LOADING = "DYNAMIC_CONTENT_IS_LOADING",
 }
 
 export type DynamicContentSetWalletCardsPayload = DynamicContentState["walletCards"];
@@ -176,6 +217,8 @@ export type DynamicContentSetLearnCardsPayload = DynamicContentState["learnCards
 export type DynamicContentSetNotificationCardsPayload = DynamicContentState["notificationCards"];
 
 export type DynamicContentSetCategoriesCardsPayload = DynamicContentState["categoriesCards"];
+export type DynamicContentSetLandingStickyCtaCardsPayload =
+  DynamicContentState["landingPageStickyCtaCards"];
 
 export type DynamicContentSetMobileCardsPayload = DynamicContentState["mobileCards"];
 
@@ -185,6 +228,7 @@ export type DynamicContentPayload =
   | DynamicContentSetLearnCardsPayload
   | DynamicContentSetNotificationCardsPayload
   | DynamicContentSetCategoriesCardsPayload
+  | DynamicContentSetLandingStickyCtaCardsPayload
   | DynamicContentSetMobileCardsPayload;
 
 // === RATINGS ACTIONS ===
@@ -236,8 +280,8 @@ export enum SettingsActionTypes {
   SETTINGS_FILTER_TOKEN_OPERATIONS_ZERO_AMOUNT = "SETTINGS_FILTER_TOKEN_OPERATIONS_ZERO_AMOUNT",
   SHOW_TOKEN = "SHOW_TOKEN",
   BLACKLIST_TOKEN = "BLACKLIST_TOKEN",
-  HIDE_NFT_COLLECTION = "HIDE_NFT_COLLECTION",
-  UNHIDE_NFT_COLLECTION = "UNHIDE_NFT_COLLECTION",
+  UPDATE_NFT_COLLECTION_STATUS = "UPDATE_NFT_COLLECTION_STATUS",
+  RESET_NFT_COLLECTION_STATUS = "RESET_NFT_COLLECTION_STATUS",
   SETTINGS_DISMISS_BANNER = "SETTINGS_DISMISS_BANNER",
   SETTINGS_SET_AVAILABLE_UPDATE = "SETTINGS_SET_AVAILABLE_UPDATE",
   DANGEROUSLY_OVERRIDE_STATE = "DANGEROUSLY_OVERRIDE_STATE",
@@ -263,6 +307,7 @@ export enum SettingsActionTypes {
   SET_MARKET_FILTER_BY_STARRED_ACCOUNTS = "SET_MARKET_FILTER_BY_STARRED_ACCOUNTS",
   SET_SENSITIVE_ANALYTICS = "SET_SENSITIVE_ANALYTICS",
   SET_ONBOARDING_HAS_DEVICE = "SET_ONBOARDING_HAS_DEVICE",
+  SET_IS_REBORN = "SET_IS_REBORN",
   SET_NOTIFICATIONS = "SET_NOTIFICATIONS",
   SET_NEVER_CLICKED_ON_ALLOW_NOTIFICATIONS_BUTTON = "SET_NEVER_CLICKED_ON_ALLOW_NOTIFICATIONS_BUTTON",
   WALLET_TAB_NAVIGATOR_LAST_VISITED_TAB = "WALLET_TAB_NAVIGATOR_LAST_VISITED_TAB",
@@ -271,7 +316,9 @@ export enum SettingsActionTypes {
   SET_OVERRIDDEN_FEATURE_FLAGS = "SET_OVERRIDDEN_FEATURE_FLAGS",
   SET_FEATURE_FLAGS_BANNER_VISIBLE = "SET_FEATURE_FLAGS_BANNER_VISIBLE",
   SET_DEBUG_APP_LEVEL_DRAWER_OPENED = "SET_DEBUG_APP_LEVEL_DRAWER_OPENED",
+  /* NB: Protect is the former codename for Ledger Recover */
   SET_HAS_BEEN_UPSOLD_PROTECT = "SET_HAS_BEEN_UPSOLD_PROTECT",
+  SET_HAS_BEEN_REDIRECTED_TO_POST_ONBOARDING = "SET_HAS_BEEN_REDIRECTED_TO_POST_ONBOARDING",
   SET_GENERAL_TERMS_VERSION_ACCEPTED = "SET_GENERAL_TERMS_VERSION_ACCEPTED",
   SET_ONBOARDING_TYPE = "SET_ONBOARDING_TYPE",
   SET_CLOSED_NETWORK_BANNER = "SET_CLOSED_NETWORK_BANNER",
@@ -281,6 +328,9 @@ export enum SettingsActionTypes {
   SET_HAS_SEEN_ANALYTICS_OPT_IN_PROMPT = "SET_HAS_SEEN_ANALYTICS_OPT_IN_PROMPT",
   SET_DISMISSED_CONTENT_CARD = "SET_DISMISSED_CONTENT_CARD",
   CLEAR_DISMISSED_CONTENT_CARDS = "CLEAR_DISMISSED_CONTENT_CARDS",
+  SET_LEDGER_SYNC_ONBOARDING = "SET_LEDGER_SYNC_ONBOARDING",
+  SET_MEV_PROTECTION = "SET_MEV_PROTECTION",
+  SET_SELECTED_TAB_PORTFOLIO_ASSETS = "SET_SELECTED_TAB_PORTFOLIO_ASSETS",
 
   ADD_STARRED_MARKET_COINS = "ADD_STARRED_MARKET_COINS",
   REMOVE_STARRED_MARKET_COINS = "REMOVE_STARRED_MARKET_COINS",
@@ -312,8 +362,11 @@ export type SettingsFilterTokenOperationsZeroAmountPayload =
   SettingsState["filterTokenOperationsZeroAmount"];
 export type SettingsShowTokenPayload = string;
 export type SettingsBlacklistTokenPayload = string;
-export type SettingsHideNftCollectionPayload = string;
-export type SettingsUnhideNftCollectionPayload = string;
+export type SettingsUpdateNftCollectionStatus = {
+  blockchain: SupportedBlockchain;
+  collection: string;
+  status: NftStatus;
+};
 export type SettingsDismissBannerPayload = string;
 export type SettingsSetAvailableUpdatePayload = SettingsState["hasAvailableUpdate"];
 export type SettingsSetThemePayload = SettingsState["theme"];
@@ -332,7 +385,7 @@ export type SettingsSetLastSeenCustomImagePayload = {
   imageHash: string;
 };
 export type SettingsLastSeenDevicePayload = NonNullable<
-  SettingsState["lastSeenDevice"]
+  SettingsState["seenDevices"][number]
 >["deviceInfo"];
 export type SettingsLastSeenDeviceInfoPayload = DeviceModelInfo;
 export type SettingsLastSeenDeviceLanguagePayload = DeviceInfo["languageId"];
@@ -352,6 +405,7 @@ export type SettingsSetHasOrderedNanoPayload = SettingsState["hasOrderedNano"];
 export type SettingsSetMarketCounterCurrencyPayload = SettingsState["marketCounterCurrency"];
 export type SettingsSetSensitiveAnalyticsPayload = SettingsState["sensitiveAnalytics"];
 export type SettingsSetOnboardingHasDevicePayload = SettingsState["onboardingHasDevice"];
+export type SettingsSetIsRebornPayload = SettingsState["isReborn"];
 
 export type SettingsSetOnboardingTypePayload = SettingsState["onboardingType"];
 
@@ -377,6 +431,8 @@ export type SettingsSetDebugAppLevelDrawerOpenedPayload =
   SettingsState["debugAppLevelDrawerOpened"];
 
 export type SettingsSetHasBeenUpsoldProtectPayload = SettingsState["hasBeenUpsoldProtect"];
+export type SettingsSetHasBeenRedirectedToPostOnboardingPayload =
+  SettingsState["hasBeenRedirectedToPostOnboarding"];
 
 export type SettingsCompleteOnboardingPayload = void | SettingsState["hasCompletedOnboarding"];
 export type SettingsSetGeneralTermsVersionAccepted = SettingsState["generalTermsVersionAccepted"];
@@ -385,9 +441,13 @@ export type SettingsSetSupportedCounterValues = SettingsState["supportedCounterV
 export type SettingsSetHasSeenAnalyticsOptInPrompt = SettingsState["hasSeenAnalyticsOptInPrompt"];
 export type SettingsSetDismissedContentCardsPayload = SettingsState["dismissedContentCards"];
 export type SettingsClearDismissedContentCardsPayload = string[];
+export type SettingsSetFromLedgerSyncOnboardingPayload = boolean;
+export type SettingsSetMevProtectionPayload = boolean;
 
 export type SettingsAddStarredMarketcoinsPayload = Unpacked<SettingsState["starredMarketCoins"]>;
 export type SettingsRemoveStarredMarketcoinsPayload = Unpacked<SettingsState["starredMarketCoins"]>;
+export type SettingsSetSelectedTabPortfolioAssetsPayload =
+  SettingsState["selectedTabPortfolioAssets"];
 
 export type SettingsPayload =
   | SettingsImportPayload
@@ -407,8 +467,7 @@ export type SettingsPayload =
   | SettingsHideEmptyTokenAccountsPayload
   | SettingsShowTokenPayload
   | SettingsBlacklistTokenPayload
-  | SettingsHideNftCollectionPayload
-  | SettingsUnhideNftCollectionPayload
+  | SettingsUpdateNftCollectionStatus
   | SettingsDismissBannerPayload
   | SettingsSetAvailableUpdatePayload
   | SettingsSetThemePayload
@@ -427,6 +486,7 @@ export type SettingsPayload =
   | SettingsSetMarketCounterCurrencyPayload
   | SettingsSetSensitiveAnalyticsPayload
   | SettingsSetOnboardingHasDevicePayload
+  | SettingsSetIsRebornPayload
   | SettingsSetNotificationsPayload
   | SettingsDangerouslyOverrideStatePayload
   | DangerouslyOverrideStatePayload
@@ -444,6 +504,9 @@ export type SettingsPayload =
   | SettingsSetHasSeenAnalyticsOptInPrompt
   | SettingsSetDismissedContentCardsPayload
   | SettingsClearDismissedContentCardsPayload
+  | SettingsSetFromLedgerSyncOnboardingPayload
+  | SettingsSetMevProtectionPayload
+  | SettingsSetSelectedTabPortfolioAssetsPayload
   | SettingsAddStarredMarketcoinsPayload
   | SettingsRemoveStarredMarketcoinsPayload;
 
@@ -472,11 +535,20 @@ export type SwapPayload = UpdateProvidersPayload | UpdateTransactionPayload | Up
 // === EARN ACTIONS ==
 export enum EarnActionTypes {
   EARN_INFO_MODAL = "EARN_INFO_MODAL",
+  EARN_MENU_MODAL = "EARN_MENU_MODAL",
+  EARN_PROTOCOL_INFO_MODAL = "EARN_PROTOCOL_INFO_MODAL",
 }
 
 export type EarnSetInfoModalPayload = EarnState["infoModal"] | undefined;
 
-export type EarnPayload = EarnSetInfoModalPayload;
+export type EarnSetMenuModalPayload = EarnState["menuModal"] | undefined;
+
+export type EarnSetProtocolInfoModalPayload = EarnState["protocolInfoModal"] | undefined;
+
+export type EarnPayload =
+  | EarnSetInfoModalPayload
+  | EarnSetMenuModalPayload
+  | EarnSetProtocolInfoModalPayload;
 
 // === PROTECT ACTIONS ===
 export enum ProtectActionTypes {
@@ -523,19 +595,57 @@ export type MarketPayload =
   | MarketSetCurrentPagePayload
   | MarketImportPayload;
 
+// === LARGE MOVER ACTIONS ===
+export enum LargeMoverActionTypes {
+  SET_TUTORIAL = "LARGE_MOVER/SET_TUTORIAL",
+  LARGE_MOVER_IMPORT = "LARGE_MOVER/IMPORT",
+}
+export type LargeMoverPayload = LargeMoverTutorialPayload | LargeMoverImportPayload;
+
+export type LargeMoverImportPayload = Partial<LargeMoverState>;
+export type LargeMoverTutorialPayload = LargeMoverState["tutorial"];
+
 // === WALLETSYNC ACTIONS ===
 export enum WalletSyncActionTypes {
   WALLET_SYNC_SET_MANAGE_KEY_DRAWER = "WALLET_SYNC_SET_MANAGE_KEY_DRAWER",
+  LEDGER_SYNC_SET_ACTIVATE_DRAWER = "LEDGER_SYNC_SET_ACTIVATE_DRAWER",
+  LEDGER_SYNC_SET_ACTIVATE_STEP = "LEDGER_SYNC_SET_ACTIVATE_STEP",
 }
 
 export type WalletSyncSetManageKeyDrawerPayload = boolean;
-export type WalletSyncPayload = WalletSyncSetManageKeyDrawerPayload;
+export type WalletSyncSetActivateDrawer = boolean;
+export type WalletSyncSetActivateStep = Steps;
+export type WalletSyncPayload =
+  | WalletSyncSetManageKeyDrawerPayload
+  | WalletSyncSetActivateDrawer
+  | WalletSyncSetActivateStep;
+
+// === AUTH ACTIONS ===
+export enum AuthActionTypes {
+  INITIALIZE_AUTH_STATE = "AUTH_INITIALIZE_AUTH_STATE",
+  SET_LOCKED = "AUTH_SET_LOCKED",
+  SET_BIOMETRICS_ERROR = "AUTH_SET_BIOMETRICS_ERROR",
+  SET_AUTH_MODAL_OPEN = "AUTH_SET_AUTH_MODAL_OPEN",
+  LOCK = "AUTH_LOCK",
+  UNLOCK = "AUTH_UNLOCK",
+}
+
+export type AuthInitializeStatePayload = { privacy: Privacy | null | undefined };
+export type AuthSetLockedPayload = boolean;
+export type AuthSetBiometricsErrorPayload = Error | null;
+export type AuthSetAuthModalOpenPayload = boolean;
+export type AuthPayload =
+  | AuthInitializeStatePayload
+  | AuthSetLockedPayload
+  | AuthSetBiometricsErrorPayload
+  | AuthSetAuthModalOpenPayload;
 
 // === PAYLOADS ===
 
 export type ActionsPayload =
   | Action<AccountsPayload>
   | Action<AppStatePayload>
+  | Action<AuthPayload>
   | Action<BlePayload>
   | Action<NotificationsPayload>
   | Action<RatingsPayload>
@@ -546,4 +656,5 @@ export type ActionsPayload =
   | Action<ProtectPayload>
   | Action<EarnPayload>
   | Action<MarketPayload>
-  | Action<NftPayload>;
+  | Action<NftPayload>
+  | AnyAction;

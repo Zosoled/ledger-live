@@ -4,9 +4,11 @@ import { AccountsPage } from "../../page/accounts.page";
 import { Layout } from "../../component/layout.component";
 import { AccountPage } from "../../page/account.page";
 import { Modal } from "../../component/modal.component";
+import { delegateModal } from "tests/page/modal/delegate.modal";
 
 test.use({ userdata: "accountCosmos" });
 let modalPage: Modal;
+let delegate: delegateModal;
 
 test.beforeEach(async ({ page }) => {
   const layout = new Layout(page);
@@ -15,7 +17,8 @@ test.beforeEach(async ({ page }) => {
   modalPage = new Modal(page);
   const accountsPage = new AccountsPage(page);
   await accountsPage.navigateToAccountByName("Cosmos 1");
-  await accountPage.startCosmosStakingFlow();
+  await accountPage.startStakingFlowFromMainStakeButton();
+  delegate = new delegateModal(page);
 });
 
 test("Delegate flow using max amount", async () => {
@@ -24,16 +27,17 @@ test("Delegate flow using max amount", async () => {
   });
 
   await test.step("Check Ledger is the provider by default", async () => {
-    await modalPage.continue();
-    const defaultprovider = await modalPage.getTitleProvider();
+    await delegate.continue();
+    const defaultprovider = await delegate.getTitleProvider(1);
     expect(defaultprovider).toEqual("Ledger");
   });
 
   await test.step("Toggle max amount to be filled in the amount field", async () => {
-    await modalPage.continueDelegate();
-    await modalPage.toggleMaxAmount();
-    const availableMaxAmount = await modalPage.getSpendableBannerValue();
-    const filledMaxAmount = await modalPage.getCryptoAmount();
+    await delegate.continue();
+    await delegate.toggleMaxAmount();
+    const availableMaxAmount = await delegate.getSpendableBannerValue();
+    await delegate.waitForCryptoAmountToBePopulated();
+    const filledMaxAmount = await delegate.getCryptoAmount();
     expect(filledMaxAmount).toEqual(availableMaxAmount);
     await expect.soft(modalPage.container).toHaveScreenshot(`staking-max-amount-page.png`);
   });
@@ -41,16 +45,16 @@ test("Delegate flow using max amount", async () => {
 
 test("The user search and select a provider", async () => {
   await test.step("open the provider search modal", async () => {
-    await modalPage.continue();
+    await delegate.continue();
     await expect.soft(modalPage.container).toHaveScreenshot(`provider-search-page.png`);
   });
 
   await test.step("search for new provider", async () => {
     const providerResearched = "Figment";
-    await modalPage.openSearchProviderModal();
-    await modalPage.inputProvider(providerResearched);
-    await modalPage.selectProvider(0);
-    const providerSelected = await modalPage.getTitleProvider();
+    await delegate.openSearchProviderModal();
+    await delegate.inputProvider(providerResearched);
+    await delegate.selectProviderOnRow(1);
+    const providerSelected = await delegate.getTitleProvider(1);
     expect(providerSelected).toEqual(providerResearched);
   });
 });

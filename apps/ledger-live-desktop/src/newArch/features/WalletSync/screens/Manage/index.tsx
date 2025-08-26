@@ -10,7 +10,7 @@ import styled from "styled-components";
 import { useInstances } from "../ManageInstances/useInstances";
 import { useLifeCycle } from "../../hooks/walletSync.hooks";
 import TrackPage from "~/renderer/analytics/TrackPage";
-import { AnalyticsPage, useWalletSyncAnalytics } from "../../hooks/useWalletSyncAnalytics";
+import { AnalyticsPage, useLedgerSyncAnalytics } from "../../hooks/useLedgerSyncAnalytics";
 import { useLedgerSyncInfo } from "../../hooks/useLedgerSyncInfo";
 import { AlertError } from "../../components/AlertError";
 import { AlertLedgerSyncDown } from "../../components/AlertLedgerSyncDown";
@@ -20,31 +20,40 @@ const Separator = () => {
   return <Box height="1px" width="100%" backgroundColor={colors.opacityDefault.c05} />;
 };
 
-const WalletSyncManage = () => {
+type Props = {
+  currentPage: AnalyticsPage;
+};
+
+const WalletSyncManage = ({ currentPage }: Props) => {
   const { t } = useTranslation();
   useLifeCycle();
 
-  const { error: ledgerSyncError, isError: isLedgerSyncError } = useLedgerSyncInfo();
+  const {
+    statusQuery: { error: ledgerSyncError, isError: isLedgerSyncError },
+  } = useLedgerSyncInfo();
   const { instances, isLoading, hasError, error: membersError } = useInstances();
 
   const dispatch = useDispatch();
 
-  const { onClickTrack } = useWalletSyncAnalytics();
+  const { onClickTrack } = useLedgerSyncAnalytics();
 
   const goToSync = () => {
-    dispatch(setFlow({ flow: Flow.Synchronize, step: Step.SynchronizeMode }));
+    dispatch(setFlow({ flow: Flow.Synchronize, step: Step.SynchronizeWithQRCode }));
 
-    onClickTrack({ button: "Synchronize", page: AnalyticsPage.WalletSyncSettings });
+    onClickTrack({
+      button: "Synchronize with another app",
+      page: currentPage,
+    });
   };
 
   const goToManageBackup = () => {
-    dispatch(setFlow({ flow: Flow.ManageBackup, step: Step.ManageBackup }));
-    onClickTrack({ button: "Manage Backup", page: AnalyticsPage.WalletSyncSettings });
+    dispatch(setFlow({ flow: Flow.ManageBackup, step: Step.DeleteBackup }));
+    onClickTrack({ button: "Delete sync", page: currentPage });
   };
 
   const goToManageInstances = () => {
     dispatch(setFlow({ flow: Flow.ManageInstances, step: Step.SynchronizedInstances }));
-    onClickTrack({ button: "Manage Instances", page: AnalyticsPage.WalletSyncSettings });
+    onClickTrack({ button: "Manage Instances", page: currentPage });
   };
 
   const Options: OptionProps[] = [
@@ -78,7 +87,7 @@ const WalletSyncManage = () => {
 
   return (
     <Box height="100%" paddingX="40px">
-      <TrackPage category={AnalyticsPage.WalletSyncSettings} />
+      <TrackPage category={currentPage} />
       <Box marginBottom={"24px"}>
         <Text fontSize={23} variant="large">
           {t("walletSync.title")}
@@ -101,7 +110,7 @@ const WalletSyncManage = () => {
         {isLoading ? (
           <InfiniteLoader size={16} />
         ) : (
-          <Text fontSize={13.44}>
+          <Text fontSize={13.44} data-testid="walletSync-manage-instances-label">
             {t("walletSync.manage.instance.label", { count: instances?.length })}
           </Text>
         )}

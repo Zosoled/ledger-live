@@ -1,19 +1,19 @@
-import React, { useState, useMemo } from "react";
+import ChevronBottom from "@ledgerhq/icons-ui/reactLegacy/ChevronBottomMedium";
+import React, { useMemo, useState } from "react";
 import styled, { css, StyledProps } from "styled-components";
-import baseStyled, { BaseStyledProps } from "../../styled";
-import { fontSize, border, BordersProps, compose } from "styled-system";
+import { border, BordersProps, compose, fontSize } from "styled-system";
+import { rgba } from "../../../styles/helpers";
 import fontFamily from "../../../styles/styled/fontFamily";
 import { fontSizes } from "../../../styles/theme";
-import { rgba } from "../../../styles/helpers";
-import ChevronBottom from "@ledgerhq/icons-ui/reactLegacy/ChevronBottomMedium";
+import baseStyled, { BaseStyledProps } from "../../styled";
 
-export type ButtonVariants = "main" | "shade" | "error" | "color" | "neutral";
-export type IconPosition = "right" | "left";
+type ButtonVariants = "main" | "shade" | "error" | "color" | "neutral";
+type IconPosition = "right" | "left";
 interface BaseProps extends BaseStyledProps, BordersProps {
   ff?: string;
   color?: string;
   backgroundColor?: string;
-  size?: "small" | "medium" | "large";
+  size?: "xs" | "small" | "medium" | "large" | "xl";
   fontSize?: number;
   variant?: ButtonVariants;
   outline?: boolean;
@@ -24,7 +24,7 @@ interface BaseProps extends BaseStyledProps, BordersProps {
 }
 
 export interface ButtonProps extends BaseProps, React.RefAttributes<HTMLButtonElement> {
-  Icon?: React.ComponentType<{ size: number; color?: string }>;
+  Icon?: React.ReactElement | React.ComponentType<{ size: number; color?: string }>;
   children?: React.ReactNode;
   onClick?: (event: React.SyntheticEvent<HTMLButtonElement>) => void;
   iconSize?: number;
@@ -236,7 +236,11 @@ const Button = (
   ref?: React.ForwardedRef<HTMLButtonElement>,
 ): React.ReactElement => {
   const iconNodeSize = iconSize || fontSizes[props.fontSize ?? 4];
-  const IconNode = useMemo(() => Icon && <Icon size={iconNodeSize} />, [iconNodeSize, Icon]);
+  const IconNode = useMemo(() => {
+    if (!Icon) return null;
+    if (typeof Icon === "object") return Icon;
+    return <Icon size={iconNodeSize} />;
+  }, [iconNodeSize, Icon]);
 
   return (
     <Base {...props} ref={ref} iconButton={!(Icon == null) && !children} onClick={onClick}>
@@ -288,6 +292,10 @@ export const buttonSizeStyle: {
     height: string;
   };
 } = {
+  xs: {
+    padding: "0 12px",
+    height: "28px",
+  },
   small: {
     padding: "0 20px",
     height: "32px",
@@ -299,6 +307,10 @@ export const buttonSizeStyle: {
   large: {
     padding: "0 28px",
     height: "48px",
+  },
+  xl: {
+    padding: "0 28px",
+    height: "56px",
   },
 };
 

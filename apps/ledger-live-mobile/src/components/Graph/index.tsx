@@ -14,6 +14,10 @@ import type { Item, ItemArray } from "./types";
 type Props = {
   width: number;
   height: number;
+  /** Represents the offset to apply to the chart positioning on x-axis. Default to 0.  */
+  xOffset?: number;
+  /** Represents the offset to apply to the chart positioning on y-axis. Default to 10.  */
+  yOffset?: number;
   data?: ItemArray;
   color: string;
   isInteractive: boolean;
@@ -22,6 +26,7 @@ type Props = {
   shape?: keyof typeof d3shape;
   verticalRangeRatio?: number;
   fill?: string;
+  testID?: string;
 };
 const STROKE_WIDTH = 2;
 const FOCUS_RADIUS = 4;
@@ -29,6 +34,8 @@ const FOCUS_RADIUS = 4;
 function Graph({
   width,
   height,
+  xOffset = 0,
+  yOffset = 10,
   data = [],
   color: initialColor,
   isInteractive = false,
@@ -37,6 +44,7 @@ function Graph({
   onItemHover,
   verticalRangeRatio = 2,
   fill,
+  testID,
 }: Props) {
   const { colors } = useTheme();
   const color = initialColor || colors.primary.c80;
@@ -58,13 +66,10 @@ function Graph({
   const area = d3shape
     .area<Item>()
     .x(d => x(d.date!))
-    .y0(d => yExtractor(d as unknown as Item))
-    .y1(
-      d =>
-        yExtractor(d as unknown as Item) +
-        Math.min((maxY - minY) / verticalRangeRatio, height + 20),
-    )
+    .y0(() => height)
+    .y1(d => yExtractor(d))
     .curve(curve)(data);
+
   const line = d3shape
     .line<Item>()
     .x(d => x(d.date!))
@@ -72,9 +77,10 @@ function Graph({
     .curve(curve)(data);
   const content = (
     <Svg
+      testID={testID}
       height={height}
       width={width}
-      viewBox={`0 -10 ${width} ${height + 20}`}
+      viewBox={`${xOffset * -1} ${yOffset * -1} ${width} ${height}`}
       preserveAspectRatio="none"
     >
       <Defs>
@@ -92,6 +98,8 @@ function Graph({
       color={color}
       mapValue={mapValue}
       onItemHover={onItemHover}
+      xOffset={xOffset}
+      yOffset={yOffset}
       x={x}
       y={y}
     >

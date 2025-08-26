@@ -10,6 +10,8 @@ import { WALLET_API_VERSION } from "@ledgerhq/live-common/wallet-api/constants";
 setWalletAPIVersion(WALLET_API_VERSION);
 
 setSupportedCurrencies([
+  "aptos",
+  "aptos_testnet",
   "bitcoin",
   "ethereum",
   "bsc",
@@ -24,7 +26,7 @@ setSupportedCurrencies([
   "dash",
   "tron",
   "tezos",
-  "elrond",
+  "elrond", // NOTE: legacy 'multiversx' name, kept for compatibility
   "ethereum_classic",
   "zcash",
   "decred",
@@ -34,7 +36,6 @@ setSupportedCurrencies([
   "qtum",
   "bitcoin_gold",
   "komodo",
-  "pivx",
   "zencash",
   "bitcoin_testnet",
   "ethereum_sepolia",
@@ -45,6 +46,8 @@ setSupportedCurrencies([
   "hedera",
   "cardano",
   "solana",
+  "solana_testnet",
+  "solana_devnet",
   "osmosis",
   "fantom",
   "moonbeam",
@@ -86,6 +89,9 @@ setSupportedCurrencies([
   "base_sepolia",
   "stacks",
   "telos_evm",
+  "sei_network_evm",
+  "berachain",
+  "hyperevm",
   "coreum",
   "injective",
   "casper",
@@ -99,6 +105,18 @@ setSupportedCurrencies([
   "blast_sepolia",
   "scroll",
   "scroll_sepolia",
+  "etherlink",
+  "zksync",
+  "zksync_sepolia",
+  "mantra",
+  "xion",
+  "sui",
+  "zenrock",
+  "sonic",
+  "sonic_blaze",
+  "mina",
+  "babylon",
+  "canton_network",
 ]);
 
 for (const k in process.env) setEnvUnsafe(k as EnvName, process.env[k]);

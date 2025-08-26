@@ -2,41 +2,44 @@ import React, { useMemo } from "react";
 import semver from "semver";
 import { RouteComponentProps, useLocation } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { RampCatalog } from "@ledgerhq/live-common/platform/providers/RampCatalogProvider/types";
 import Card from "~/renderer/components/Box/Card";
-import { developerModeSelector, languageSelector } from "~/renderer/reducers/settings";
+import {
+  counterValueCurrencySelector,
+  developerModeSelector,
+  languageSelector,
+  localeSelector,
+} from "~/renderer/reducers/settings";
 import { accountsSelector } from "~/renderer/reducers/accounts";
 import { useRemoteLiveAppManifest } from "@ledgerhq/live-common/platform/providers/RemoteLiveAppProvider/index";
 import useTheme from "~/renderer/hooks/useTheme";
 import WebPTXPlayer from "~/renderer/components/WebPTXPlayer";
 import { getParentAccount, isTokenAccount } from "@ledgerhq/live-common/account/index";
-import { LiveAppManifest, Loadable } from "@ledgerhq/live-common/platform/types";
+import { LiveAppManifest } from "@ledgerhq/live-common/platform/types";
 import { accountToWalletAPIAccount } from "@ledgerhq/live-common/wallet-api/converters";
 import {
-  DEFAULT_MULTIBUY_APP_ID,
+  BUY_SELL_UI_APP_ID,
   INTERNAL_APP_IDS,
   WALLET_API_VERSION,
 } from "@ledgerhq/live-common/wallet-api/constants";
 import { useInternalAppIds } from "@ledgerhq/live-common/hooks/useInternalAppIds";
 import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
 import { useLocalLiveAppManifest } from "@ledgerhq/live-common/wallet-api/LocalLiveAppProvider/index";
+import { useProviderInterstitalEnabled } from "@ledgerhq/live-common/hooks/useShowProviderLoadingTransition";
 import { walletSelector } from "~/renderer/reducers/wallet";
-
-export type DProps = {
-  defaultCurrencyId?: string | null;
-  defaultAccountId?: string | null;
-  defaultTicker?: string | null;
-  rampCatalog: Loadable<RampCatalog>;
-};
+import { useDiscreetMode } from "~/renderer/components/Discreet";
+import { ProviderInterstitial } from "./BuySell/ProviderInterstitial";
 
 type ExchangeState = { account?: string } | undefined;
 
 const LiveAppExchange = ({ appId }: { appId: string }) => {
   const { state: urlParams, search } = useLocation<ExchangeState>();
   const searchParams = new URLSearchParams(search);
-  const locale = useSelector(languageSelector);
+  const lang = useSelector(languageSelector);
+  const locale = useSelector(localeSelector);
+  const { ticker: currencyTicker } = useSelector(counterValueCurrencySelector);
   const devMode = useSelector(developerModeSelector);
   const accounts = useSelector(accountsSelector);
+  const discreetMode = useDiscreetMode();
 
   const mockManifest: LiveAppManifest | undefined =
     process.env.MOCK_REMOTE_LIVE_MANIFEST && JSON.parse(process.env.MOCK_REMOTE_LIVE_MANIFEST)[0];
@@ -47,6 +50,10 @@ const LiveAppExchange = ({ appId }: { appId: string }) => {
   const themeType = useTheme().colors.palette.type;
   const internalAppIds = useInternalAppIds() || INTERNAL_APP_IDS;
   const walletState = useSelector(walletSelector);
+
+  const providerInterstitialEnabled = useProviderInterstitalEnabled({
+    manifest,
+  });
 
   /**
    * Pass correct account ID
@@ -96,10 +103,21 @@ const LiveAppExchange = ({ appId }: { appId: string }) => {
           inputs={{
             theme: themeType,
             ...customUrlParams,
-            lang: locale,
+            lang,
+            locale,
+            currencyTicker,
             devMode,
+            discreetMode: discreetMode ? "true" : "false",
+            ...(localManifest?.providerTestBaseUrl && {
+              providerTestBaseUrl: localManifest?.providerTestBaseUrl,
+            }),
+            ...(localManifest?.providerTestId && {
+              providerTestId: localManifest?.providerTestId,
+            }),
+
             ...Object.fromEntries(searchParams.entries()),
           }}
+          Loader={providerInterstitialEnabled ? ProviderInterstitial : undefined}
         />
       ) : null}
     </Card>
@@ -113,7 +131,7 @@ export type ExchangeComponentParams = {
 const Exchange = ({ match }: RouteComponentProps<ExchangeComponentParams>) => {
   const appId = match?.params?.appId;
   const buySellUiFlag = useFeature("buySellUi");
-  const defaultPlatform = buySellUiFlag?.params?.manifestId || DEFAULT_MULTIBUY_APP_ID;
+  const defaultPlatform = buySellUiFlag?.params?.manifestId || BUY_SELL_UI_APP_ID;
 
   return <LiveAppExchange appId={appId || defaultPlatform} />;
 };

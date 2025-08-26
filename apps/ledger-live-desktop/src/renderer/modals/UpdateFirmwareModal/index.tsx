@@ -6,7 +6,7 @@ import { DeviceInfo, FirmwareUpdateContext } from "@ledgerhq/types-live";
 import { withV3StyleProvider } from "~/renderer/styles/StyleProviderV3";
 import { hasFinalFirmware } from "@ledgerhq/live-common/hw/hasFinalFirmware";
 import logger from "~/renderer/logger";
-import { Divider, Flex, FlowStepper, Text } from "@ledgerhq/react-ui";
+import { Flex, FlowStepper, Text } from "@ledgerhq/react-ui";
 import Disclaimer from "./Disclaimer";
 import Cancel from "./errors/Cancel";
 import DeviceCancel from "./errors/DeviceError";
@@ -14,6 +14,7 @@ import { DisconnectedDevice, DisconnectedDeviceDuringOperation } from "@ledgerhq
 import SideDrawerHeader from "~/renderer/components/SideDrawerHeader";
 import { createFirmwareUpdateSteps } from "./helpers/createFirmwareUpdateSteps";
 import { StepId, STEPS } from "./types";
+import { isDisconnectedWhileSendingApduError } from "@ledgerhq/live-dmk-desktop";
 
 type MaybeError = Error | undefined | null;
 
@@ -22,7 +23,7 @@ export type Props = {
   withAppsToReinstall: boolean;
   onDrawerClose: (reinstall?: boolean) => void;
   onRequestClose: () => void;
-  firmware?: FirmwareUpdateContext;
+  firmware: FirmwareUpdateContext;
   stepId: StepId;
   error?: Error | null | undefined;
   deviceModelId: DeviceModelId;
@@ -55,13 +56,15 @@ const UpdateModal = ({
   const [err, setErr] = useState<MaybeError>(error || null);
   const [CLSBackup, setCLSBackup] = useState<string>();
   const [updatedDeviceInfo, setUpdatedDeviceInfo] = useState<DeviceInfo | undefined>(undefined);
-  const withFinal = useMemo(() => hasFinalFirmware(firmware?.final), [firmware]);
+  const withFinal = useMemo(() => hasFinalFirmware(firmware.final), [firmware]);
   const [cancel, setCancel] = useState<boolean>(false);
 
   const isDisconnectedDeviceError = err instanceof DisconnectedDevice;
   const isDisconnectedDeviceDuringOperationError = err instanceof DisconnectedDeviceDuringOperation;
   const isDeviceDisconnected =
-    isDisconnectedDeviceError || isDisconnectedDeviceDuringOperationError;
+    isDisconnectedDeviceError ||
+    isDisconnectedDeviceDuringOperationError ||
+    isDisconnectedWhileSendingApduError(err);
 
   const onRequestCancel = useCallback(() => {
     (showDisclaimer && !isDeviceDisconnected) || stateStepId === STEPS.FINISH || cancel
@@ -120,7 +123,7 @@ const UpdateModal = ({
     setUpdatedDeviceInfo,
 
     appsToBeReinstalled: withAppsToReinstall,
-    transitionTo: setStateStepId,
+    transitionTo: setStateStepId, // FIXME: this is a really bad idea that should be reworked, as the steps are determined dynamically, a child might want to transition to a step that doesn't exist
     CLSBackup,
     deviceModelId,
     error: err,
@@ -199,22 +202,7 @@ const UpdateModal = ({
                 >
                   <step.component {...additionalProps} />
                 </Flex>
-                {step.footer ? (
-                  <Flex flexDirection="column" alignSelf="stretch">
-                    <Divider color={"neutral.c30"} />
-                    <Flex
-                      flex={1}
-                      px={12}
-                      alignSelf="stretch"
-                      flexDirection="row"
-                      justifyContent="space-between"
-                      pt={6}
-                      pb={1}
-                    >
-                      <step.footer {...additionalProps} />
-                    </Flex>
-                  </Flex>
-                ) : null}
+                {step.footer ? <step.footer {...additionalProps} /> : null}
               </Flex>
             </FlowStepper.Indexed.Step>
           ))}

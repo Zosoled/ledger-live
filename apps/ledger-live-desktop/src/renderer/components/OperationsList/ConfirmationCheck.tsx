@@ -15,6 +15,7 @@ import IconFees from "~/renderer/icons/Fees";
 import IconTrash from "~/renderer/icons/Trash";
 import IconLink from "~/renderer/icons/LinkIcon";
 import IconCoins from "~/renderer/icons/Coins";
+import IconCheck from "~/renderer/icons/Check";
 import Freeze from "~/renderer/icons/Freeze";
 import Unfreeze from "~/renderer/icons/Unfreeze";
 import Box from "~/renderer/components/Box";
@@ -58,7 +59,8 @@ export const Container = styled(Box).attrs<ContainerProps>(p => ({
   bg: p.hasFailed
     ? mix(p.theme.colors.alertRed, p.theme.colors.palette.background.paper, 0.95)
     : p.isConfirmed
-      ? mix(inferColor(p) as string, p.theme.colors.palette.background.paper, 0.8)
+      ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        mix(inferColor(p) as string, p.theme.colors.palette.background.paper, 0.8)
       : p.theme.colors.palette.background.paper,
   color: p.hasFailed ? p.theme.colors.alertRed : inferColor(p),
   alignItems: "center",
@@ -120,6 +122,9 @@ const iconsComponent = {
   STAKE: IconDelegate,
   UNSTAKE: IconUndelegate,
   WITHDRAW_UNSTAKED: IconCoins,
+  UNKNOWN: IconCheck,
+  BURN: IconTrash,
+  ASSOCIATE_TOKEN: IconPlus,
 };
 class ConfirmationCheck extends PureComponent<{
   marketColor: string;

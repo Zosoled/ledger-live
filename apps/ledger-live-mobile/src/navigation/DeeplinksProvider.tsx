@@ -10,18 +10,11 @@ import {
   PartialState,
 } from "@react-navigation/native";
 import Config from "react-native-config";
-import { useFlipper } from "@react-navigation/devtools";
 import { useRemoteLiveAppContext } from "@ledgerhq/live-common/platform/providers/RemoteLiveAppProvider/index";
 import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
-import {
-  DEFAULT_MULTIBUY_APP_ID,
-  BUY_SELL_UI_APP_ID,
-} from "@ledgerhq/live-common/wallet-api/constants";
-
+import { BUY_SELL_UI_APP_ID } from "@ledgerhq/live-common/wallet-api/constants";
 import Braze from "@braze/react-native-sdk";
 import { LiveAppManifest } from "@ledgerhq/live-common/platform/types";
-import * as Sentry from "@sentry/react-native";
-
 import { hasCompletedOnboardingSelector } from "~/reducers/settings";
 import { navigationRef, isReadyRef } from "../rootnavigation";
 import { ScreenName, NavigatorName } from "~/const";
@@ -30,11 +23,18 @@ import { useGeneralTermsAccepted } from "~/logic/terms";
 import { Writeable } from "~/types/helpers";
 import { lightTheme, darkTheme, Theme } from "../colors";
 import { track } from "~/analytics";
-import { setEarnInfoModal } from "~/actions/earn";
+import {
+  makeSetEarnInfoModalAction,
+  makeSetEarnMenuModalAction,
+  makeSetEarnProtocolInfoModalAction,
+} from "~/actions/earn";
 import { blockPasswordLock } from "../actions/appstate";
 import { useStorylyContext } from "~/components/StorylyStories/StorylyProvider";
-
-const routingInstrumentation = new Sentry.ReactNavigationInstrumentation();
+import { navigationIntegration } from "../sentry";
+import { OptionMetadata } from "~/reducers/types";
+const TRACKING_EVENT = "deeplink_clicked";
+import { DdRumReactNavigationTracking } from "@datadog/mobile-react-navigation";
+import { viewNamePredicate } from "~/datadog";
 
 const themes: {
   [key: string]: Theme;
@@ -73,8 +73,8 @@ function getProxyURL(url: string, customBuySellUiAppId?: string) {
   }
 
   const buySellAppIds = customBuySellUiAppId
-    ? [customBuySellUiAppId, DEFAULT_MULTIBUY_APP_ID, BUY_SELL_UI_APP_ID]
-    : [DEFAULT_MULTIBUY_APP_ID, BUY_SELL_UI_APP_ID];
+    ? [customBuySellUiAppId, BUY_SELL_UI_APP_ID]
+    : [BUY_SELL_UI_APP_ID];
 
   // This is to handle links set in the useFromAmountStatusMessage in LLC.
   // Also handles a difference in paths between LLD on LLD /platform/:app_id
@@ -104,6 +104,7 @@ const linkingOptions = () => ({
   prefixes: [
     "ledgerlive://",
     "https://ledger.com",
+    // FIXME: We will be fixing the universal links in this epic : https://ledgerhq.atlassian.net/browse/LIVE-14732
     /**
      * Adjust universal links attached to iOS Bundle ID com.ledger.live
      * (local debug, prod & nightly builds)
@@ -160,84 +161,13 @@ const linkingOptions = () => ({
            * ie: "ledgerlive://discover/paraswap?theme=light" will open the catalog and the paraswap dapp with a light theme as parameter
            */
           [ScreenName.PlatformApp]: "discover/:platform",
-          [ScreenName.Recover]: "recover/:platform",
-          [NavigatorName.Main]: {
-            initialRouteName: ScreenName.Portfolio,
+          [NavigatorName.Card]: {
+            initialRouteName: ScreenName.Card,
             screens: {
-              /**
-               * ie: "ledgerlive://portfolio" -> will redirect to the portfolio
-               */
-
-              [NavigatorName.Portfolio]: {
-                screens: {
-                  [NavigatorName.PortfolioAccounts]: {
-                    screens: {
-                      /**
-                       * "ledgerlive://accounts" opens the main portfolio screen of accounts.
-                       */
-                      [ScreenName.Accounts]: "accounts",
-                    },
-                  },
-                  [NavigatorName.WalletTab]: {
-                    screens: {
-                      [ScreenName.Portfolio]: "portfolio",
-                      [ScreenName.WalletNftGallery]: "nftgallery",
-                      [NavigatorName.Market]: {
-                        screens: {
-                          /**
-                           * ie: "ledgerlive://market" will open the market screen
-                           */
-                          [ScreenName.MarketList]: "market",
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-              [NavigatorName.Earn]: {
-                screens: {
-                  /**
-                   * ie: "ledgerlive://earn" will open earn dashboard page
-                   *
-                   * @params ?action: string
-                   * ie: "ledgerlive://earn?action=stake" will open staking flow
-                   *
-                   * * @params ?action: string
-                   * * @params &accountId: string
-                   * ie: "ledgerlive://earn?action=stake-account&accountId=XXXX" will open staking flow with specific account
-                   *
-                   * * @params ?action: string
-                   * * @params ?currencyId: string
-                   * ie: "ledgerlive://earn?action=get-funds&currencyId=ethereum" will open buy drawer with currency
-                   *
-                   */
-                  [ScreenName.Earn]: "earn",
-                },
-              },
-              [NavigatorName.Discover]: {
-                screens: {
-                  /**
-                   * ie: "ledgerlive://discover" will open the catalog
-                   */
-                  [ScreenName.PlatformCatalog]: "discover",
-                },
-              },
-              [NavigatorName.MyLedger]: {
-                screens: {
-                  /**
-                   * ie: "ledgerlive://myledger" will open MyLedger page
-                   *
-                   * @params ?installApp: string
-                   * ie: "ledgerlive://myledger?installApp=bitcoin" will open myledger with "bitcoin" prefilled in the search input
-                   *
-                   * * @params ?searchQuery: string
-                   * ie: "ledgerlive://myledger?searchQuery=bitcoin" will open myledger with "bitcoin" prefilled in the search input
-                   */
-                  [ScreenName.MyLedgerChooseDevice]: "myledger",
-                },
-              },
+              [ScreenName.Card]: "card",
             },
           },
+          [ScreenName.Recover]: "recover/:platform",
           [NavigatorName.PostOnboarding]: {
             screens: {
               /**
@@ -273,32 +203,6 @@ const linkingOptions = () => ({
               [ScreenName.SendCoin]: "send",
             },
           },
-          /** "ledgerlive://account" will open the list of all accounts, where the redirection logic is. */
-          [NavigatorName.Accounts]: {
-            screens: {
-              /**
-               * @params ?currency: string
-               * @params ?address: string
-               * ie: "ledgerlive://account?currency=ethereum&address={{eth_account_address}} will open that account's assets screen.
-               * Currency param alone e.g. "ledgerlive://account?currency=tezos" will open the Tezos Assets screen.
-               */
-              [ScreenName.Accounts]: "account",
-            },
-          },
-
-          [NavigatorName.AddAccounts]: {
-            screens: {
-              /**
-               * ie: "ledgerlive://add-account" will open the add account flow
-               *
-               * @params ?currency: string
-               * ie: "ledgerlive://add-account?currency=bitcoin" will open the add account flow with "bitcoin" prefilled in the search input
-               *
-               */
-              [ScreenName.AddAccountsSelectCrypto]: "add-account",
-            },
-          },
-
           /**
            * ie: "ledgerlive://buy" -> will redirect to the main exchange page
            */
@@ -360,6 +264,13 @@ const linkingOptions = () => ({
                *
                */
               [ScreenName.GenericLandingPage]: "landing-page",
+              [ScreenName.LargeMoverLandingPage]: "landing-page-large-mover",
+            },
+          },
+
+          [NavigatorName.WalletSync]: {
+            screens: {
+              [ScreenName.LedgerSyncDeepLinkHandler]: "ledgersync",
             },
           },
         },
@@ -438,13 +349,180 @@ export const DeeplinksProvider = ({
   const userAcceptedTerms = useGeneralTermsAccepted();
   const storylyContext = useStorylyContext();
   const buySellUiFlag = useFeature("buySellUi");
+  const llmAccountListUI = useFeature("llmAccountListUI");
+  const modularDrawer = useFeature("llmModularDrawer");
   const buySellUiManifestId = buySellUiFlag?.params?.manifestId;
+  const AddAccountNavigatorEntryPoint = NavigatorName.AssetSelection;
+
+  const AccountsListScreenName = llmAccountListUI?.enabled
+    ? ScreenName.AccountsList
+    : ScreenName.Accounts;
 
   const linking = useMemo<LinkingOptions<ReactNavigation.RootParamList>>(
     () =>
       ({
         ...(hasCompletedOnboarding
-          ? linkingOptions()
+          ? {
+              ...linkingOptions(),
+              config: {
+                ...linkingOptions().config,
+                screens: {
+                  ...linkingOptions().config.screens,
+                  [NavigatorName.Base]: {
+                    ...linkingOptions().config.screens[NavigatorName.Base],
+                    screens: {
+                      ...linkingOptions().config.screens[NavigatorName.Base].screens,
+
+                      ...(modularDrawer?.enabled
+                        ? {
+                            [NavigatorName.ModularDrawer]: {
+                              screens: {
+                                [ScreenName.ModularDrawerDeepLinkHandler]: "add-account",
+                              },
+                            },
+                          }
+                        : {
+                            // Add account entry point navigator differ from the legacy to the new flow, when the deeplink is hit and the FF is enabled we should pass by the AssetSelection Feature
+                            [AddAccountNavigatorEntryPoint]: {
+                              screens: {
+                                /**
+                                 * ie: "ledgerlive://add-account" will open the add account flow
+                                 *
+                                 * @params ?currency: string
+                                 * ie: "ledgerlive://add-account?currency=bitcoin" will open the add account flow with "bitcoin" prefilled in the search input
+                                 *
+                                 */
+                                [ScreenName.AddAccountsSelectCrypto]: "add-account",
+                              },
+                            },
+                          }),
+
+                      /** "ledgerlive://assets will open assets screen. */
+                      ...(llmAccountListUI?.enabled && {
+                        [NavigatorName.Assets]: {
+                          screens: {
+                            /**
+                             * @params ?showHeader: boolean
+                             * @params ?isSyncEnabled: boolean
+                             * @params ?sourceScreenName: string
+                             * ie: "ledgerlive://assets?showHeader=true will open assets screen with header
+                             * ie "ledgerlive://assets?isSyncEnabled=true will open assets screen with sync enabled
+                             * ie "ledgerlive://assets?sourceScreenName=Portfolio will open assets screen with source screen name Portfolio for tracking inside the screen
+                             */
+                            [ScreenName.AssetsList]: "assets",
+                          },
+                        },
+                      }),
+                      [NavigatorName.Main]: {
+                        initialRouteName: ScreenName.Portfolio,
+                        screens: {
+                          /**
+                           * ie: "ledgerlive://portfolio" -> will redirect to the portfolio
+                           */
+
+                          [NavigatorName.Portfolio]: {
+                            screens: {
+                              ...(!llmAccountListUI?.enabled && {
+                                [NavigatorName.PortfolioAccounts]: {
+                                  screens: {
+                                    /**
+                                     * "ledgerlive://accounts" opens the main portfolio screen of accounts.
+                                     */
+                                    [ScreenName.Accounts]: "accounts",
+                                  },
+                                },
+                              }),
+                              [NavigatorName.WalletTab]: {
+                                screens: {
+                                  [ScreenName.Portfolio]: "portfolio",
+                                  [ScreenName.WalletNftGallery]: "nftgallery",
+                                  [NavigatorName.Market]: {
+                                    screens: {
+                                      /**
+                                       * ie: "ledgerlive://market" will open the market screen
+                                       */
+                                      [ScreenName.MarketList]: "market",
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          },
+                          [NavigatorName.Earn]: {
+                            screens: {
+                              /**
+                               * ie: "ledgerlive://earn" will open earn dashboard page
+                               *
+                               * @params ?action: string
+                               * ie: "ledgerlive://earn?action=stake" will open staking flow
+                               *
+                               * * @params ?action: string
+                               * * @params &accountId: string
+                               * ie: "ledgerlive://earn?action=stake-account&accountId=XXXX" will open staking flow with specific account
+                               *
+                               * * @params ?action: string
+                               * * @params ?currencyId: string
+                               * ie: "ledgerlive://earn?action=get-funds&currencyId=ethereum" will open buy drawer with currency
+                               *
+                               */
+                              [ScreenName.Earn]: "earn",
+                            },
+                          },
+                          [NavigatorName.Discover]: {
+                            screens: {
+                              /**
+                               * ie: "ledgerlive://discover" will open the catalog
+                               */
+                              [ScreenName.PlatformCatalog]: "discover",
+                            },
+                          },
+                          [NavigatorName.MyLedger]: {
+                            screens: {
+                              /**
+                               * ie: "ledgerlive://myledger" will open MyLedger page
+                               *
+                               * @params ?installApp: string
+                               * ie: "ledgerlive://myledger?installApp=bitcoin" will open myledger with "bitcoin" prefilled in the search input
+                               *
+                               * * @params ?searchQuery: string
+                               * ie: "ledgerlive://myledger?searchQuery=bitcoin" will open myledger with "bitcoin" prefilled in the search input
+                               */
+                              [ScreenName.MyLedgerChooseDevice]: "myledger",
+                            },
+                          },
+                        },
+                      },
+                      [NavigatorName.Accounts]: {
+                        screens: {
+                          /**
+                           * "ledgerlive://accounts" opens the main portfolio screen of accounts.
+                           */
+                          /**
+                           * if llmAccountListUI is enabled
+                           * @params ?showHeader: boolean
+                           * @params ?canAddAccount: boolean
+                           * @params ?isSyncEnabled: boolean
+                           * @params ?sourceScreenName: string
+                           * ie: "ledgerlive://accounts?showHeader=true will open accounts screen with header
+                           * ie "ledgerlive://accounts?canAddAccount=true will open accounts screen with add account button
+                           * ie "ledgerlive://accounts?isSyncEnabled=true will open accounts screen with sync enabled
+                           * ie "ledgerlive://accounts?sourceScreenName=Portfolio will open accounts screen with source screen name Portfolio for tracking inside the screen
+                           */
+                          [AccountsListScreenName]: "accounts",
+                          /**
+                           * @params ?currency: string
+                           * @params ?address: string
+                           * ie: "ledgerlive://account?currency=ethereum&address={{eth_account_address}} will open that account's assets screen.
+                           * Currency param alone e.g. "ledgerlive://account?currency=tezos" will open the Tezos Assets screen.
+                           */
+                          [ScreenName.Accounts]: "account",
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            }
           : getOnboardingLinkingOptions(!!userAcceptedTerms)),
         subscribe(listener) {
           const sub = Linking.addEventListener("url", ({ url }) => {
@@ -456,7 +534,7 @@ export const DeeplinksProvider = ({
             ) {
               const uri = isWalletConnectUrl(url) ? url : new URL(url).searchParams.get("uri");
               // Only update for a connection not a request
-              if (uri && !new URL(uri).searchParams.get("requestId")) {
+              if (uri && uri !== "wc:" && !new URL(uri).searchParams.get("requestId")) {
                 // TODO use wallet-api to push event instead of reloading the webview
                 dispatch(setWallectConnectUri(uri));
               }
@@ -478,7 +556,6 @@ export const DeeplinksProvider = ({
           const url = new URL(`ledgerlive://${path}`);
           const { hostname, searchParams, pathname } = url;
           const query = Object.fromEntries(searchParams);
-
           const {
             ajs_prop_campaign: ajsPropCampaign,
             ajs_prop_track_data: ajsPropTrackData,
@@ -486,6 +563,12 @@ export const DeeplinksProvider = ({
             currency,
             installApp,
             appName,
+            deeplinkSource,
+            deeplinkType,
+            deeplinkDestination,
+            deeplinkChannel,
+            deeplinkMedium,
+            deeplinkCampaign,
           } = query;
 
           if (!ajsPropSource && !Config.MOCK) {
@@ -501,7 +584,7 @@ export const DeeplinksProvider = ({
 
           // Track deeplink only when ajsPropSource attribute exists.
           if (ajsPropSource) {
-            track("deeplink_clicked", {
+            track(TRACKING_EVENT, {
               deeplinkSource: ajsPropSource,
               deeplinkCampaign: ajsPropCampaign,
               url: hostname,
@@ -510,21 +593,55 @@ export const DeeplinksProvider = ({
               appName,
               ...(ajsPropTrackData ? JSON.parse(ajsPropTrackData) : {}),
             });
-          }
+          } else
+            track(TRACKING_EVENT, {
+              deeplinkSource,
+              deeplinkType,
+              deeplinkDestination,
+              deeplinkChannel,
+              deeplinkMedium,
+              deeplinkCampaign,
+            });
+
           const platform = pathname.split("/")[1];
 
-          if (hostname === "earn") {
-            if (searchParams.get("action") === "info-modal") {
-              const message = searchParams.get("message") || "";
-              const messageTitle = searchParams.get("messageTitle") || "";
+          if (isStorylyLink(url.toString())) {
+            storylyContext.setUrl(url.toString());
+          }
 
-              dispatch(
-                setEarnInfoModal({
-                  message,
-                  messageTitle,
-                }),
-              );
-              return;
+          if (hostname === "earn") {
+            switch (searchParams.get("action")) {
+              case "info-modal": {
+                const message = searchParams.get("message") ?? "";
+                const messageTitle = searchParams.get("messageTitle") ?? "";
+                const learnMoreLink = searchParams.get("learnMoreLink") ?? "";
+                dispatch(
+                  makeSetEarnInfoModalAction({
+                    message,
+                    messageTitle,
+                    learnMoreLink,
+                  }),
+                );
+                return;
+              }
+              case "menu-modal": {
+                const title = searchParams.get("title") ?? "";
+                const options = searchParams.get("options") ?? "";
+                dispatch(
+                  makeSetEarnMenuModalAction({
+                    title,
+                    options: JSON.parse(options) as {
+                      label: string;
+                      metadata: OptionMetadata;
+                    }[],
+                  }),
+                );
+                return;
+              }
+              case "protocol-info-modal": {
+                dispatch(makeSetEarnProtocolInfoModalAction(true));
+                return;
+              }
             }
           }
           if ((hostname === "discover" || hostname === "recover") && platform) {
@@ -557,12 +674,16 @@ export const DeeplinksProvider = ({
       }) as LinkingOptions<ReactNavigation.RootParamList>,
     [
       hasCompletedOnboarding,
+      modularDrawer?.enabled,
+      AddAccountNavigatorEntryPoint,
+      llmAccountListUI?.enabled,
+      AccountsListScreenName,
       userAcceptedTerms,
+      buySellUiManifestId,
       dispatch,
       storylyContext,
       liveAppProviderInitialized,
       manifests,
-      buySellUiManifestId,
     ],
   );
   const [isReady, setIsReady] = React.useState(false);
@@ -579,8 +700,6 @@ export const DeeplinksProvider = ({
     [],
   );
 
-  useFlipper(navigationRef);
-
   if (!isReady) {
     return null;
   }
@@ -593,7 +712,8 @@ export const DeeplinksProvider = ({
       onReady={() => {
         (isReadyRef as Writeable<typeof isReadyRef>).current = true;
         setTimeout(() => SplashScreen.hide(), 300);
-        routingInstrumentation.registerNavigationContainer(navigationRef);
+        navigationIntegration.registerNavigationContainer(navigationRef);
+        DdRumReactNavigationTracking.startTrackingViews(navigationRef.current, viewNamePredicate);
       }}
     >
       {children}

@@ -1,8 +1,17 @@
 import "./setup"; // Needs to be imported first
-import { app, Menu, ipcMain, session, webContents, shell, BrowserWindow, dialog } from "electron";
+import {
+  app,
+  Menu,
+  ipcMain,
+  session,
+  webContents,
+  shell,
+  BrowserWindow,
+  dialog,
+  protocol,
+} from "electron";
 import Store from "electron-store";
 import menu from "./menu";
-import path from "path";
 import {
   createMainWindow,
   getMainWindow,
@@ -15,7 +24,6 @@ import debounce from "lodash/debounce";
 import sentry from "~/sentry/main";
 import { SettingsState } from "~/renderer/reducers/settings";
 import { User } from "~/renderer/storage";
-import electronAppUniversalProtocolClient from "electron-app-universal-protocol-client";
 
 Store.initRenderer();
 
@@ -151,6 +159,7 @@ app.on("ready", async () => {
   window.on(
     "resize",
     debounce(() => {
+      if (!window || window.isDestroyed()) return;
       const [width, height] = window.getSize();
       db.setKey("windowParams", `${window.name}.dimensions`, {
         width,
@@ -161,6 +170,7 @@ app.on("ready", async () => {
   window.on(
     "move",
     debounce(() => {
+      if (!window || window.isDestroyed()) return;
       const [x, y] = window.getPosition();
       db.setKey("windowParams", `${window.name}.positions`, {
         x,
@@ -169,16 +179,23 @@ app.on("ready", async () => {
     }, 300),
   );
 
-  if (__DEV__) {
-    electronAppUniversalProtocolClient.on("request", requestUrl => {
-      // Handle the request
-      const win = getMainWindow();
-      if (win) win.webContents.send("deep-linking", requestUrl);
-    });
+  if (__DEV__ || process.env.PLAYWRIGHT_RUN) {
+    // Catch ledgerlive:// deep-link requests in dev mode from the app or live-apps
+    // We cannot get deep-links from outside the app, from the browser for example
+    protocol.handle("ledgerlive", request => {
+      const url = request.url;
+      getMainWindowAsync()
+        .then(w => {
+          if (w) {
+            show(w);
+            if ("send" in w.webContents) {
+              w.webContents.send("deep-linking", url);
+            }
+          }
+        })
+        .catch((err: unknown) => console.log(err));
 
-    await electronAppUniversalProtocolClient.initialize({
-      protocol: "ledgerlive",
-      mode: "development",
+      return new Response();
     });
   }
 
@@ -238,21 +255,23 @@ async function installExtensions() {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
   const installer = require("electron-devtools-installer");
   const forceDownload = true; // process.env.UPGRADE_EXTENSIONS
-  const extensions = [/*"REACT_DEVELOPER_TOOLS",*/ "REDUX_DEVTOOLS"];
-  // Temporary solution while Electron doesn't support manifest V3 extensions
-  // https://github.com/electron/electron/issues/36545
-  const reactDevToolsPath = path.dirname(require.resolve("@ledgerhq/react-devtools/package.json"));
-  session.defaultSession.loadExtension(reactDevToolsPath);
-  return Promise.all(
+  const extensions = ["REACT_DEVELOPER_TOOLS", "REDUX_DEVTOOLS"];
+  await Promise.all(
     extensions.map(name =>
       installer.default(installer[name], {
+        forceDownload,
         loadExtensionOptions: {
           allowFileAccess: true,
-          forceDownload,
         },
       }),
     ),
   ).catch(console.error);
+  //Hack to load React devtools extension without a reload due to this issue: https://github.com/MarshallOfSound/electron-devtools-installer/issues/244
+  return session.defaultSession.getAllExtensions().map(e => {
+    if (e.name === "React Developer Tools") {
+      session.defaultSession.loadExtension(e.path);
+    }
+  });
 }
 function clearSessionCache(session: Electron.Session): Promise<void> {
   return session.clearCache();

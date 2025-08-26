@@ -11,6 +11,7 @@ import {
   NotEnoughSpendableBalance,
 } from "@ledgerhq/errors";
 import type { Account, AccountBridge, CurrencyBridge } from "@ledgerhq/types-live";
+import { getSerializedAddressParameters } from "@ledgerhq/coin-framework/bridge/jsHelpers";
 import type { Transaction } from "@ledgerhq/coin-stellar/types/index";
 import { StellarSourceHasMultiSign, StellarWrongMemoFormat } from "@ledgerhq/coin-stellar/errors";
 import { getMainAccount } from "../../../account";
@@ -54,15 +55,11 @@ const createTransaction = (): Transaction => ({
   memoType: null,
   useAllAmount: false,
   mode: "send",
-  assetCode: "",
-  assetIssuer: "",
+  assetReference: "",
+  assetOwner: "",
 });
 
 const updateTransaction = (t, patch) => {
-  if ("recipient" in patch && patch.recipient !== t.recipient) {
-    return { ...t, ...patch, memoType: null };
-  }
-
   return { ...t, ...patch };
 };
 
@@ -222,6 +219,7 @@ const accountBridge: AccountBridge<Transaction> = {
   signOperation,
   broadcast,
   estimateMaxSpendable,
+  getSerializedAddressParameters,
 };
 export default {
   currencyBridge,

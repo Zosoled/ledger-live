@@ -1,9 +1,13 @@
 import network from "@ledgerhq/live-network";
 import coinConfig from "../config";
+import type { AccountInfo } from "../types/model";
 import {
+  isErrorResponse,
   isResponseStatus,
+  Marker,
   type AccountInfoResponse,
   type AccountTxResponse,
+  type ErrorResponse,
   type LedgerResponse,
   type ServerInfoResponse,
   type SubmitReponse,
@@ -20,10 +24,10 @@ export const submit = async (signature: string): Promise<SubmitReponse> => {
 export const getAccountInfo = async (
   recipient: string,
   current?: boolean,
-): Promise<AccountInfoResponse> => {
+): Promise<AccountInfo> => {
   const {
     data: { result },
-  } = await network<{ result: AccountInfoResponse }>({
+  } = await network<{ result: AccountInfoResponse | ErrorResponse }>({
     method: "POST",
     url: getNodeUrl(),
     data: {
@@ -41,24 +45,53 @@ export const getAccountInfo = async (
     throw new Error(`couldn't fetch account info ${recipient}`);
   }
 
-  return result;
+  if (isErrorResponse(result)) {
+    return {
+      isNewAccount: true,
+      balance: "0",
+      ownerCount: 0,
+      sequence: 0,
+    };
+  } else {
+    return {
+      isNewAccount: false,
+      balance: result.account_data.Balance,
+      ownerCount: result.account_data.OwnerCount,
+      sequence: result.account_data.Sequence,
+    };
+  }
 };
 
 export const getServerInfos = async (): Promise<ServerInfoResponse> => {
   return rpcCall<ServerInfoResponse>("server_info", { ledger_index: "validated" });
 };
 
+// https://xrpl.org/docs/references/http-websocket-apis/public-api-methods/account-methods/account_tx
+export type GetTransactionsOptions = {
+  ledger_index_min?: number;
+  ledger_index_max?: number;
+  limit?: number;
+  marker?: Marker;
+  // this property controls the order of the transactions
+  // true: oldest first
+  // false: newest first
+  forward: boolean;
+};
+
 export const getTransactions = async (
   address: string,
-  options: { ledger_index_min?: number; ledger_index_max?: number } | undefined,
-): Promise<AccountTxResponse["transactions"]> => {
+  options: GetTransactionsOptions | undefined,
+): Promise<AccountTxResponse> => {
   const result = await rpcCall<AccountTxResponse>("account_tx", {
     account: address,
-    ledger_index: "validated",
+    // this property controls the order of the transactions
+    // looks like there is a bug in LL (https://ledgerhq.atlassian.net/browse/LIVE-16705)
+    // so we need to set it to false (newest first) to get the transactions in the right order
+    // for lama-adapter we need to set it to true (oldest first)
     ...options,
+    api_version: 2,
   });
-
-  return result.transactions;
+  return result;
 };
 
 export async function getLedger(): Promise<LedgerResponse> {
@@ -73,7 +106,7 @@ export async function getLedgerIndex(): Promise<number> {
 
 async function rpcCall<T extends object>(
   method: string,
-  params: Record<string, string | number>,
+  params: Record<string, unknown> = {},
 ): Promise<T> {
   const {
     data: { result },
@@ -91,7 +124,7 @@ async function rpcCall<T extends object>(
   });
 
   if (isResponseStatus(result) && result.status !== "success") {
-    throw new Error(`couldn't fetch ${method} with params ${params}`);
+    throw new Error(`couldn't fetch ${method} with params ${JSON.stringify(params)}`);
   }
 
   return result;

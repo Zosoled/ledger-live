@@ -35,6 +35,8 @@ const listSupportedTokens = () =>
 const StepChooseCurrency = ({ currency, setCurrency }: StepProps) => {
   const mock = useEnv("MOCK");
 
+  const aptos = useFeature("currencyAptos");
+  const aptosTestnet = useFeature("currencyAptosTestnet");
   const axelar = useFeature("currencyAxelar");
   const stargaze = useFeature("currencyStargaze");
   const secretNetwork = useFeature("currencySecretNetwork");
@@ -81,9 +83,26 @@ const StepChooseCurrency = ({ currency, setCurrency }: StepProps) => {
   const scrollSepolia = useFeature("currencyScrollSepolia");
   const icon = useFeature("currencyIcon");
   const ton = useFeature("currencyTon");
+  const etherlink = useFeature("currencyEtherlink");
+  const zksync = useFeature("currencyZkSync");
+  const zksyncSepolia = useFeature("currencyZkSyncSepolia");
+  const mantra = useFeature("currencyMantra");
+  const xion = useFeature("currencyXion");
+  const zenrock = useFeature("currencyZenrock");
+  const sonic = useFeature("currencySonic");
+  const sonicBlaze = useFeature("currencySonicBlaze");
+  const sui = useFeature("currencySui");
+  const mina = useFeature("currencyMina");
+  const babylon = useFeature("currencyBabylon");
+  const seiNetworkEvm = useFeature("currencySeiNetworkEvm");
+  const berachain = useFeature("currencyBerachain");
+  const hyperevm = useFeature("currencyHyperevm");
+  const canton = useFeature("currencyCantonNetwork");
 
   const featureFlaggedCurrencies = useMemo(
     (): Partial<Record<CryptoCurrencyId, Feature<unknown> | null>> => ({
+      aptos,
+      aptos_testnet: aptosTestnet,
       axelar,
       stargaze,
       secret_network: secretNetwork,
@@ -111,6 +130,9 @@ const StepChooseCurrency = ({ currency, setCurrency }: StepProps) => {
       syscoin,
       internet_computer: internetComputer,
       telos_evm: telosEvm,
+      sei_network_evm: seiNetworkEvm,
+      berachain: berachain,
+      hyperevm: hyperevm,
       coreum,
       polygon_zk_evm: polygonZkEvm,
       polygon_zk_evm_testnet: polygonZkEvmTestnet,
@@ -130,8 +152,22 @@ const StepChooseCurrency = ({ currency, setCurrency }: StepProps) => {
       scroll,
       scroll_sepolia: scrollSepolia,
       icon,
+      etherlink,
+      zksync,
+      zksync_sepolia: zksyncSepolia,
+      mantra,
+      xion,
+      zenrock,
+      sonic,
+      sonic_blaze: sonicBlaze,
+      sui,
+      mina,
+      babylon,
+      canton_network: canton,
     }),
     [
+      aptos,
+      aptosTestnet,
       axelar,
       stargaze,
       secretNetwork,
@@ -178,13 +214,28 @@ const StepChooseCurrency = ({ currency, setCurrency }: StepProps) => {
       scroll,
       scrollSepolia,
       icon,
+      etherlink,
+      zksync,
+      zksyncSepolia,
+      mantra,
+      xion,
+      zenrock,
+      sonic,
+      sonicBlaze,
+      sui,
+      mina,
+      babylon,
+      berachain,
+      hyperevm,
+      seiNetworkEvm,
+      canton,
     ],
   );
 
   const currencies = useMemo(() => {
-    const supportedCurrenciesAndTokens = (
-      listSupportedCurrencies() as CryptoOrTokenCurrency[]
-    ).concat(listSupportedTokens());
+    const supportedCurrenciesAndTokens =
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+      (listSupportedCurrencies() as CryptoOrTokenCurrency[]).concat(listSupportedTokens());
 
     const deactivatedCurrencyIds = new Set(
       mock
@@ -203,7 +254,8 @@ const StepChooseCurrency = ({ currency, setCurrency }: StepProps) => {
 
   const url =
     currency && currency.type === "TokenCurrency"
-      ? supportLinkByTokenType[currency.tokenType as keyof typeof supportLinkByTokenType]
+      ? // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        supportLinkByTokenType[currency.tokenType as keyof typeof supportLinkByTokenType]
       : null;
 
   return (
@@ -303,7 +355,13 @@ export const StepChooseCurrencyFooter = ({
       {isToken ? (
         <Box horizontal>
           {parentCurrency ? (
-            <Button ml={2} primary onClick={onTokenCta} data-testid="modal-continue-button">
+            <Button
+              ml={2}
+              primary
+              onClick={onTokenCta}
+              data-testid="modal-continue-button"
+              style={{ wordBreak: "break-word", maxWidth: "170px" }}
+            >
               {parentTokenAccount
                 ? t("addAccounts.cta.receive")
                 : t("addAccounts.cta.addAccountName", {

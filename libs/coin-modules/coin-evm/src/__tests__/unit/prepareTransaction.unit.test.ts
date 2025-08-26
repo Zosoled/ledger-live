@@ -1,11 +1,11 @@
 import { ethers } from "ethers";
 import BigNumber from "bignumber.js";
 import { getCryptoCurrencyById } from "@ledgerhq/cryptoassets/currencies";
-import { addTokens, convertERC20, getTokenById } from "@ledgerhq/cryptoassets/tokens";
-import { prepareForSignOperation, prepareTransaction } from "../../prepareTransaction";
+import { TokenCurrency } from "@ledgerhq/types-cryptoassets";
+import { prepareForSignOperation, prepareTransaction } from "../../bridge/prepareTransaction";
 import { makeAccount, makeTokenAccount } from "../fixtures/common.fixtures";
-import { DEFAULT_NONCE, createTransaction } from "../../createTransaction";
-import * as nodeApi from "../../api/node/rpc.common";
+import { createTransaction } from "../../bridge/createTransaction";
+import * as nodeApi from "../../network/node/rpc.common";
 import {
   account,
   expectedData,
@@ -14,10 +14,11 @@ import {
   tokenTransaction,
   transaction,
 } from "../fixtures/prepareTransaction.fixtures";
-import { getEstimatedFees } from "../../logic";
 import { GasOptions, Transaction as EvmTransaction, EvmNftTransaction } from "../../types";
-import * as nftAPI from "../../api/nft";
+import * as nftAPI from "../../network/nft";
 import { getCoinConfig } from "../../config";
+import { DEFAULT_NONCE, getEstimatedFees } from "../../utils";
+import usdCoinTokenData from "../../__fixtures__/optimism-erc20-usd_coin.json";
 
 jest.mock("../../config");
 const mockGetConfig = jest.mocked(getCoinConfig);
@@ -179,6 +180,33 @@ describe("EVM Family", () => {
           });
         });
 
+        it("should return a legacy coin transaction when passing a gasPrice and custom feesStrategy", async () => {
+          jest.spyOn(nodeApi, "getFeeData").mockImplementationOnce(async () => ({
+            gasPrice: new BigNumber(1),
+            maxFeePerGas: null,
+            maxPriorityFeePerGas: null,
+            nextBaseFee: null,
+          }));
+
+          // @ts-expect-error - mixed type0/2
+          const tx = await prepareTransaction(account, {
+            ...transaction,
+            feesStrategy: "custom",
+            gasPrice: new BigNumber(1),
+            maxFeePerGas: new BigNumber(0),
+            maxPriorityFeePerGas: new BigNumber(0),
+          });
+
+          expect(tx).toEqual({
+            ...transaction,
+            gasPrice: new BigNumber(1),
+            feesStrategy: "custom",
+            maxFeePerGas: undefined,
+            maxPriorityFeePerGas: undefined,
+            type: 0,
+          });
+        });
+
         it("should create a coin transaction using all amount in the account", async () => {
           const accountWithBalance = {
             ...account,
@@ -306,23 +334,6 @@ describe("EVM Family", () => {
       });
 
       describe("Tokens", () => {
-        beforeAll(() => {
-          addTokens([
-            convertERC20([
-              "optimism",
-              "usd_coin",
-              "USDC",
-              6,
-              "USD Coin",
-              "30440220597e4a9911df217d680aa240ca96f7e8fca24c24e7c673c43820c94b08ef69e402206e975e27e82b3370eca40041fca772bd6c4ca7dd087d2bfcc8aa146cb8e1de53",
-              "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85",
-              false,
-              false,
-              null,
-            ]),
-          ]);
-        });
-
         it("should have a gasLimit = 0 and no data when recipient has an error", async () => {
           jest.spyOn(nodeApi, "getGasEstimation").mockImplementation(async () => {
             throw new Error();
@@ -502,7 +513,8 @@ describe("EVM Family", () => {
           const tokenAccountWithBalance = {
             ...makeTokenAccount(
               "0x6cBCD73CD8e8a42844662f0A0e76D7F79Afd933d",
-              getTokenById("optimism/erc20/usd_coin"),
+              // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+              usdCoinTokenData as TokenCurrency,
             ),
             balance: new BigNumber(200),
           };
@@ -555,13 +567,13 @@ describe("EVM Family", () => {
         });
 
         describe("When custom feesStrategy provided", () => {
-          it("should use transaction provided data for fees", async () => {
+          it("should also call getFeeData to determine the gas price and type", async () => {
             const tx = await prepareTransaction(account, {
               ...transaction,
               feesStrategy: "custom",
             });
 
-            expect(nodeApi.getFeeData).toBeCalledTimes(0);
+            expect(nodeApi.getFeeData).toBeCalledTimes(1);
 
             expect(tx).toEqual({
               ...transaction,

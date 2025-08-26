@@ -1,8 +1,7 @@
 import { getDeviceModel } from "@ledgerhq/devices/index";
-import useFeature from "@ledgerhq/live-common/featureFlags/useFeature";
 import { DeviceModelId } from "@ledgerhq/types-devices";
 import { useNavigation } from "@react-navigation/native";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 import { isSyncOnboardingSupported } from "@ledgerhq/live-common/device/use-cases/isSyncOnboardingSupported";
@@ -16,6 +15,7 @@ import { ScreenName } from "~/const";
 import { DeviceCards } from "./Cards/DeviceCard";
 import OnboardingView from "./OnboardingView";
 import { NotCompatibleModal } from "./setupDevice/drawers/NotCompatibleModal";
+import useFeature from "@ledgerhq/live-common/featureFlags/useFeature";
 
 type NavigationProp = RootNavigationComposite<
   BaseNavigationComposite<
@@ -26,27 +26,32 @@ type NavigationProp = RootNavigationComposite<
 export const devices = {
   nanoX: {
     id: DeviceModelId.nanoX,
-    img: require("../../../../assets/images/devices/NanoX.png"),
+    img: require("../../../../assets/images/devices/NanoX.webp"),
     setupTime: 600000,
   },
   nanoS: {
     id: DeviceModelId.nanoS,
-    img: require("../../../../assets/images/devices/NanoS.png"),
+    img: require("../../../../assets/images/devices/NanoS.webp"),
     setupTime: 600000,
   },
   nanoSP: {
     id: DeviceModelId.nanoSP,
-    img: require("../../../../assets/images/devices/NanoSP.png"),
+    img: require("../../../../assets/images/devices/NanoSP.webp"),
     setupTime: 600000,
   },
   stax: {
     id: DeviceModelId.stax,
-    img: require("../../../../assets/images/devices/Stax.png"),
+    img: require("../../../../assets/images/devices/Stax.webp"),
     setupTime: 300000,
   },
   europa: {
     id: DeviceModelId.europa,
-    img: require("../../../../assets/images/devices/Europa.png"),
+    img: require("../../../../assets/images/devices/Europa.webp"),
+    setupTime: 300000,
+  },
+  apex: {
+    id: DeviceModelId.apex,
+    img: require("../../../../assets/images/devices/Apex.webp"),
     setupTime: 300000,
   },
 };
@@ -56,20 +61,18 @@ const NOT_SUPPORTED_DEVICES_IOS = [DeviceModelId.nanoS, DeviceModelId.nanoSP];
 function OnboardingStepDeviceSelection() {
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
-  const deviceEuropaSupported = useFeature("supportDeviceEuropa");
+
+  const isApexSupported = useFeature("supportDeviceApex")?.enabled ?? false;
+  const availableDevices = [
+    devices.stax,
+    devices.europa,
+    ...(isApexSupported ? [devices.apex] : []),
+    devices.nanoX,
+    devices.nanoSP,
+    devices.nanoS,
+  ];
 
   const [isOpen, setOpen] = useState<boolean>(false);
-
-  const availableDevices = useMemo(
-    () => [
-      devices.stax,
-      ...(deviceEuropaSupported?.enabled ? [devices.europa] : []),
-      devices.nanoX,
-      devices.nanoSP,
-      devices.nanoS,
-    ],
-    [deviceEuropaSupported],
-  );
 
   const getProductName = (modelId: DeviceModelId) =>
     getDeviceModel(modelId)?.productName.replace("Ledger", "").trimStart() || modelId;

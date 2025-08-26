@@ -1,6 +1,5 @@
-import picomatch from "picomatch";
 import { isCryptoCurrency, isTokenCurrency } from "../currencies";
-import { CryptoOrTokenCurrency, Currency } from "@ledgerhq/types-cryptoassets";
+import { Currency } from "@ledgerhq/types-cryptoassets";
 import {
   WalletAPICurrency,
   WalletAPISupportedCurrency,
@@ -84,12 +83,8 @@ const isWhitelistedDomain = (url: string, whitelistedDomains: string[]): boolean
 
 export const getInitialURL = (inputs, manifest) => {
   try {
-    if (inputs?.goToURL) {
-      const url = decodeURIComponent(inputs.goToURL);
-
-      if (isWhitelistedDomain(url, manifest.domains)) {
-        return url;
-      }
+    if (inputs?.goToURL && isWhitelistedDomain(inputs?.goToURL, manifest.domains)) {
+      return inputs?.goToURL;
     }
 
     const url = new URL(manifest.url);
@@ -116,32 +111,6 @@ export const safeUrl = (url: string) => {
   }
 };
 
-export function matchCurrencies(
-  currencies: CryptoOrTokenCurrency[],
-  patterns: string[],
-): CryptoOrTokenCurrency[] {
-  const matchedCurrencies: CryptoOrTokenCurrency[] = [];
-  const patternCount = patterns.length;
-  const currencyCount = currencies.length;
-
-  for (let i = 0; i < patternCount; i += 1) {
-    const currentPattern = patterns[i];
-    if (currentPattern) {
-      const isMatch = picomatch(currentPattern);
-
-      for (let j = 0; j < currencyCount; j += 1) {
-        const currentCurrency = currencies[j];
-        if (currentCurrency) {
-          if (isMatch(currentCurrency.id)) {
-            matchedCurrencies.push(currentCurrency);
-          }
-        }
-      }
-    }
-  }
-  return matchedCurrencies;
-}
-
 // Copied from https://www.npmjs.com/package/ethereumjs-util
 export const isHexPrefixed = (str: string): boolean => {
   if (typeof str !== "string") {
@@ -158,3 +127,19 @@ export const stripHexPrefix = (str: string): string => {
 
   return isHexPrefixed(str) ? str.slice(2) : str;
 };
+
+export function objectToURLSearchParams(obj: Record<string, unknown>): URLSearchParams {
+  const searchParams = new URLSearchParams();
+
+  Object.entries(obj).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      if (typeof value === "object") {
+        searchParams.append(key, JSON.stringify(value));
+      } else {
+        searchParams.append(key, String(value));
+      }
+    }
+  });
+
+  return searchParams;
+}

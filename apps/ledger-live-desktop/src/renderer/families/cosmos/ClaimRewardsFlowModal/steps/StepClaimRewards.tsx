@@ -14,10 +14,11 @@ import Text from "~/renderer/components/Text";
 import DelegationSelectorField from "../fields/DelegationSelectorField";
 import ErrorBanner from "~/renderer/components/ErrorBanner";
 import AccountFooter from "~/renderer/modals/Send/AccountFooter";
-import {
+import type {
   CosmosLikeTransaction,
   CosmosMappedDelegation,
-} from "@ledgerhq/live-common/families/cosmos/types";
+} from "@ledgerhq/coin-cosmos/types/index";
+
 import { useAccountUnit } from "~/renderer/hooks/useAccountUnit";
 
 export default function StepClaimRewards({
@@ -43,6 +44,7 @@ export default function StepClaimRewards({
     (mode: string) => {
       updateClaimRewards({
         ...transaction,
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         mode: mode as CosmosLikeTransaction["mode"],
       });
     },

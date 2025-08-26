@@ -2,102 +2,170 @@ import { useMemo } from "react";
 import { useRoute } from "@react-navigation/native";
 import { useSelector } from "react-redux";
 import { IconsLegacy } from "@ledgerhq/native-ui";
-import { type ParamListBase } from "@react-navigation/native";
 import { IconType } from "@ledgerhq/native-ui/components/Icon/type";
 import useFeature from "@ledgerhq/live-common/featureFlags/useFeature";
+import { useRampCatalog } from "@ledgerhq/live-common/platform/providers/RampCatalogProvider/useRampCatalog";
+import { CryptoOrTokenCurrency } from "@ledgerhq/types-cryptoassets";
+import { AccountLike } from "@ledgerhq/types-live";
 import { NavigatorName, ScreenName } from "~/const";
+import { BaseNavigatorStackParamList } from "~/components/RootNavigator/types/BaseNavigator";
+import { EntryOf } from "~/types/helpers";
 import { accountsCountSelector, areAccountsEmptySelector } from "../reducers/accounts";
 import { readOnlyModeEnabledSelector } from "../reducers/settings";
+import { useStake } from "LLM/hooks/useStake/useStake";
+import { walletSelector } from "~/reducers/wallet";
+import { getAccountCurrency, getParentAccount } from "@ledgerhq/coin-framework/lib/account/helpers";
+import { shallowAccountsSelector } from "~/reducers/accounts";
 
 export type QuickAction = {
   disabled: boolean;
-  route: [NavigatorName, { screen: ScreenName; params?: ParamListBase }];
+  route: EntryOf<BaseNavigatorStackParamList>;
   icon: IconType;
 };
 
-export type QuickActionsList = {
-  SEND: QuickAction;
-  RECEIVE: QuickAction;
-  BUY: QuickAction;
-  SELL: QuickAction;
-  SWAP: QuickAction;
-  STAKE?: QuickAction;
-  WALLET_CONNECT?: QuickAction;
-  RECOVER?: QuickAction;
-};
+type Actions =
+  | "SEND"
+  | "RECEIVE"
+  | "BUY"
+  | "SELL"
+  | "SWAP"
+  | "STAKE"
+  | "WALLET_CONNECT"
+  | "RECOVER";
 
-function useQuickActions() {
+export type QuickActionProps = { currency?: CryptoOrTokenCurrency; accounts?: AccountLike[] };
+
+function useQuickActions({ currency, accounts }: QuickActionProps = {}) {
   const route = useRoute();
 
+  const { isCurrencyAvailable } = useRampCatalog();
+
   const readOnlyModeEnabled = useSelector(readOnlyModeEnabledSelector);
-  const accountsCount: number = useSelector(accountsCountSelector);
-  const areAccountsEmpty = useSelector(areAccountsEmptySelector);
+  const hasAnyAccounts = useSelector(accountsCountSelector) > 0;
+  const hasCurrencyAccounts = currency ? !!accounts?.length : hasAnyAccounts;
+  const hasFunds = !useSelector(areAccountsEmptySelector) && hasAnyAccounts;
+  const hasCurrency = currency ? !!accounts?.some(({ balance }) => balance.gt(0)) : hasFunds;
 
   const recoverEntryPoint = useFeature("protectServicesMobile");
-  const stakePrograms = useFeature("stakePrograms");
 
   const ptxServiceCtaExchangeDrawer = useFeature("ptxServiceCtaExchangeDrawer");
+  const isPtxServiceCtaExchangeDrawerDisabled = !(ptxServiceCtaExchangeDrawer?.enabled ?? true);
 
-  const isPtxServiceCtaExchangeDrawerDisabled = useMemo(
-    () => !(ptxServiceCtaExchangeDrawer?.enabled ?? true),
-    [ptxServiceCtaExchangeDrawer],
-  );
+  const canBeBought = !currency || isCurrencyAvailable(currency.id, "onRamp");
+  const canBeSold = !currency || currency.id === "bitcoin";
+
+  const { getCanStakeUsingLedgerLive, getCanStakeUsingPlatformApp, getRouteParamsForPlatformApp } =
+    useStake();
+  const canStakeCurrencyUsingLedgerLive = !currency
+    ? false
+    : getCanStakeUsingLedgerLive(currency?.id);
+  const stakeAccount = accounts?.[0];
+
+  const shallowAccounts = useSelector(shallowAccountsSelector);
+  const parentAccount = stakeAccount ? getParentAccount(stakeAccount, shallowAccounts) : undefined;
+
+  const stakeAccountCurrency = !stakeAccount ? null : getAccountCurrency(stakeAccount);
+  const walletState = useSelector(walletSelector);
+  const partnerStakeRoute =
+    !stakeAccount || !stakeAccountCurrency || !getCanStakeUsingPlatformApp(stakeAccountCurrency?.id)
+      ? null
+      : getRouteParamsForPlatformApp(stakeAccount, walletState, parentAccount);
+
+  const canBeRecovered = recoverEntryPoint?.enabled;
 
   const quickActionsList = useMemo(() => {
-    const list: QuickActionsList = {
+    const list: Partial<Record<Actions, QuickAction>> = {
       SEND: {
-        disabled: !accountsCount || readOnlyModeEnabled || areAccountsEmpty,
+        disabled: readOnlyModeEnabled || !hasCurrency,
         route: [
           NavigatorName.SendFunds,
           {
             screen: ScreenName.SendCoin,
+            params: { selectedCurrency: currency },
           },
         ],
         icon: IconsLegacy.ArrowTopMedium,
       },
       RECEIVE: {
         disabled: readOnlyModeEnabled,
-        route: [NavigatorName.ReceiveFunds, { screen: ScreenName.ReceiveSelectCrypto }],
+        route: [
+          NavigatorName.ReceiveFunds,
+          !currency
+            ? { screen: ScreenName.ReceiveSelectCrypto }
+            : {
+                screen: hasCurrencyAccounts
+                  ? ScreenName.ReceiveSelectAccount
+                  : ScreenName.ReceiveAddAccountSelectDevice,
+                params: {
+                  currency: currency.type === "TokenCurrency" ? currency.parentCurrency : currency,
+                },
+              },
+        ],
         icon: IconsLegacy.ArrowBottomMedium,
       },
-      BUY: {
-        disabled: isPtxServiceCtaExchangeDrawerDisabled || readOnlyModeEnabled,
-        route: [NavigatorName.Exchange, { screen: ScreenName.ExchangeBuy }],
-        icon: IconsLegacy.PlusMedium,
-      },
-      SELL: {
-        disabled:
-          isPtxServiceCtaExchangeDrawerDisabled ||
-          !accountsCount ||
-          readOnlyModeEnabled ||
-          areAccountsEmpty,
-        route: [NavigatorName.Exchange, { screen: ScreenName.ExchangeSell }],
-        icon: IconsLegacy.MinusMedium,
-      },
       SWAP: {
-        disabled:
-          isPtxServiceCtaExchangeDrawerDisabled ||
-          !accountsCount ||
-          readOnlyModeEnabled ||
-          areAccountsEmpty,
+        disabled: isPtxServiceCtaExchangeDrawerDisabled || readOnlyModeEnabled || !hasFunds,
         route: [
           NavigatorName.Swap,
           {
-            screen: ScreenName.SwapForm,
+            screen: ScreenName.SwapTab,
+            params: { currency },
           },
         ],
         icon: IconsLegacy.BuyCryptoMedium,
       },
     };
 
-    if (stakePrograms?.enabled) {
+    if (canBeBought) {
+      list.BUY = {
+        disabled: isPtxServiceCtaExchangeDrawerDisabled || readOnlyModeEnabled,
+        route: [
+          NavigatorName.Exchange,
+          {
+            screen: ScreenName.ExchangeBuy,
+            params: { defaultCurrencyId: currency?.id },
+          },
+        ],
+        icon: IconsLegacy.PlusMedium,
+      };
+    }
+
+    if (canBeSold) {
+      list.SELL = {
+        disabled: isPtxServiceCtaExchangeDrawerDisabled || readOnlyModeEnabled || !hasCurrency,
+        route: [
+          NavigatorName.Exchange,
+          {
+            screen: ScreenName.ExchangeSell,
+            params: { defaultCurrencyId: currency?.id },
+          },
+        ],
+        icon: IconsLegacy.MinusMedium,
+      };
+    }
+
+    // Partner stake route is only available if an eligible account is present. If not, the user will be redirected to the stake flow to select an account.
+    if (partnerStakeRoute) {
+      const { screen, params } = partnerStakeRoute;
+      list.STAKE = {
+        disabled: readOnlyModeEnabled,
+        // @ts-expect-error - cannot infer screen & params type correctly. But this will go away if we do not return the NoFundsFlow when account is empty, or narrow the conditions of the return type.
+        route: [screen, params],
+        icon: IconsLegacy.CoinsMedium,
+      };
+    }
+
+    if (canStakeCurrencyUsingLedgerLive || !currency) {
       list.STAKE = {
         disabled: readOnlyModeEnabled,
         route: [
           NavigatorName.StakeFlow,
           {
             screen: ScreenName.Stake,
-            params: { parentRoute: route },
+            params: {
+              currencies: currency ? [currency.id] : undefined,
+              parentRoute: route,
+            },
           },
         ],
         icon: IconsLegacy.CoinsMedium,
@@ -110,18 +178,20 @@ function useQuickActions() {
         NavigatorName.WalletConnect,
         {
           screen: ScreenName.WalletConnectConnect,
+          params: {},
         },
       ],
       icon: IconsLegacy.WalletConnectMedium,
     };
 
-    if (recoverEntryPoint?.enabled) {
+    if (canBeRecovered) {
       list.RECOVER = {
         disabled: readOnlyModeEnabled,
         route: [
-          NavigatorName.Base,
+          NavigatorName.Main,
           {
-            screen: ScreenName.MyLedgerChooseDevice,
+            screen: NavigatorName.MyLedger,
+            params: { screen: ScreenName.MyLedgerChooseDevice },
           },
         ],
         icon: IconsLegacy.ShieldCheckMedium,
@@ -130,13 +200,18 @@ function useQuickActions() {
 
     return list;
   }, [
-    accountsCount,
-    areAccountsEmpty,
+    currency,
+    hasCurrencyAccounts,
+    hasCurrency,
+    hasFunds,
     isPtxServiceCtaExchangeDrawerDisabled,
     readOnlyModeEnabled,
     route,
-    stakePrograms?.enabled,
-    recoverEntryPoint?.enabled,
+    canBeBought,
+    canBeSold,
+    partnerStakeRoute,
+    canStakeCurrencyUsingLedgerLive,
+    canBeRecovered,
   ]);
 
   return { quickActionsList };

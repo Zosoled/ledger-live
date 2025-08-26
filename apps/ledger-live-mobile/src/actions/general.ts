@@ -20,6 +20,7 @@ import { clearBridgeCache } from "../bridge/cache";
 import { flushAll } from "../components/DBSave";
 import { LiveConfig } from "@ledgerhq/live-config/LiveConfig";
 import { walletSelector } from "~/reducers/wallet";
+import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
 
 const extraSessionTrackingPairsChanges: BehaviorSubject<TrackingPair[]> = new BehaviorSubject<
   TrackingPair[]
@@ -99,8 +100,22 @@ export function useCleanCache() {
     flushAll();
   }, [dispatch, wipe]);
 }
+
 export function useUserSettings() {
   const trackingPairs = useTrackingPairs();
+
+  const granularitiesRatesConfig = useFeature("llCounterValueGranularitiesRates");
+  const granularitiesRates = useMemo(
+    () =>
+      granularitiesRatesConfig?.enabled
+        ? {
+            daily: Number(granularitiesRatesConfig.params?.daily),
+            hourly: Number(granularitiesRatesConfig.params?.hourly),
+          }
+        : undefined,
+    [granularitiesRatesConfig],
+  );
+
   return useMemo(
     () => ({
       trackingPairs,
@@ -109,15 +124,18 @@ export function useUserSettings() {
       marketCapBatchingAfterRank: LiveConfig.getValueByKey(
         "config_countervalues_marketCapBatchingAfterRank",
       ),
+      granularitiesRates,
     }),
-    [trackingPairs],
+    [granularitiesRates, trackingPairs],
   );
 }
+
 export function addExtraSessionTrackingPair(trackingPair: TrackingPair) {
   const value = extraSessionTrackingPairsChanges.value;
   if (!value.some(tp => tp.from === trackingPair.from && tp.to === trackingPair.to))
     extraSessionTrackingPairsChanges.next(value.concat(trackingPair));
 }
+
 export function useExtraSessionTrackingPair() {
   const [extraSessionTrackingPair, setExtraSessionTrackingPair] = useState<TrackingPair[]>([]);
   useEffect(() => {
@@ -126,6 +144,7 @@ export function useExtraSessionTrackingPair() {
   }, []);
   return extraSessionTrackingPair;
 }
+
 export function useTrackingPairs(): TrackingPair[] {
   const accounts = useSelector(accountsSelector);
   const countervalue = useSelector(counterValueCurrencySelector);

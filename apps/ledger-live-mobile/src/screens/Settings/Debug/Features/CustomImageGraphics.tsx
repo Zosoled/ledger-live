@@ -3,16 +3,13 @@ import { StyleSheet } from "react-native";
 import { Button, Divider, Flex, Switch, Text } from "@ledgerhq/native-ui";
 import { DeviceModelId } from "@ledgerhq/devices";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Slider from "react-native-slider";
+import Slider from "@react-native-community/slider";
 import {
   CLSSupportedDeviceModelId,
   supportedDeviceModelIds,
 } from "@ledgerhq/live-common/device/use-cases/isCustomLockScreenSupported";
 import NavigationScrollView from "~/components/NavigationScrollView";
 import { FramedImageWithContext, ImageSourceContext } from "~/components/CustomImage/FramedPicture";
-import confirmLockscreen from "~/animations/stax/customimage/confirmLockscreen.json";
-import allowConnection from "~/animations/stax/customimage/allowConnection.json";
-import { FramedLottieWithContext } from "~/components/CustomImage/FramedLottie";
 import {
   RenderImageCommitRequested,
   RenderImageLoadRequested,
@@ -37,6 +34,13 @@ const aEuropaDevice: Device = {
   wired: false,
 };
 
+const aApexDevice: Device = {
+  deviceId: "",
+  deviceName: "",
+  modelId: DeviceModelId.apex,
+  wired: false,
+};
+
 const steps = ["confirmLoad", "loading", "confirmCommit", "preview"] as const;
 type DeviceActionStep = (typeof steps)[number];
 
@@ -51,6 +55,7 @@ export default function DebugCustomImageGraphics() {
   const device = {
     stax: aStaxDevice,
     europa: aEuropaDevice,
+    apex: aApexDevice,
   }[deviceModelId];
 
   const insets = useSafeAreaInsets();
@@ -73,19 +78,6 @@ export default function DebugCustomImageGraphics() {
       {showAllAssets ? (
         <NavigationScrollView>
           <Flex style={styles.root}>
-            <Text mb={3}>lottie: allowConnection</Text>
-            <FramedLottieWithContext
-              loadingProgress={0}
-              lottieSource={allowConnection}
-              deviceModelId={deviceModelId}
-            />
-            <Divider />
-            <Text mb={3}>lottie: confirmLockscreen</Text>
-            <FramedLottieWithContext
-              loadingProgress={0.89}
-              lottieSource={confirmLockscreen}
-              deviceModelId={deviceModelId}
-            />
             <Divider />
             <Text>FramedImage component, transferConfig</Text>
             <Text mb={3}>progress={Math.round(progress * 100) / 100}</Text>

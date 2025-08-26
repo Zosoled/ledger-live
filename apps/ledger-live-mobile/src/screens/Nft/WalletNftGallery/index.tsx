@@ -8,43 +8,45 @@ import CollapsibleHeaderScrollView from "~/components/WalletTab/CollapsibleHeade
 import { accountsSelector, filteredNftsSelector, hasNftsSelector } from "~/reducers/accounts";
 
 import isEqual from "lodash/isEqual";
-import { galleryChainFiltersSelector } from "~/reducers/nft";
-import { isThresholdValid, useNftGalleryFilter } from "@ledgerhq/live-nft-react";
+import { getThreshold, useNftGalleryFilter } from "@ledgerhq/live-nft-react";
 import useFeature from "@ledgerhq/live-common/featureFlags/useFeature";
+import { State } from "~/reducers/types";
+import { useChains } from "../hooks/useChains";
 
 const WalletNftGallery = () => {
   const { space } = useTheme();
   const hasNFTs = useSelector(hasNftsSelector);
   const accounts = useSelector(accountsSelector);
   const nftsFromSimplehashFeature = useFeature("nftsFromSimplehash");
-  const thresold = nftsFromSimplehashFeature?.params?.threshold;
+  const enabled = nftsFromSimplehashFeature?.enabled || false;
+  const threshold = nftsFromSimplehashFeature?.params?.threshold;
 
-  const chainFilters = useSelector(galleryChainFiltersSelector);
-  const nftsOwned = useSelector(filteredNftsSelector, isEqual);
+  const { chains } = useChains();
+
+  const nftsOwned = useSelector(
+    (state: State) => filteredNftsSelector(state, Boolean(nftsFromSimplehashFeature?.enabled)),
+    isEqual,
+  );
 
   const addresses = useMemo(
     () =>
       [
         ...new Set(
-          accounts.map(account => account.freshAddress).filter(addr => addr.startsWith("0x")),
+          accounts
+            .filter(account => chains.includes(account.currency.id))
+            .map(account => account.freshAddress),
         ),
       ].join(","),
-    [accounts],
-  );
-
-  const chains = useMemo(
-    () =>
-      Object.entries(chainFilters)
-        .filter(([_, value]) => value)
-        .map(([key, _]) => key),
-    [chainFilters],
+    [accounts, chains],
   );
 
   const { isLoading, hasNextPage, error, fetchNextPage, refetch, nfts } = useNftGalleryFilter({
     addresses,
     chains,
     nftsOwned,
-    threshold: isThresholdValid(thresold) ? Number(thresold) : 75,
+    threshold: getThreshold(threshold),
+    enabled,
+    staleTime: nftsFromSimplehashFeature?.params?.staleTime,
   });
 
   const useSimpleHash = Boolean(nftsFromSimplehashFeature?.enabled);

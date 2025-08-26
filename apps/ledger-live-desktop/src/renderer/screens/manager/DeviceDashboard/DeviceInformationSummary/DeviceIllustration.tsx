@@ -10,6 +10,8 @@ import stax from "~/renderer/images/devices/stax.png";
 import staxDark from "~/renderer/images/devices/stax_dark.png";
 import europa from "~/renderer/images/devices/europa.png";
 import europaDark from "~/renderer/images/devices/europa_dark.png";
+import apex from "~/renderer/images/devices/apex.png";
+import apexDark from "~/renderer/images/devices/apex_dark.png";
 import blue from "~/renderer/images/devices/blue.png";
 
 const illustrations = {
@@ -37,12 +39,17 @@ const illustrations = {
     light: blue,
     dark: blue,
   },
+  apex: {
+    light: apex,
+    dark: apexDark,
+  },
 };
 
 export const DeviceIllustration = styled.img.attrs<{
   deviceModel: DeviceModel;
 }>(p => ({
   src: illustrations[
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     (process.env.OVERRIDE_MODEL_ID || p.deviceModel.id) as keyof typeof illustrations
   ][p.theme.colors.palette.type || "light"],
 }))<{

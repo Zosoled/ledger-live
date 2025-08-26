@@ -32,6 +32,11 @@ import type { StackNavigatorProps } from "~/components/RootNavigator/types/helpe
 import type { TezosDelegationFlowParamList } from "./types";
 import { useAccountName } from "~/reducers/wallet";
 import { useAccountUnit } from "~/hooks/useAccountUnit";
+import { NotEnoughBalanceToDelegate } from "@ledgerhq/errors";
+import NotEnoughFundFeesAlert from "~/families/shared/StakingErrors/NotEnoughFundFeesAlert";
+import Config from "react-native-config";
+import TranslatedError from "~/components/TranslatedError";
+import SupportLinkError from "~/components/SupportLinkError";
 
 type Props = StackNavigatorProps<TezosDelegationFlowParamList, ScreenName.DelegationSummary>;
 
@@ -141,26 +146,28 @@ export default function DelegationSummary({ navigation, route }: Props) {
 
   const [rotateAnim] = useState(() => new Animated.Value(0));
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: -1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.delay(1000),
-      ]),
-    ).start();
+    if (!Config.DETOX) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(rotateAnim, {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotateAnim, {
+            toValue: -1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotateAnim, {
+            toValue: 0,
+            duration: 200,
+            useNativeDriver: true,
+          }),
+          Animated.delay(1000),
+        ]),
+      ).start();
+    }
     return () => {
       rotateAnim.setValue(0);
     };
@@ -202,6 +209,10 @@ export default function DelegationSummary({ navigation, route }: Props) {
       status,
     });
   }, [navigation, route.params, account.id, transaction, status]);
+
+  const notEnoughBalance = status.errors.amount instanceof NotEnoughBalanceToDelegate;
+  const isUndelagating = route.params?.mode === "undelegate";
+  const hasNotEnoughBalanceWhenUndelegating = notEnoughBalance && isUndelagating;
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
@@ -267,7 +278,11 @@ export default function DelegationSummary({ navigation, route }: Props) {
               <Words>
                 <Trans i18nKey="delegation.to" />
               </Words>
-              <Touchable event="DelegationFlowSummaryChangeBtn" onPress={onChangeDelegator}>
+              <Touchable
+                event="DelegationFlowSummaryChangeBtn"
+                onPress={onChangeDelegator}
+                testID="tezos-delegation-summary-validator"
+              >
                 <BakerSelection name={bakerName} />
               </Touchable>
             </Line>
@@ -301,6 +316,23 @@ export default function DelegationSummary({ navigation, route }: Props) {
         <View />
       </View>
       <View style={styles.footer}>
+        {status.errors.amount && (
+          <LText color="alert">
+            <TranslatedError error={status.errors.amount} />
+          </LText>
+        )}
+        {status.errors.sender && (
+          <>
+            <LText color="alert">
+              <TranslatedError error={status.errors.sender} />
+            </LText>
+            <LText color="alert">
+              <TranslatedError error={status.errors.sender} field="description" />
+            </LText>
+            <SupportLinkError error={status.errors.sender} type="alert" />
+          </>
+        )}
+        {hasNotEnoughBalanceWhenUndelegating && <NotEnoughFundFeesAlert account={account} />}
         {transaction.mode === "undelegate" ? (
           <Alert type="info" title={t("delegation.warnUndelegation")} />
         ) : (
@@ -312,8 +344,15 @@ export default function DelegationSummary({ navigation, route }: Props) {
           title={t("common.continue")}
           containerStyle={styles.continueButton}
           onPress={onContinue}
-          disabled={bridgePending || !!bridgeError}
+          disabled={
+            bridgePending ||
+            !!bridgeError ||
+            hasNotEnoughBalanceWhenUndelegating ||
+            status.errors.amount !== undefined ||
+            status.errors.sender !== undefined
+          }
           pending={bridgePending}
+          testID="tezos-summary-continue-button"
         />
       </View>
     </SafeAreaView>

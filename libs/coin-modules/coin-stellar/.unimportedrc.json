@@ -1,11 +1,11 @@
 {
   "entry": [
-    "src/deviceTransactionConfig.ts",
-    "src/errors.ts",
-    "src/hw-getAddress.ts",
-    "src/serialization.ts",
-    "src/specs.ts",
-    "src/transaction.ts"
+    "src/api/index.ts",
+    "src/bridge/index.ts",
+    "src/bridge/deviceTransactionConfig.ts",
+    "src/signer/index.ts",
+    "src/test/index.ts",
+    "src/index.ts"
   ],
   "ignorePatterns": [
     "**/node_modules/**",
@@ -13,23 +13,12 @@
     "**/*.mock.ts",
     "**/*.test.{js,jsx,ts,tsx}"
   ],
+  "ignoreUnused": [
+    "@ledgerhq/live-env",
+    "rxjs"
+  ],
   "ignoreUnresolved": [],
   "ignoreUnimported": [
-    "src/bridge/index.ts",
-    "src/broadcast.ts",
-    "src/buildOptimisticOperation.ts",
-    "src/buildTransaction.ts",
-    "src/cli.ts",
-    "src/config.ts",
-    "src/createTransaction.ts",
-    "src/estimateMaxSpendable.ts",
-    "src/getTransactionStatus.ts",
-    "src/prepareTransaction.ts",
-    "src/signOperation.ts",
-    "src/synchronization.ts",
-    "src/tokens.ts"
-  ],
-  "ignoreUnused": [
-    "rxjs"
+    "src/globals.d.ts"
   ]
 }

@@ -8,8 +8,11 @@ import SectionExport from "./Export";
 import Currencies from "./Currencies";
 import BlacklistedTokens from "./BlacklistedTokens";
 import HiddenNftCollections from "./HiddenNFTCollections";
+import HiddenInscriptions from "./HiddenInscriptions";
+import { FeatureToggle } from "@ledgerhq/live-common/featureFlags/index";
 export default function SectionAccounts() {
   const { t } = useTranslation();
+
   return (
     <Body>
       <TrackPage category="Settings" name="Accounts" />
@@ -22,7 +25,12 @@ export default function SectionAccounts() {
       </Row>
       <FilterTokenOperationsZeroAmount />
       <BlacklistedTokens />
-      <HiddenNftCollections />
+      <FeatureToggle featureId="llNftSupport">
+        <HiddenNftCollections />
+      </FeatureToggle>
+      <FeatureToggle featureId="lldnewArchOrdinals">
+        <HiddenInscriptions />
+      </FeatureToggle>
       <Currencies />
     </Body>
   );

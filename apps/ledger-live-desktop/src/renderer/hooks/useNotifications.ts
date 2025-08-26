@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { LocationContentCard, NotificationContentCard, Platform } from "~/types/dynamicContent";
 import { notificationsContentCardSelector } from "~/renderer/reducers/dynamicContent";
-import { setNotificationsCards } from "~/renderer/actions/dynamicContent";
 import { track } from "../analytics/segment";
 import { trackingEnabledSelector } from "../reducers/settings";
 
@@ -22,8 +21,9 @@ export function useNotifications() {
           card.extras?.location === LocationContentCard.NotificationCenter,
       );
     setCachedNotifications(cards);
-  }, []);
+  }, [dispatch, notificationsCards]);
 
+  // TODO use date library
   function startOfDayTime(date: Date): number {
     const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
     return startOfDate.getTime();
@@ -38,8 +38,7 @@ export function useNotifications() {
     const notifsByDay: Record<string, NotificationContentCard[]> = notifs.reduce(
       (sum: Record<string, NotificationContentCard[]>, notif: NotificationContentCard) => {
         // group by publication date
-        const k = startOfDayTime(notif.created);
-
+        const k = notif.created ? `${startOfDayTime(notif.created)}` : "no-date";
         return { ...sum, [`${k}`]: [...(sum[k] || []), notif] };
       },
       {},
@@ -62,25 +61,6 @@ export function useNotifications() {
       }));
   };
 
-  const logNotificationImpression = useCallback(
-    (cardId: string) => {
-      const currentCard = cachedNotifications.find(card => card.id === cardId);
-
-      isTrackedUser && braze.logContentCardImpressions(currentCard ? [currentCard] : []);
-
-      const cards = (notificationsCards ?? []).map(n => {
-        if (n.id === cardId) {
-          return { ...n, viewed: true };
-        } else {
-          return n;
-        }
-      });
-
-      dispatch(setNotificationsCards(cards));
-    },
-    [notificationsCards, cachedNotifications, dispatch, isTrackedUser],
-  );
-
   const onClickNotif = useCallback(
     (card: NotificationContentCard) => {
       const currentCard = cachedNotifications.find(c => c.id === card.id);
@@ -88,8 +68,10 @@ export function useNotifications() {
       if (currentCard) {
         // For some reason braze won't log the click event if the card url is empty
         // Setting it as the card id just to have a dummy non empty value
-        isTrackedUser &&
-          braze.logContentCardClick({ ...currentCard, url: currentCard.id } as braze.ClassicCard);
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        currentCard.url = currentCard.id;
+        isTrackedUser && braze.logContentCardClick(currentCard);
       }
 
       track("contentcard_clicked", {
@@ -108,7 +90,6 @@ export function useNotifications() {
     braze,
     cachedNotifications,
     notificationsCards,
-    logNotificationImpression,
     onClickNotif,
   };
 }

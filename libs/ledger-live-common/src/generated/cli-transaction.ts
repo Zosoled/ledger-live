@@ -1,45 +1,55 @@
-import celo from "../families/celo/cli-transaction";
-import cosmos from "../families/cosmos/cli-transaction";
-import crypto_org from "../families/crypto_org/cli-transaction";
-import elrond from "../families/elrond/cli-transaction";
-import filecoin from "../families/filecoin/cli-transaction";
-import hedera from "../families/hedera/cli-transaction";
-import stacks from "../families/stacks/cli-transaction";
-import vechain from "../families/vechain/cli-transaction";
 import { cliTools as algorand } from "../families/algorand/setup";
+import { cliTools as aptos } from "../families/aptos/setup";
 import { cliTools as bitcoin } from "../families/bitcoin/setup";
 import { cliTools as cardano } from "../families/cardano/setup";
+import { cliTools as casper } from "../families/casper/setup";
+import { cliTools as canton } from "../families/canton/setup";
+import { cliTools as celo } from "../families/celo/setup";
+import { cliTools as cosmos } from "../families/cosmos/setup";
 import { cliTools as evm } from "../families/evm/setup";
+import { cliTools as hedera } from "../families/hedera/setup";
+import { cliTools as filecoin } from "../families/filecoin/setup";
+import { cliTools as internet_computer } from "../families/internet_computer/setup";
+import { cliTools as icon } from "../families/icon/setup";
+import { cliTools as multiversx } from "../families/multiversx/setup";
 import { cliTools as near } from "../families/near/setup";
 import { cliTools as polkadot } from "../families/polkadot/setup";
 import { cliTools as solana } from "../families/solana/setup";
+import { cliTools as stacks } from "../families/stacks/setup";
 import { cliTools as stellar } from "../families/stellar/setup";
 import { cliTools as tezos } from "../families/tezos/setup";
-import { cliTools as tron } from "../families/tron/setup";
-import { cliTools as xrp } from "../families/xrp/setup";
-import { cliTools as icon } from "../families/icon/setup";
 import { cliTools as ton } from "../families/ton/setup";
+import { cliTools as tron } from "../families/tron/setup";
+import { cliTools as vechain } from "../families/vechain/setup";
+import { cliTools as xrp } from "../families/xrp/setup";
+import { cliTools as sui } from "../families/sui/setup";
+import { cliTools as mina } from "../families/mina/setup";
 
 export default {
-  celo,
-  cosmos,
-  crypto_org,
-  elrond,
-  filecoin,
-  hedera,
-  stacks,
-  vechain,
   algorand,
+  aptos,
   bitcoin,
   cardano,
+  casper,
+  canton,
+  celo,
+  cosmos,
   evm,
+  hedera,
+  filecoin,
+  internet_computer,
+  icon,
+  multiversx,
   near,
   polkadot,
   solana,
+  stacks,
   stellar,
   tezos,
-  tron,
-  xrp,
-  icon,
   ton,
+  tron,
+  vechain,
+  xrp,
+  sui,
+  mina,
 };

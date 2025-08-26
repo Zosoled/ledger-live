@@ -17,6 +17,7 @@ import AppIcon from "../AppsList/AppIcon";
 import QueuedDrawer from "~/components/QueuedDrawer";
 import type { BaseComposite, StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
 import { MyLedgerNavigatorStackParamList } from "~/components/RootNavigator/types/MyLedgerNavigator";
+import { AddAccountContexts } from "LLM/features/Accounts/screens/AddAccount/enums";
 
 type NavigationProps = BaseComposite<
   StackNavigatorProps<MyLedgerNavigatorStackParamList, ScreenName.MyLedgerDevice>
@@ -49,9 +50,12 @@ const ButtonsContainer = styled(Flex).attrs({
 const InstallSuccessBar = ({ state, navigation, disable }: Props) => {
   const [hasBeenShown, setHasBeenShown] = useState(disable);
   const { installQueue, uninstallQueue, recentlyInstalledApps, appByName, installed } = state;
-
   const onAddAccount = useCallback(() => {
-    navigation.navigate(NavigatorName.AddAccounts);
+    navigation.navigate(NavigatorName.AssetSelection, {
+      context: AddAccountContexts.AddAccounts,
+      sourceScreenName: "InstalleAppModal",
+    });
+
     setHasBeenShown(true);
   }, [navigation]);
 

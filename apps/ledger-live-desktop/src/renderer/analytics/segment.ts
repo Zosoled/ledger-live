@@ -1,36 +1,45 @@
-import { v4 as uuid } from "uuid";
-import invariant from "invariant";
-import { ReplaySubject } from "rxjs";
-import { getEnv } from "@ledgerhq/live-env";
-import logger from "~/renderer/logger";
-import { getParsedSystemLocale } from "~/helpers/systemLocale";
-import user from "~/helpers/user";
+import { getTokensWithFunds } from "@ledgerhq/live-common/domain/getTokensWithFunds";
+import { getStablecoinYieldSetting } from "@ledgerhq/live-common/featureFlags/stakePrograms/index";
 import { runOnceWhen } from "@ledgerhq/live-common/utils/runOnceWhen";
-import {
-  sidebarCollapsedSelector,
-  shareAnalyticsSelector,
-  lastSeenDeviceSelector,
-  localeSelector,
-  languageSelector,
-  devicesModelListSelector,
-  sharePersonalizedRecommendationsSelector,
-  hasSeenAnalyticsOptInPromptSelector,
-  trackingEnabledSelector,
-  developerModeSelector,
-} from "~/renderer/reducers/settings";
-import { State } from "~/renderer/reducers";
-import { AccountLike, Feature, FeatureId, Features, idsToLanguage } from "@ledgerhq/types-live";
-import { accountsSelector } from "../reducers/accounts";
+import { LiveConfig } from "@ledgerhq/live-config/lib-es/LiveConfig";
+import { getEnv } from "@ledgerhq/live-env";
 import {
   GENESIS_PASS_COLLECTION_CONTRACT,
   hasNftInAccounts,
   INFINITY_PASS_COLLECTION_CONTRACT,
 } from "@ledgerhq/live-nft";
-import createStore from "../createStore";
-import { currentRouteNameRef, previousRouteNameRef } from "./screenRefs";
-import { useCallback, useContext } from "react";
-import { analyticsDrawerContext } from "../drawers/Provider";
 import { getDefaultAccountName } from "@ledgerhq/live-wallet/accountName";
+import type { AccountLike, Feature, FeatureId, Features } from "@ledgerhq/types-live";
+import { idsToLanguage } from "@ledgerhq/types-live";
+import invariant from "invariant";
+import { useCallback, useContext } from "react";
+import type * as Redux from "redux";
+import { ReplaySubject } from "rxjs";
+import { v4 as uuid } from "uuid";
+import { getParsedSystemLocale } from "~/helpers/systemLocale";
+import user from "~/helpers/user";
+import { getVersionedRedirects } from "~/newArch/hooks/useVersionedStakePrograms";
+import logger from "~/renderer/logger";
+import type { State } from "~/renderer/reducers";
+import {
+  developerModeSelector,
+  devicesModelListSelector,
+  hasSeenAnalyticsOptInPromptSelector,
+  languageSelector,
+  lastSeenDeviceSelector,
+  localeSelector,
+  marketPerformanceWidgetSelector,
+  mevProtectionSelector,
+  shareAnalyticsSelector,
+  sharePersonalizedRecommendationsSelector,
+  sidebarCollapsedSelector,
+  trackingEnabledSelector,
+} from "~/renderer/reducers/settings";
+import { analyticsDrawerContext } from "../drawers/Provider";
+import { accountsSelector } from "../reducers/accounts";
+import { currentRouteNameRef, previousRouteNameRef } from "./screenRefs";
+
+type ReduxStore = Redux.MiddlewareAPI<Redux.Dispatch<Redux.AnyAction>, State>;
 
 invariant(typeof window !== "undefined", "analytics/segment must be called on renderer thread");
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -49,8 +58,6 @@ const getContext = () => ({
   },
 });
 
-type ReduxStore = ReturnType<typeof createStore>;
-
 let storeInstance: ReduxStore | null | undefined; // is the redux store. it's also used as a flag to know if analytics is on or off.
 let analyticsFeatureFlagMethod:
   | null
@@ -60,33 +67,75 @@ export function setAnalyticsFeatureFlagMethod(method: typeof analyticsFeatureFla
   analyticsFeatureFlagMethod = method;
 }
 
-const getMarketWidgetAnalytics = () => {
+const getMarketWidgetAnalytics = (state: State) => {
   if (!analyticsFeatureFlagMethod) return false;
   const marketWidget = analyticsFeatureFlagMethod("marketperformanceWidgetDesktop");
 
-  return !!marketWidget?.enabled;
+  const hasMarketWidgetActivated = marketPerformanceWidgetSelector(state);
+
+  return {
+    hasMarketWidget: !marketWidget?.enabled ? "Null" : hasMarketWidgetActivated ? "Yes" : "No",
+    hasMarketWidgetV2: marketWidget?.params?.enableNewFeature ? "Yes" : "No",
+  };
 };
 
-const getWalletSyncAttributes = (state: State) => {
+const getLedgerSyncAttributes = (state: State) => {
   if (!analyticsFeatureFlagMethod) return false;
   const walletSync = analyticsFeatureFlagMethod("lldWalletSync");
 
   return {
-    hasWalletSync: !!walletSync?.enabled,
-    walletSyncActivated: !!state.trustchain.trustchain,
+    hasLedgerSync: !!walletSync?.enabled,
+    ledgerSyncActivated: !!state.trustchain.trustchain?.rootId,
   };
 };
 
+const getMEVAttributes = (state: State) => {
+  if (!analyticsFeatureFlagMethod) return false;
+  const mevProtection = analyticsFeatureFlagMethod("llMevProtection");
+
+  const hasMEVActivated = mevProtectionSelector(state);
+
+  return {
+    MEVProtectionActivated: !mevProtection?.enabled ? "Null" : hasMEVActivated ? "Yes" : "No",
+  };
+};
+
+const getMADAttributes = () => {
+  if (!analyticsFeatureFlagMethod) return false;
+  const madFeatureFlag = analyticsFeatureFlagMethod("lldModularDrawer");
+  const rollout_phase = "INC2";
+
+  const isEnabled = madFeatureFlag?.enabled ?? false;
+
+  return {
+    rollout_phase,
+    isEnabled,
+    add_account: madFeatureFlag?.params?.add_account ?? false,
+    live_app: madFeatureFlag?.params?.live_app ?? false,
+    live_apps_allowlist: madFeatureFlag?.params?.live_apps_allowlist,
+    live_apps_blocklist: madFeatureFlag?.params?.live_apps_blocklist,
+    receive_flow: madFeatureFlag?.params?.receive_flow ?? false,
+    send_flow: madFeatureFlag?.params?.send_flow ?? false,
+    isModularizationEnabled: madFeatureFlag?.params?.enableModularization ?? false,
+  };
+};
+
+const getAddAccountAttributes = () => {
+  if (!analyticsFeatureFlagMethod) return {};
+  const addAccount = analyticsFeatureFlagMethod("lldNetworkBasedAddAccount");
+
+  const isEnabled = addAccount?.enabled ?? false;
+
+  return {
+    feature_add_account_desktop: isEnabled,
+  };
+};
 const getPtxAttributes = () => {
   if (!analyticsFeatureFlagMethod) return {};
   const fetchAdditionalCoins = analyticsFeatureFlagMethod("fetchAdditionalCoins");
   const stakingProviders = analyticsFeatureFlagMethod("ethStakingProviders");
-  const ptxSwapMoonpayProviderFlag = analyticsFeatureFlagMethod("ptxSwapMoonpayProvider");
-
-  const ptxSwapLiveAppDemoZero = analyticsFeatureFlagMethod("ptxSwapLiveAppDemoZero")?.enabled;
-  const ptxSwapLiveAppDemoOne = analyticsFeatureFlagMethod("ptxSwapLiveAppDemoOne")?.enabled;
-  const ptxSwapThorswapProvider = analyticsFeatureFlagMethod("ptxSwapThorswapProvider")?.enabled;
-  const ptxSwapExodusProvider = analyticsFeatureFlagMethod("ptxSwapExodusProvider")?.enabled;
+  const rawStakePrograms = analyticsFeatureFlagMethod("stakePrograms");
+  const ptxCard = analyticsFeatureFlagMethod("ptxCard");
 
   const isBatch1Enabled: boolean =
     !!fetchAdditionalCoins?.enabled && fetchAdditionalCoins?.params?.batch === 1;
@@ -100,22 +149,37 @@ const getPtxAttributes = () => {
     stakingProviders?.params?.listProvider?.length > 0
       ? stakingProviders?.params?.listProvider.length
       : "flag not loaded";
-  const ptxSwapMoonpayProviderEnabled: boolean = !!ptxSwapMoonpayProviderFlag?.enabled;
+
+  // Apply versioned redirects logic to the stakePrograms feature flag
+  const appVersion = LiveConfig.instance.appVersion || "0.0.0";
+  const stakePrograms = rawStakePrograms
+    ? getVersionedRedirects(rawStakePrograms, appVersion)
+    : null;
+
+  const stakingCurrenciesEnabled: string[] | string =
+    stakePrograms?.enabled && stakePrograms?.params?.list?.length
+      ? stakePrograms.params.list
+      : "flag not loaded";
+  const partnerStakingCurrenciesEnabled: string[] | string =
+    stakePrograms?.enabled && stakePrograms?.params?.redirects
+      ? Object.keys(stakePrograms.params.redirects)
+      : "flag not loaded";
+  const stablecoinYield = getStablecoinYieldSetting(stakePrograms);
+
   return {
     isBatch1Enabled,
     isBatch2Enabled,
     isBatch3Enabled,
     stakingProvidersEnabled,
-    ptxSwapMoonpayProviderEnabled,
-    ptxSwapLiveAppDemoZero,
-    ptxSwapLiveAppDemoOne,
-    ptxSwapThorswapProvider,
-    ptxSwapExodusProvider,
+    ptxCard: ptxCard?.enabled,
+    stablecoinYield,
+    stakingCurrenciesEnabled,
+    partnerStakingCurrenciesEnabled,
   };
 };
 
 const getMandatoryProperties = (store: ReduxStore) => {
-  const state: State = store.getState();
+  const state = store.getState();
   const analyticsEnabled = shareAnalyticsSelector(state);
   const personalizedRecommendationsEnabled = sharePersonalizedRecommendationsSelector(state);
   const hasSeenAnalyticsOptInPrompt = hasSeenAnalyticsOptInPromptSelector(state);
@@ -139,8 +203,18 @@ const extraProperties = (store: ReduxStore) => {
   const devices = devicesModelListSelector(state);
   const accounts = accountsSelector(state);
   const ptxAttributes = getPtxAttributes();
+  const ldmkTransport = analyticsFeatureFlagMethod
+    ? analyticsFeatureFlagMethod("ldmkTransport")
+    : { enabled: false };
+  const ldmkConnectApp = analyticsFeatureFlagMethod
+    ? analyticsFeatureFlagMethod("ldmkConnectApp")
+    : { enabled: false };
 
-  const walletSyncAtributes = getWalletSyncAttributes(state);
+  const ledgerSyncAttributes = getLedgerSyncAttributes(state);
+  const mevProtectionAttributes = getMEVAttributes(state);
+  const marketWidgetAttributes = getMarketWidgetAnalytics(state);
+  const madAttributes = getMADAttributes();
+  const addAccountAttributes = getAddAccountAttributes();
 
   const deviceInfo = device
     ? {
@@ -173,6 +247,7 @@ const extraProperties = (store: ReduxStore) => {
     : [];
   const hasGenesisPass = hasNftInAccounts(GENESIS_PASS_COLLECTION_CONTRACT, accounts);
   const hasInfinityPass = hasNftInAccounts(INFINITY_PASS_COLLECTION_CONTRACT, accounts);
+  const tokenWithFunds = getTokensWithFunds(accounts);
 
   return {
     ...mandatoryProperties,
@@ -181,6 +256,7 @@ const extraProperties = (store: ReduxStore) => {
     appLanguage: language, // Needed for braze
     region,
     environment: process.env.SEGMENT_TEST ? "test" : __DEV__ ? "development" : "production",
+    platform: "desktop",
     systemLanguage: systemLocale.language,
     systemRegion: systemLocale.region,
     osType,
@@ -191,11 +267,17 @@ const extraProperties = (store: ReduxStore) => {
     blockchainsWithNftsOwned,
     hasGenesisPass,
     hasInfinityPass,
-    hasSeenMarketWidget: getMarketWidgetAnalytics(),
+    tokenWithFunds,
     modelIdList: devices,
     ...ptxAttributes,
     ...deviceInfo,
-    ...walletSyncAtributes,
+    ...ledgerSyncAttributes,
+    ...mevProtectionAttributes,
+    ...marketWidgetAttributes,
+    ...addAccountAttributes,
+    madAttributes,
+    isLDMKTransportEnabled: ldmkTransport?.enabled,
+    isLDMKConnectAppEnabled: ldmkConnectApp?.enabled,
   };
 };
 
@@ -295,8 +377,8 @@ export const track = (
   }
 
   const eventPropertiesWithoutExtra = {
-    ...properties,
     page: currentRouteNameRef.current,
+    ...properties,
   };
 
   const allProperties = {

@@ -28,8 +28,8 @@ import SignTransactionNavigator from "./SignTransactionNavigator";
 import FreezeNavigator from "./FreezeNavigator";
 import UnfreezeNavigator from "./UnfreezeNavigator";
 import ClaimRewardsNavigator from "./ClaimRewardsNavigator";
-import AddAccountsNavigator from "./AddAccountsNavigator";
 import ExchangeLiveAppNavigator from "./ExchangeLiveAppNavigator";
+import CardLiveAppNavigator from "./CardLiveAppNavigator";
 import EarnLiveAppNavigator from "./EarnLiveAppNavigator";
 import PlatformExchangeNavigator from "./PlatformExchangeNavigator";
 import AccountSettingsNavigator from "./AccountSettingsNavigator";
@@ -58,7 +58,7 @@ import {
   bleDevicePairingFlowHeaderOptions,
 } from "~/screens/BleDevicePairingFlow";
 
-import PostBuyDeviceScreen from "~/screens/PostBuyDeviceScreen";
+import PostBuyDeviceScreen from "LLM/features/Reborn/screens/PostBuySuccess";
 import { useNoNanoBuyNanoWallScreenOptions } from "~/context/NoNanoBuyNanoWall";
 import PostBuyDeviceSetupNanoWallScreen from "~/screens/PostBuyDeviceSetupNanoWallScreen";
 import CurrencySettings from "~/screens/Settings/CryptoAssets/Currencies/CurrencySettings";
@@ -74,7 +74,7 @@ import NoFundsFlowNavigator from "./NoFundsFlowNavigator";
 import StakeFlowNavigator from "./StakeFlowNavigator";
 import { RecoverPlayer } from "~/screens/Protect/Player";
 import { RedirectToOnboardingRecoverFlowScreen } from "~/screens/Protect/RedirectToOnboardingRecoverFlow";
-import { NavigationHeaderBackButton } from "../NavigationHeaderBackButton";
+import { NavigationHeaderBackButton } from "~/components/NavigationHeaderBackButton";
 import {
   NavigationHeaderCloseButton,
   NavigationHeaderCloseButtonAdvanced,
@@ -88,8 +88,15 @@ import FirmwareUpdateScreen from "~/screens/FirmwareUpdate";
 import EditCurrencyUnits from "~/screens/Settings/CryptoAssets/Currencies/EditCurrencyUnits";
 import CustomErrorNavigator from "./CustomErrorNavigator";
 import WalletSyncNavigator from "LLM/features/WalletSync/WalletSyncNavigator";
+import ModularDrawerNavigator from "LLM/features/ModularDrawer/ModularDrawerNavigator";
 import Web3HubNavigator from "LLM/features/Web3Hub/Navigator";
 import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
+import AddAccountsV2Navigator from "LLM/features/Accounts/Navigator";
+import DeviceSelectionNavigator from "LLM/features/DeviceSelection/Navigator";
+import AssetSelectionNavigator from "LLM/features/AssetSelection/Navigator";
+import AssetsListNavigator from "LLM/features/Assets/Navigator";
+import FeesNavigator from "./FeesNavigator";
+import { getStakeLabelLocaleBased } from "~/helpers/getStakeLabelLocaleBased";
 
 const Stack = createStackNavigator<BaseNavigatorStackParamList>();
 
@@ -108,6 +115,7 @@ export default function BaseNavigator() {
   const isAccountsEmpty = useSelector(hasNoAccountsSelector);
   const readOnlyModeEnabled = useSelector(readOnlyModeEnabledSelector) && isAccountsEmpty;
   const web3hub = useFeature("web3hub");
+  const llmAccountListUI = useFeature("llmAccountListUI");
 
   return (
     <>
@@ -154,7 +162,6 @@ export default function BaseNavigator() {
           options={{
             title: t("postBuyDevice.headerTitle"),
             headerLeft: () => null,
-            headerRight: () => null,
           }}
         />
         <Stack.Screen
@@ -171,7 +178,6 @@ export default function BaseNavigator() {
           })}
           {...noNanoBuyNanoWallScreenOptions}
         />
-
         <Stack.Screen
           name={ScreenName.EditCurrencyUnits}
           component={EditCurrencyUnits}
@@ -203,7 +209,6 @@ export default function BaseNavigator() {
           options={{
             headerStyle: styles.headerNoShadow,
           }}
-          {...noNanoBuyNanoWallScreenOptions}
         />
         <Stack.Screen
           name={ScreenName.Recover}
@@ -241,6 +246,11 @@ export default function BaseNavigator() {
           name={NavigatorName.SignTransaction}
           component={SignTransactionNavigator}
           options={{ headerShown: false }}
+          listeners={({ route }) => ({
+            beforeRemove: () => {
+              route.params.onError(new Error("Signature interrupted by user"));
+            },
+          })}
         />
         <Stack.Screen
           name={NavigatorName.Swap}
@@ -263,8 +273,8 @@ export default function BaseNavigator() {
           options={{ headerShown: false }}
         />
         <Stack.Screen
-          name={NavigatorName.AddAccounts}
-          component={AddAccountsNavigator}
+          name={NavigatorName.Fees}
+          component={FeesNavigator}
           options={{ headerShown: false }}
         />
         <Stack.Screen
@@ -298,6 +308,12 @@ export default function BaseNavigator() {
               }
             },
           })}
+        />
+        <Stack.Screen
+          name={NavigatorName.Card}
+          component={CardLiveAppNavigator}
+          options={{ headerShown: false }}
+          {...noNanoBuyNanoWallScreenOptions}
         />
         <Stack.Screen
           name={NavigatorName.Exchange}
@@ -336,6 +352,7 @@ export default function BaseNavigator() {
                 ),
                 headerLeft: () => <NavigationHeaderBackButton />,
                 headerRight: () => <NavigationHeaderCloseButton />,
+                cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
               };
             }
 
@@ -353,6 +370,7 @@ export default function BaseNavigator() {
               ),
               headerLeft: () => <NavigationHeaderBackButton />,
               headerRight: () => null,
+              cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
             };
           }}
         />
@@ -410,16 +428,18 @@ export default function BaseNavigator() {
           options={{
             title: t("analytics.operations.title"),
             headerRight: () => null,
-            cardStyleInterpolator: CardStyleInterpolators.forVerticalIOS,
           }}
         />
-
         <Stack.Screen
           name={NavigatorName.WalletSync}
           component={WalletSyncNavigator}
           options={{ headerShown: false }}
         />
-
+        <Stack.Screen
+          name={NavigatorName.ModularDrawer}
+          component={ModularDrawerNavigator}
+          options={{ headerShown: false }}
+        />
         {MarketNavigator({ Stack })}
         <Stack.Screen
           name={ScreenName.PortfolioOperationHistory}
@@ -450,7 +470,6 @@ export default function BaseNavigator() {
             headerLeft: () => null,
           }}
         />
-
         <Stack.Screen
           name={NavigatorName.WalletConnect}
           component={WalletConnectLiveAppNavigator}
@@ -459,7 +478,6 @@ export default function BaseNavigator() {
           }}
           {...noNanoBuyNanoWallScreenOptions}
         />
-
         <Stack.Screen
           name={NavigatorName.NotificationCenter}
           component={NotificationCenterNavigator}
@@ -524,7 +542,19 @@ export default function BaseNavigator() {
         <Stack.Screen
           name={NavigatorName.Earn}
           component={EarnLiveAppNavigator}
-          options={{ headerShown: false }}
+          options={props => {
+            const stakeLabel = getStakeLabelLocaleBased();
+            const intent = props.route?.params?.params?.intent;
+
+            return intent === "deposit" || intent === "withdraw"
+              ? {
+                  headerShown: true,
+                  closable: false,
+                  headerTitle: t(stakeLabel),
+                  headerRight: () => null,
+                }
+              : { headerShown: false };
+          }}
         />
         <Stack.Screen
           name={NavigatorName.NoFundsFlow}
@@ -569,6 +599,31 @@ export default function BaseNavigator() {
             headerRight: () => <Button Icon={IconsLegacy.CloseMedium} />,
           }}
         />
+        <Stack.Screen
+          name={NavigatorName.AddAccounts}
+          component={AddAccountsV2Navigator}
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name={NavigatorName.DeviceSelection}
+          component={DeviceSelectionNavigator}
+          options={{ headerShown: false }}
+        />
+
+        <Stack.Screen
+          name={NavigatorName.AssetSelection}
+          component={AssetSelectionNavigator}
+          options={{ headerShown: false }}
+        />
+
+        {llmAccountListUI?.enabled && (
+          <Stack.Screen
+            name={NavigatorName.Assets}
+            component={AssetsListNavigator}
+            options={{ headerShown: false }}
+          />
+        )}
       </Stack.Navigator>
     </>
   );

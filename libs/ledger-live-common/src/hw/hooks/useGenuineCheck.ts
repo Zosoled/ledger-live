@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
-import { UserRefusedAllowManager } from "@ledgerhq/errors";
+import { useCallback, useEffect, useState, MutableRefObject, useRef } from "react";
+import { UnresponsiveDeviceError, UserRefusedAllowManager } from "@ledgerhq/errors";
 import type { DeviceId } from "@ledgerhq/types-live";
 import { getGenuineCheckFromDeviceId as defaultGetGenuineCheckFromDeviceId } from "../getGenuineCheckFromDeviceId";
 import type {
@@ -7,6 +7,8 @@ import type {
   GetGenuineCheckFromDeviceIdResult,
   GetGenuineCheckFromDeviceIdOutput,
 } from "../getGenuineCheckFromDeviceId";
+import { isDmkError } from "../../deviceSDK/tasks/core";
+import { DmkError } from "@ledgerhq/device-management-kit";
 
 export type GenuineState = "unchecked" | "genuine" | "non-genuine";
 export type DevicePermissionState =
@@ -21,6 +23,7 @@ export type UseGenuineCheckArgs = {
   isHookEnabled?: boolean;
   deviceId: DeviceId;
   lockedDeviceTimeoutMs?: number;
+  permissionTimeoutMs?: number;
 };
 
 export type UseGenuineCheckDependencies = {
@@ -32,11 +35,21 @@ export type UseGenuineCheckDependencies = {
 export type UseGenuineCheckResult = {
   genuineState: GenuineState;
   devicePermissionState: DevicePermissionState;
-  error: Error | null;
+  error: Error | DmkError | null;
   resetGenuineCheckState: () => void;
 };
 
 const SOCKET_EVENT_PAYLOAD_GENUINE = "0000";
+
+const clearTimeoutRef = (timeoutRef: MutableRefObject<NodeJS.Timeout | null>) => {
+  if (timeoutRef.current) {
+    clearTimeout(timeoutRef.current);
+    timeoutRef.current = null;
+  }
+};
+
+const isDmkDeviceDisconnectedError = (e: unknown): e is DmkError =>
+  isDmkError(e) && e._tag === "DeviceDisconnectedWhileSendingError";
 
 /**
  * Hook to check that a device is genuine
@@ -47,6 +60,7 @@ const SOCKET_EVENT_PAYLOAD_GENUINE = "0000";
  * @param isHookEnabled A boolean to enable (true, default value) or disable (false) the hook
  * @param deviceId A device id, or an empty string if device is usb plugged
  * @param lockedDeviceTimeoutMs Time of no response from device after which the device is considered locked, in ms. Default 1000ms.
+ * @param permissionTimeoutMs Time to wait for a device response to a permission request, in ms. Default 60s.
  * @returns An object containing:
  * - genuineState: the current GenuineState
  * - devicePermissionState: the current DevicePermissionState
@@ -57,11 +71,13 @@ export const useGenuineCheck = ({
   isHookEnabled = true,
   deviceId,
   lockedDeviceTimeoutMs = 1000,
+  permissionTimeoutMs = 60 * 1000,
 }: UseGenuineCheckArgs & UseGenuineCheckDependencies): UseGenuineCheckResult => {
   const [genuineState, setGenuineState] = useState<GenuineState>("unchecked");
   const [devicePermissionState, setDevicePermissionState] =
     useState<DevicePermissionState>("unrequested");
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<Error | DmkError | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const resetGenuineCheckState = useCallback(() => {
     setDevicePermissionState("unrequested");
@@ -83,11 +99,17 @@ export const useGenuineCheck = ({
           switch (socketEvent.type) {
             case "device-permission-requested":
               setDevicePermissionState("requested");
+              timeoutRef.current = setTimeout(() => {
+                setError(new UnresponsiveDeviceError());
+                clearTimeoutRef(timeoutRef);
+              }, permissionTimeoutMs);
               break;
             case "device-permission-granted":
+              clearTimeoutRef(timeoutRef);
               setDevicePermissionState("granted");
               break;
             case "result":
+              clearTimeoutRef(timeoutRef);
               if (socketEvent.payload === SOCKET_EVENT_PAYLOAD_GENUINE) {
                 setGenuineState("genuine");
               } else {
@@ -96,6 +118,7 @@ export const useGenuineCheck = ({
               break;
           }
         } else {
+          clearTimeoutRef(timeoutRef);
           // If no socketEvent, the device is locked or has been unlocked
           if (lockedDevice) {
             setDevicePermissionState("unlock-needed");
@@ -105,9 +128,10 @@ export const useGenuineCheck = ({
         }
       },
       error: (e: any) => {
+        clearTimeoutRef(timeoutRef);
         if (e instanceof UserRefusedAllowManager) {
           setDevicePermissionState("refused");
-        } else if (e instanceof Error) {
+        } else if (e instanceof Error || isDmkDeviceDisconnectedError(e)) {
           // Probably an error of type DisconnectedDeviceDuringOperation or something else
           setError(e);
         } else {
@@ -119,7 +143,13 @@ export const useGenuineCheck = ({
     return () => {
       sub.unsubscribe();
     };
-  }, [isHookEnabled, deviceId, lockedDeviceTimeoutMs, getGenuineCheckFromDeviceId]);
+  }, [
+    isHookEnabled,
+    deviceId,
+    lockedDeviceTimeoutMs,
+    getGenuineCheckFromDeviceId,
+    permissionTimeoutMs,
+  ]);
 
   return {
     genuineState,

@@ -11,6 +11,7 @@ type Props = {
   size: number;
   hideParentIcon?: boolean;
   borderColor?: string;
+  forceIconScale?: number;
 };
 
 const ParentCurrencyIcon = ({
@@ -18,6 +19,7 @@ const ParentCurrencyIcon = ({
   size,
   hideParentIcon = false,
   borderColor = "background.main",
+  forceIconScale = 1,
 }: Props) => {
   const { colors } = useTheme();
   const color = useMemo(
@@ -47,8 +49,14 @@ const ParentCurrencyIcon = ({
       alignItems={"center"}
       justifyContent={"center"}
       borderRadius={size}
+      testID="parent-currency-icon"
     >
-      <CurrencyIcon size={iconSize} currency={currency} color={colors.constant.white} />
+      <CurrencyIcon
+        size={iconSize}
+        currency={currency}
+        forceIconScale={forceIconScale}
+        color={colors.constant.white}
+      />
       {!hideParentIcon && currency.type === "TokenCurrency" && (
         <Flex
           position={"absolute"}

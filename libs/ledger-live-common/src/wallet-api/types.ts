@@ -17,7 +17,7 @@ export type {
 
 export type { WalletAPIServer } from "@ledgerhq/wallet-api-server";
 
-export {
+export type {
   CurrencyType as WalletAPICurrencyType,
   TokenStandard as WalletAPITokenStandard,
 } from "@ledgerhq/wallet-api-core";
@@ -62,10 +62,13 @@ export type ConvertToLiveTransaction<T extends WalletAPITransaction, U extends T
   account: AccountLike;
 }) => Partial<U>;
 
+export type CacheBustedLiveApps = Record<string, number>;
+
 export type DiscoverDB = {
   recentlyUsed: RecentlyUsedIdDb[];
   localLiveApp: LiveAppManifest[];
   currentAccountHist: CurrentAccountHistIDb;
+  cacheBustedLiveApps: CacheBustedLiveApps;
 };
 
 export type RecentlyUsedIdDb = {
@@ -74,3 +77,9 @@ export type RecentlyUsedIdDb = {
 };
 
 export type CurrentAccountHistIDb = Record<string, string>;
+
+export type DAppTrackingData = {
+  type: string;
+  currency: string;
+  network: CryptoCurrency["id"];
+};

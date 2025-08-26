@@ -2,11 +2,15 @@
   "extends": "../../../../tsconfig.base",
   "compilerOptions": {
     "declaration": true,
+    "declarationMap": true,
     "jsx": "react",
     "baseUrl": ".",
     "rootDir": "./src",
     "outDir": ".",
-    "noEmit": true
+    "noEmit": true,
+    "moduleResolution": "bundler",
+    "module": "esnext",
+    "target": "esnext"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "react", "native"]

@@ -42,7 +42,7 @@ const DeviceLanguageInstallation: React.FC<Props> = ({
 
   const sortedAvailableLanguages = useMemo(
     () =>
-      (availableLanguages as string[]).sort((a, b) =>
+      availableLanguages.sort((a, b) =>
         t(`deviceLocalization.languages.${a}`).localeCompare(
           t(`deviceLocalization.languages.${b}`),
         ),
@@ -61,6 +61,7 @@ const DeviceLanguageInstallation: React.FC<Props> = ({
 
   const onChange = useCallback(
     (radioValue?: string | number | readonly string[] | undefined) =>
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       setSelectedLanguage(radioValue as Language),
     [setSelectedLanguage],
   );
@@ -97,7 +98,7 @@ const DeviceLanguageInstallation: React.FC<Props> = ({
       <Text alignSelf="center" variant="h5Inter" mb={12}>
         {t("deviceLocalization.deviceLanguage")}
       </Text>
-      <Flex px={12} flex={1}>
+      <Flex px={12} flex={1} overflowY="scroll" height="100%">
         {availableLanguages?.length ? (
           installing ? (
             <ChangeDeviceLanguageAction

@@ -9,12 +9,7 @@ import type {
   TokenAccountRaw,
   TransactionCommon,
 } from "@ledgerhq/types-live";
-import {
-  findCryptoCurrencyById,
-  findTokenById,
-  getCryptoCurrencyById,
-  getTokenById,
-} from "@ledgerhq/cryptoassets/index";
+import { findCryptoCurrencyById, getCryptoCurrencyById } from "@ledgerhq/cryptoassets/index";
 import { emptyHistoryCache, generateHistoryFromOperations } from "../account/balanceHistoryCache";
 import { isAccountEmpty } from "../account/helpers";
 import { fromNFTRaw, toNFTRaw } from "./nft";
@@ -24,9 +19,12 @@ import {
   toOperationRaw,
   toSwapOperationRaw,
 } from "./operation";
+import { getCryptoAssetsStore } from "../crypto-assets";
+import invariant from "invariant";
 
 export type FromFamiliyRaw = {
   assignFromAccountRaw?: AccountBridge<TransactionCommon>["assignFromAccountRaw"];
+  assignFromTokenAccountRaw?: AccountBridge<TransactionCommon>["assignFromTokenAccountRaw"];
   fromOperationExtraRaw?: AccountBridge<TransactionCommon>["fromOperationExtraRaw"];
 };
 
@@ -60,12 +58,13 @@ export function fromAccountRaw(rawAccount: AccountRaw, fromRaw?: FromFamiliyRaw)
   const convertOperation = (op: OperationRaw) =>
     fromOperationRaw(op, id, subAccounts as TokenAccount[], fromRaw?.fromOperationExtraRaw);
 
+  const store = getCryptoAssetsStore();
   const subAccounts =
     subAccountsRaw &&
     subAccountsRaw
       .map(ta => {
         if (ta.type === "TokenAccountRaw") {
-          if (findTokenById(ta.tokenId)) {
+          if (store.findTokenById(ta.tokenId)) {
             return fromTokenAccountRaw(ta);
           }
         }
@@ -73,7 +72,7 @@ export function fromAccountRaw(rawAccount: AccountRaw, fromRaw?: FromFamiliyRaw)
       .filter(Boolean);
   const currency = getCryptoCurrencyById(currencyId);
   const feesCurrency = feesCurrencyId
-    ? findCryptoCurrencyById(feesCurrencyId) || findTokenById(feesCurrencyId)
+    ? findCryptoCurrencyById(feesCurrencyId) || store.findTokenById(feesCurrencyId)
     : undefined;
 
   const res: Account = {
@@ -129,11 +128,21 @@ export function fromAccountRaw(rawAccount: AccountRaw, fromRaw?: FromFamiliyRaw)
     fromRaw.assignFromAccountRaw(rawAccount, res);
   }
 
+  if (fromRaw?.assignFromTokenAccountRaw && res.subAccounts) {
+    res.subAccounts.forEach((subAcc, index) => {
+      const subAccRaw = subAccountsRaw?.[index];
+      if (subAcc.type === "TokenAccount" && subAccRaw?.type === "TokenAccountRaw") {
+        fromRaw.assignFromTokenAccountRaw?.(subAccRaw, subAcc);
+      }
+    });
+  }
+
   return res;
 }
 
 export type ToFamiliyRaw = {
   assignToAccountRaw?: AccountBridge<TransactionCommon>["assignToAccountRaw"];
+  assignToTokenAccountRaw?: AccountBridge<TransactionCommon>["assignToTokenAccountRaw"];
   toOperationExtraRaw?: AccountBridge<TransactionCommon>["toOperationExtraRaw"];
 };
 
@@ -207,6 +216,15 @@ export function toAccountRaw(account: Account, toFamilyRaw?: ToFamiliyRaw): Acco
     toFamilyRaw.assignToAccountRaw(account, res);
   }
 
+  if (toFamilyRaw?.assignToTokenAccountRaw && res.subAccounts) {
+    res.subAccounts.forEach((subAccRaw, index) => {
+      const subAcc = subAccounts?.[index];
+      if (subAccRaw.type === "TokenAccountRaw" && subAcc?.type === "TokenAccount") {
+        toFamilyRaw.assignToTokenAccountRaw?.(subAcc, subAccRaw);
+      }
+    });
+  }
+
   if (swapHistory) {
     res.swapHistory = swapHistory.map(toSwapOperationRaw);
   }
@@ -236,7 +254,9 @@ function fromTokenAccountRaw(
     balanceHistoryCache,
     swapHistory,
   } = raw;
-  const token = getTokenById(tokenId);
+  const store = getCryptoAssetsStore();
+  const token = store.findTokenById(tokenId);
+  invariant(token, `Token with id ${tokenId} not found`);
 
   const convertOperation = (op: OperationRaw) =>
     fromOperationRaw(op, id, null, fromOperationExtraRaw);

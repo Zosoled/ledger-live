@@ -24,7 +24,7 @@ import { NavigatorName, ScreenName } from "~/const";
 import EmptyAccountCard from "../Account/EmptyAccountCard";
 import CurrencyBackgroundGradient from "~/components/CurrencyBackgroundGradient";
 import Header from "./Header";
-import { track, TrackScreen } from "~/analytics";
+import { TrackScreen } from "~/analytics";
 import { FabAssetActions } from "~/components/FabActions/actionsList/asset";
 import { AccountsNavigatorParamList } from "~/components/RootNavigator/types/AccountsNavigator";
 import { BaseComposite, StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
@@ -32,10 +32,12 @@ import AssetDynamicContent from "./AssetDynamicContent";
 import AssetMarketSection from "./AssetMarketSection";
 import AssetGraph from "./AssetGraph";
 import { getCurrencyConfiguration } from "@ledgerhq/live-common/config/index";
-import { View } from "react-native-animatable";
-import Alert from "~/components/Alert";
-import { urls } from "~/utils/urls";
 import { CurrencyConfig } from "@ledgerhq/coin-framework/config";
+import { useGroupedCurrenciesByProvider } from "@ledgerhq/live-common/deposit/index";
+import { LoadingBasedGroupedCurrencies, LoadingStatus } from "@ledgerhq/live-common/deposit/type";
+import { CryptoCurrency, TokenCurrency } from "@ledgerhq/types-cryptoassets";
+import { AddAccountContexts } from "LLM/features/Accounts/screens/AddAccount/enums";
+import WarningBannerStatus from "~/components/WarningBannerStatus";
 
 const AnimatedFlatListWithRefreshControl = Animated.createAnimatedComponent(
   accountSyncRefreshControl(FlatList),
@@ -81,24 +83,51 @@ const AssetScreen = ({ route }: NavigationProps) => {
     [cryptoAccounts],
   );
 
+  const { result, loadingStatus: providersLoadingStatus } = useGroupedCurrenciesByProvider(
+    true,
+  ) as LoadingBasedGroupedCurrencies;
+
+  const isAddAccountCtaDisabled = [LoadingStatus.Pending, LoadingStatus.Error].includes(
+    providersLoadingStatus,
+  );
+
+  const { currenciesByProvider } = result;
+
+  const provider = useMemo(
+    () =>
+      currency &&
+      currenciesByProvider.find(elem =>
+        elem.currenciesByNetwork.some(
+          currencyByNetwork =>
+            (currencyByNetwork as CryptoCurrency | TokenCurrency).id === currency.id,
+        ),
+      ),
+    [currenciesByProvider, currency],
+  );
+
   const onAddAccount = useCallback(() => {
-    track("button_clicked", {
-      button: "Add new",
-    });
-    if (currency && currency.type === "TokenCurrency") {
-      navigation.navigate(NavigatorName.AddAccounts, {
-        screen: undefined,
+    if (provider && provider?.currenciesByNetwork.length > 1) {
+      navigation.navigate(NavigatorName.AssetSelection, {
+        screen: ScreenName.SelectNetwork,
         params: {
-          token: currency,
+          currency: currency.id,
+          context: AddAccountContexts.AddAccounts,
+          sourceScreenName: ScreenName.Asset,
         },
       });
     } else {
-      navigation.navigate(NavigatorName.AddAccounts, {
-        screen: undefined,
-        currency,
+      navigation.navigate(NavigatorName.DeviceSelection, {
+        screen: ScreenName.SelectDevice,
+        params: {
+          currency:
+            currency.type === "TokenCurrency"
+              ? currency.parentCurrency
+              : (currency as CryptoCurrency),
+          context: AddAccountContexts.AddAccounts,
+        },
       });
     }
-  }, [currency, navigation]);
+  }, [currency, provider, navigation]);
 
   let currencyConfig: CurrencyConfig | undefined = undefined;
   if (isCryptoCurrency(currency)) {
@@ -126,21 +155,11 @@ const AssetScreen = ({ route }: NavigationProps) => {
           accountsAreEmpty={cryptoAccountsEmpty}
         />
       </Box>,
-      currencyConfig?.status.type === "will_be_deprecated" && (
-        <View style={{ marginTop: 16 }}>
-          <Alert
-            key="deprecated_banner"
-            type="warning"
-            learnMoreKey="account.willBedeprecatedBanner.contactSupport"
-            learnMoreUrl={urls.contactSupportWebview.en}
-          >
-            {t("account.willBedeprecatedBanner.title", {
-              currencyName: currency.name,
-              deprecatedDate: currencyConfig.status.deprecated_date,
-            })}
-          </Alert>
-        </View>
-      ),
+      <WarningBannerStatus
+        currencyConfig={currencyConfig}
+        currency={currency}
+        key="WarningBanner"
+      />,
       <SectionContainer px={6} isFirst key="AssetDynamicContent">
         <SectionTitle title={t("account.quickActions")} containerProps={{ mb: 6 }} />
         <FabAssetActions
@@ -167,6 +186,8 @@ const AssetScreen = ({ route }: NavigationProps) => {
           accounts={cryptoAccounts as Account[] | TokenAccount[]}
           currencyId={currency.id}
           currencyTicker={currency.ticker}
+          onAddAccount={onAddAccount}
+          isAddAccountCtaDisabled={isAddAccountCtaDisabled}
         />
       </SectionContainer>,
       <AssetMarketSection currency={currency} key="AssetMarketSection" />,
@@ -181,6 +202,7 @@ const AssetScreen = ({ route }: NavigationProps) => {
       onGraphCardLayout,
       currentPositionY,
       graphCardEndPosition,
+      isAddAccountCtaDisabled,
       currency,
       currencyBalance,
       cryptoAccountsEmpty,

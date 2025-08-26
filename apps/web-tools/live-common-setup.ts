@@ -37,7 +37,7 @@ setSupportedCurrencies([
   "dash",
   "tron",
   "tezos",
-  "elrond",
+  "elrond", // NOTE: legacy 'multiversx' name, kept for compatibility
   "ethereum_classic",
   "zcash",
   "decred",
@@ -46,7 +46,6 @@ setSupportedCurrencies([
   "qtum",
   "bitcoin_gold",
   "komodo",
-  "pivx",
   "zencash",
   "bitcoin_testnet",
   "ethereum_sepolia",
@@ -70,4 +69,10 @@ setSupportedCurrencies([
   "optimism_sepolia",
   "linea",
   "linea_sepolia",
+  "mantra",
+  "xion",
+  "zenrock",
+  "sui",
+  "mina",
+  "babylon",
 ]);

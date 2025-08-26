@@ -9,6 +9,7 @@ import styled from "styled-components";
 import { useTranslation } from "react-i18next";
 import { clearLastSeenCustomImage } from "~/renderer/actions/settings";
 import { ImageDoesNotExistOnDevice } from "@ledgerhq/live-common/errors";
+import { HOOKS_TRACKING_LOCATIONS } from "~/renderer/analytics/hooks/variables";
 
 const action = createAction(removeImage);
 
@@ -18,9 +19,9 @@ const TextEllipsis = styled.div`
   text-overflow: ellipsis;
 `;
 
-type Props = { onClose?: () => void };
+type Props = { onClose: () => void; onRemoved?: () => void };
 
-const RemoveCustomImage: React.FC<Props> = ({ onClose }) => {
+const RemoveCustomImage: React.FC<Props> = ({ onClose, onRemoved }) => {
   const request = useMemo(() => ({}), []);
   const { t } = useTranslation();
   const dispatch = useDispatch();
@@ -40,7 +41,8 @@ const RemoveCustomImage: React.FC<Props> = ({ onClose }) => {
     setCompleted(true);
     setRunning(false);
     dispatch(clearLastSeenCustomImage());
-  }, [dispatch]);
+    onRemoved && onRemoved();
+  }, [dispatch, onRemoved]);
 
   const onError = useCallback(
     (error: Error) => {
@@ -100,6 +102,7 @@ const RemoveCustomImage: React.FC<Props> = ({ onClose }) => {
               action={action}
               onResult={onSuccess}
               onError={onError}
+              location={HOOKS_TRACKING_LOCATIONS.managerDashboard}
             />
           </Flex>
         ) : null}

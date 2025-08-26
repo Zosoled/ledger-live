@@ -1,8 +1,9 @@
+import nock from "nock";
 import React from "react";
 import axios from "axios";
+import { TFunction } from "i18next";
 import BigNumber from "bignumber.js";
-import { render, screen, waitFor } from "tests/testUtils";
-
+import { render, screen, waitFor } from "tests/testSetup";
 import {
   getCryptoCurrencyById,
   setSupportedCurrencies,
@@ -13,19 +14,21 @@ import { useFeature } from "@ledgerhq/live-common/featureFlags/index";
 import { DomainServiceProvider } from "@ledgerhq/domain-service/hooks/index";
 import { Transaction, TransactionStatus } from "@ledgerhq/live-common/generated/types";
 import RecipientField from "./RecipientField";
-import { TFunction } from "i18next";
 
 // Temp mock to prevent error on sentry init
 jest.mock("../../../../sentry/install", () => ({
   init: () => null,
 }));
 
-jest.mock("axios");
-
-const mockedAxios = jest.mocked(axios);
+nock.disableNetConnect();
 
 jest.mock("@ledgerhq/live-common/featureFlags/index", () => ({
   useFeature: jest.fn(),
+}));
+
+jest.mock("../../../components/FirebaseFeatureFlags", () => ({
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  FirebaseFeatureFlagsProvider: ({ children }: { children: any }) => children,
 }));
 
 const mockedUseFeature = jest.mocked(useFeature);
@@ -117,6 +120,7 @@ const baseMockStatus: TransactionStatus = {
   totalSpent: new BigNumber("0"),
 };
 
+// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 const mockTFunction: jest.Mock<TFunction> = jest.fn(key => key) as unknown as jest.Mock<TFunction>;
 
 const setup = (
@@ -128,8 +132,9 @@ const setup = (
     <DomainServiceProvider>
       <RecipientField
         account={account}
-        transaction={{ ...baseMockTransaction, ...mockTransaction } as Transaction}
+        transaction={{ ...baseMockTransaction, ...mockTransaction }}
         // tslint:disable-next-line
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         t={mockTFunction as unknown as TFunction}
         onChangeTransaction={mockedOnChangeTransaction}
         status={{ ...baseMockStatus, ...mockStatus }}
@@ -335,6 +340,7 @@ describe("RecipientField", () => {
       });
 
       it("should not change domain because currency not supported", async () => {
+        const spy = jest.spyOn(axios, "request");
         const { user } = setup(null, null, polygonMockAccount);
         const input = screen.getByRole("textbox");
         await user.type(input, "0x16bb635bc5c398b63a0fbb38dac84da709eb3e86");
@@ -345,7 +351,7 @@ describe("RecipientField", () => {
             recipientDomain: undefined,
           }),
         );
-        expect(mockedAxios).not.toHaveBeenCalled();
+        expect(spy).not.toHaveBeenCalled();
       });
     });
 

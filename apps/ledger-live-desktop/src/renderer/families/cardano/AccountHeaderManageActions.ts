@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { useDispatch } from "react-redux";
 import { openModal } from "~/renderer/actions/modals";
 import IconCoins from "~/renderer/icons/Coins";
+import { useGetStakeLabelLocaleBased } from "~/renderer/hooks/useGetStakeLabelLocaleBased";
 
 type Props = {
   account: AccountLike;
@@ -18,10 +19,14 @@ const AccountHeaderActions = ({ account, parentAccount }: Props) => {
   const { t } = useTranslation();
   const dispatch = useDispatch();
   const mainAccount = getMainAccount(account, parentAccount);
+  const label = useGetStakeLabelLocaleBased();
+
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const { cardanoResources } = mainAccount as CardanoAccount;
   invariant(cardanoResources, "cardano account expected");
 
   const disableStakeButton =
+    // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     !canStake(account as CardanoAccount) || isAlreadyStaking(account as CardanoAccount);
 
   const disabledLabel =
@@ -34,6 +39,7 @@ const AccountHeaderActions = ({ account, parentAccount }: Props) => {
   const onClick = useCallback(() => {
     dispatch(
       openModal("MODAL_CARDANO_REWARDS_INFO", {
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
         account: account as CardanoAccount,
       }),
     );
@@ -47,8 +53,9 @@ const AccountHeaderActions = ({ account, parentAccount }: Props) => {
       onClick: onClick,
       icon: IconCoins,
       disabled: disableStakeButton,
-      label: t("account.stake"),
+      label,
       tooltip: disabledLabel,
+      accountActionsTestId: "stake-button",
     },
   ];
 };

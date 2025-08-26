@@ -1,10 +1,38 @@
 import { decodeAccountId } from "@ledgerhq/coin-framework/account/index";
-import { Account } from "@ledgerhq/types-live";
-import { SendMode, Address as TonAddress, WalletContractV4, comment, internal } from "@ton/ton";
+import {
+  Builder,
+  SendMode,
+  Address as TonAddress,
+  WalletContractV4,
+  comment,
+  internal,
+  toNano,
+} from "@ton/ton";
 import BigNumber from "bignumber.js";
 import { estimateFee } from "./bridge/bridgeHelpers/api";
-import { TonComment, TonTransaction, Transaction } from "./types";
+import { getCoinConfig } from "./config";
+import {
+  JettonOpCode,
+  MAX_COMMENT_BYTES,
+  TOKEN_TRANSFER_FORWARD_AMOUNT,
+  TOKEN_TRANSFER_MAX_FEE,
+  TOKEN_TRANSFER_QUERY_ID,
+  WORKCHAIN,
+} from "./constants";
+import {
+  KnownJetton,
+  TonAccount,
+  TonCell,
+  TonComment,
+  TonPayloadJettonTransfer,
+  TonSubAccount,
+  TonTransaction,
+  Transaction,
+} from "./types";
 
+/**
+ * Checks if the given recipient address is valid.
+ */
 export const isAddressValid = (recipient: string) => {
   try {
     return Boolean(
@@ -16,6 +44,9 @@ export const isAddressValid = (recipient: string) => {
   }
 };
 
+/**
+ * Compares two addresses to check if they are equal.
+ */
 export const addressesAreEqual = (addr1: string, addr2: string) => {
   try {
     return (
@@ -28,8 +59,39 @@ export const addressesAreEqual = (addr1: string, addr2: string) => {
   }
 };
 
-export const buildTonTransaction = (transaction: Transaction, seqno: number): TonTransaction => {
-  const { useAllAmount, amount, comment, recipient } = transaction;
+/**
+ * Returns the known jetton ID and workchain for a given token address.
+ * Returns null if the token is not found in the known jettons list.
+ */
+function getKnownJettonId(tokenAddress: string, knownJettons: KnownJetton[]) {
+  const index = knownJettons.findIndex(jetton => jetton.masterAddress.toString() === tokenAddress);
+  return index > -1 ? { jettonId: index, workchain: WORKCHAIN } : null;
+}
+
+/**
+ * Finds a sub-account by its ID in a TON account.
+ * Returns undefined if no matching sub-account is found.
+ */
+export function findSubAccountById(account: TonAccount, id: string): TonSubAccount | undefined {
+  return account.subAccounts?.find(a => a.id === id) as TonSubAccount | undefined;
+}
+
+/**
+ * Builds a TonTransaction object based on the given transaction details.
+ */
+export function buildTonTransaction(
+  transaction: Transaction,
+  seqno: number,
+  account: TonAccount,
+): TonTransaction {
+  const {
+    subAccountId,
+    useAllAmount,
+    amount,
+    comment: commentTx,
+    recipient,
+    payload,
+  } = transaction;
   let recipientParsed = recipient;
   // if recipient is not valid calculate fees with empty address
   // we handle invalid addresses in account bridge
@@ -39,44 +101,96 @@ export const buildTonTransaction = (transaction: Transaction, seqno: number): To
     recipientParsed = new TonAddress(0, Buffer.alloc(32)).toRawString();
   }
 
-  const finalAmount = useAllAmount ? BigInt(0) : BigInt(amount.toFixed());
+  // if there is a sub account, the transaction is a token transfer
+  const subAccount = findSubAccountById(account, subAccountId ?? "");
+
+  if (subAccount && !subAccount.jettonWallet) {
+    throw new Error("[ton] jetton wallet not found");
+  }
+
+  const finalAmount = subAccount
+    ? toNano(TOKEN_TRANSFER_MAX_FEE) // for commission fees, excess will be returned
+    : useAllAmount
+      ? BigInt(0)
+      : BigInt(amount.toFixed());
+  const to = subAccount?.jettonWallet ?? recipientParsed;
 
   const tonTransaction: TonTransaction = {
-    to: TonAddress.parse(recipientParsed),
+    to: TonAddress.parse(to),
     seqno,
     amount: finalAmount,
-    bounce: TonAddress.isFriendly(recipientParsed)
-      ? TonAddress.parseFriendly(recipientParsed).isBounceable
-      : true,
+    bounce: TonAddress.isFriendly(to) ? TonAddress.parseFriendly(to).isBounceable : true,
     timeout: getTransferExpirationTime(),
-    sendMode: useAllAmount
-      ? SendMode.CARRY_ALL_REMAINING_BALANCE
-      : SendMode.IGNORE_ERRORS + SendMode.PAY_GAS_SEPARATELY,
+    sendMode:
+      useAllAmount && !subAccount
+        ? SendMode.CARRY_ALL_REMAINING_BALANCE
+        : SendMode.IGNORE_ERRORS + SendMode.PAY_GAS_SEPARATELY,
+    payload,
   };
 
-  if (comment.text.length) {
-    tonTransaction.payload = { type: "comment", text: comment.text };
+  if (commentTx.text.length) {
+    tonTransaction.payload = { type: "comment", text: commentTx.text };
+  }
+
+  if (subAccount) {
+    const forwardPayload = commentTx.text.length ? comment(commentTx.text) : null;
+
+    const currencyConfig = getCoinConfig();
+    const knownJettons = currencyConfig.infra.KNOWN_JETTONS;
+
+    tonTransaction.payload = {
+      type: "jetton-transfer",
+      queryId: BigInt(TOKEN_TRANSFER_QUERY_ID),
+      amount: BigInt(amount.toFixed()),
+      destination: TonAddress.parse(recipientParsed),
+      responseDestination: TonAddress.parse(account.freshAddress),
+      customPayload: null,
+      forwardAmount: BigInt(TOKEN_TRANSFER_FORWARD_AMOUNT),
+      forwardPayload,
+      knownJetton: knownJettons
+        ? getKnownJettonId(subAccount?.token.contractAddress, knownJettons)
+        : null,
+    };
   }
 
   return tonTransaction;
-};
+}
 
-// max length is 120 and only ascii allowed
+/**
+ * Validates if the given comment is valid.
+ */
 export const commentIsValid = (msg: TonComment) =>
-  !msg.isEncrypted && msg.text.length <= 120 && /^[\x20-\x7F]*$/.test(msg.text);
+  !msg.isEncrypted && msg.text.length <= MAX_COMMENT_BYTES && /^[\x20-\x7F]*$/.test(msg.text);
 
-// 1 minute
+/**
+ * Gets the transfer expiration time.
+ */
 export const getTransferExpirationTime = () => Math.floor(Date.now() / 1000 + 60);
 
+/**
+ * Estimates the fees for a Ton transaction.
+ */
 export const getTonEstimatedFees = async (
-  account: Account,
+  account: TonAccount,
   needsInit: boolean,
   tx: TonTransaction,
 ) => {
   const { xpubOrAddress: pubKey } = decodeAccountId(account.id);
   if (pubKey.length !== 64) throw Error("[ton] pubKey can't be found");
-  if (tx.payload && tx.payload?.type !== "comment") {
-    throw Error("[ton] payload kind not expected");
+
+  // build body depending the payload type
+  let body: TonCell | undefined;
+  let isJetton: boolean = false;
+  if (tx.payload) {
+    switch (tx.payload.type) {
+      case "comment":
+        body = comment(tx.payload.text);
+        break;
+      case "jetton-transfer":
+        body = buildTokenTransferBody(tx.payload);
+        isJetton = true;
+        break;
+    }
   }
   const contract = WalletContractV4.create({ workchain: 0, publicKey: Buffer.from(pubKey, "hex") });
   const transfer = contract.createTransfer({
@@ -87,7 +201,7 @@ export const getTonEstimatedFees = async (
         bounce: tx.bounce,
         to: tx.to,
         value: tx.amount,
-        body: tx.payload?.text ? comment(tx.payload.text) : undefined,
+        body,
       }),
     ],
     sendMode: tx.sendMode,
@@ -100,9 +214,14 @@ export const getTonEstimatedFees = async (
     initCode,
     initData,
   );
-  return BigNumber(fee.fwd_fee + fee.gas_fee + fee.in_fwd_fee + fee.storage_fee);
+  return isJetton
+    ? BigNumber(toNano(TOKEN_TRANSFER_MAX_FEE).toString())
+    : BigNumber(fee.fwd_fee + fee.gas_fee + fee.in_fwd_fee + fee.storage_fee);
 };
 
+/**
+ * Converts a Ledger path string to an array of numbers.length.
+ */
 export const getLedgerTonPath = (path: string): number[] => {
   const numPath: number[] = [];
   if (!path) throw Error("[ton] Path is empty");
@@ -118,3 +237,102 @@ export const getLedgerTonPath = (path: string): number[] => {
   }
   return numPath;
 };
+
+/**
+ * Builds the body of a token transfer transaction.
+ */
+function buildTokenTransferBody(params: TonPayloadJettonTransfer): TonCell {
+  const { queryId, amount, destination, responseDestination, forwardAmount } = params;
+  let forwardPayload = params.forwardPayload;
+
+  let builder = new Builder()
+    .storeUint(JettonOpCode.Transfer, 32)
+    .storeUint(queryId ?? generateQueryId(), 64)
+    .storeCoins(amount)
+    .storeAddress(destination)
+    .storeAddress(responseDestination)
+    .storeBit(false)
+    .storeCoins(forwardAmount ?? BigInt(0));
+
+  if (forwardPayload instanceof Uint8Array) {
+    forwardPayload = packBytesAsSnake(forwardPayload);
+  }
+
+  if (!forwardPayload) {
+    builder.storeBit(false);
+  } else if (typeof forwardPayload === "string") {
+    builder = builder.storeBit(false).storeUint(0, 32).storeBuffer(Buffer.from(forwardPayload));
+  } else if (forwardPayload instanceof Uint8Array) {
+    builder = builder.storeBit(false).storeBuffer(Buffer.from(forwardPayload));
+  } else {
+    builder = builder.storeBit(true).storeRef(forwardPayload);
+  }
+
+  return builder.endCell();
+}
+
+/**
+ * Generates a random BigInt of the specified byte length.
+ */
+function bigintRandom(bytes: number) {
+  let value = BigInt(0);
+  for (const randomNumber of randomBytes(bytes)) {
+    const randomBigInt = BigInt(randomNumber);
+    value = (value << BigInt(8)) + randomBigInt;
+  }
+  return value;
+}
+
+/**
+ * Generates a random byte array of the specified size.
+ */
+function randomBytes(size: number) {
+  return self.crypto.getRandomValues(new Uint8Array(size));
+}
+
+/**
+ * Generates a random query ID.
+ */
+function generateQueryId() {
+  return bigintRandom(8);
+}
+
+/**
+ * Packs a byte array into a TonCell using a snake-like structure.
+ */
+function packBytesAsSnake(bytes: Uint8Array): TonCell {
+  return packBytesAsSnakeCell(bytes);
+}
+
+/**
+ * Packs a byte array into a TonCell using a snake-like structure.
+ */
+function packBytesAsSnakeCell(bytes: Uint8Array): TonCell {
+  const buffer = Buffer.from(bytes);
+
+  const mainBuilder = new Builder();
+  let prevBuilder: Builder | undefined;
+  let currentBuilder = mainBuilder;
+
+  for (const [i, byte] of buffer.entries()) {
+    if (currentBuilder.availableBits < 8) {
+      prevBuilder?.storeRef(currentBuilder);
+
+      prevBuilder = currentBuilder;
+      currentBuilder = new Builder();
+    }
+
+    currentBuilder = currentBuilder.storeUint(byte, 8);
+
+    if (i === buffer.length - 1) {
+      prevBuilder?.storeRef(currentBuilder);
+    }
+  }
+
+  return mainBuilder.asCell();
+}
+
+export enum BotScenario {
+  DEFAULT = "default",
+  TOKEN_TRANSFER = "token-transfer",
+}

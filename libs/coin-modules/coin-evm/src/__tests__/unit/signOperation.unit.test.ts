@@ -1,16 +1,16 @@
 import BigNumber from "bignumber.js";
 import { Account } from "@ledgerhq/types-live";
 import { CryptoCurrency } from "@ledgerhq/types-cryptoassets";
+import { getCryptoCurrencyById } from "@ledgerhq/cryptoassets";
 import { SignerContext } from "@ledgerhq/coin-framework/signer";
-import { getCryptoCurrencyById, listCryptoCurrencies } from "@ledgerhq/cryptoassets";
-import type { EvmSigner } from "../../types/signer";
-import { buildSignOperation, applyEIP155 } from "../../signOperation";
+import { concat, of } from "rxjs";
 import { Transaction as EvmTransaction } from "../../types";
 import { makeAccount } from "../fixtures/common.fixtures";
-import * as nodeApi from "../../api/node/rpc.common";
-import { getEstimatedFees } from "../../logic";
-import { DEFAULT_NONCE } from "../../createTransaction";
+import { buildSignOperation } from "../../bridge/signOperation";
+import * as nodeApi from "../../network/node/rpc.common";
+import type { EvmSigner } from "../../types/signer";
 import { getCoinConfig } from "../../config";
+import { DEFAULT_NONCE, getEstimatedFees } from "../../utils";
 
 jest.mock("../../config");
 const mockGetConfig = jest.mocked(getCoinConfig);
@@ -44,25 +44,6 @@ const transactionEIP1559: EvmTransaction = {
 
 const estimatedFees = getEstimatedFees(transactionEIP1559);
 
-const mockSignerContext: SignerContext<EvmSigner> = <T>(
-  _: string,
-  fn: (signer: EvmSigner) => Promise<T>,
-) => {
-  return fn({
-    setLoadConfig: jest.fn(),
-    getAddress: jest.fn(),
-    clearSignTransaction: () =>
-      Promise.resolve({
-        r: "123",
-        s: "abc",
-        v: "27",
-      }),
-    signEIP712HashedMessage: jest.fn(),
-    signEIP712Message: jest.fn(),
-    signPersonalMessage: jest.fn(),
-  } as any);
-};
-
 describe("EVM Family", () => {
   mockGetConfig.mockImplementation((): any => {
     return {
@@ -74,6 +55,21 @@ describe("EVM Family", () => {
       },
     };
   });
+
+  const clearSignTransactionMock = jest.fn();
+  const mockSignerContext: SignerContext<EvmSigner> = <T>(
+    _: string,
+    fn: (signer: EvmSigner) => Promise<T>,
+  ) => {
+    return fn({
+      setLoadConfig: jest.fn(),
+      getAddress: jest.fn(),
+      clearSignTransaction: clearSignTransactionMock,
+      signEIP712HashedMessage: jest.fn(),
+      signEIP712Message: jest.fn(),
+      signPersonalMessage: jest.fn(),
+    } as any);
+  };
 
   describe("signOperation.ts", () => {
     describe("signOperation", () => {
@@ -87,6 +83,12 @@ describe("EVM Family", () => {
 
       it("should return an optimistic operation and a signed hash based on hardware ECDSA signatures returned by the app bindings", done => {
         const signOperation = buildSignOperation(mockSignerContext);
+        clearSignTransactionMock.mockImplementation(() =>
+          concat(
+            of({ type: "signer.evm.signing" }),
+            of({ type: "signer.evm.signed", value: { r: "123", s: "abc", v: "27" } }),
+          ),
+        );
 
         const signOpObservable = signOperation({
           account,
@@ -139,36 +141,127 @@ describe("EVM Family", () => {
           }
         });
       });
-    });
 
-    describe("applyEIP155", () => {
-      const chainIds = listCryptoCurrencies(true)
-        .filter(c => c.family === "evm" && c.ethereumLikeInfo !== undefined)
-        .map(c => c.ethereumLikeInfo!.chainId)
-        .sort((a, b) => a - b);
-
-      const possibleHexV = [
-        "00", // 0 - ethereum + testnets should always retrun 0/1 from hw-app-eth
-        "01", // 1
-        "1b", // 27 - type 0 transactions from other chains (when chain id > 109) should always return 27/28
-        "1c", // 28
-      ];
-
-      chainIds.forEach(chainId => {
-        possibleHexV.forEach(v => {
-          it(`should return an EIP155 compatible v for chain id ${chainId} with v = ${parseInt(
-            v,
-            16,
-          )}`, () => {
-            const eip155Logic = chainId * 2 + 35;
-            expect(
-              [eip155Logic, eip155Logic + 1], // eip155 + parity
-            ).toContain(applyEIP155(v, chainId));
-          });
+      it("should emit transaction-checks-opt-in-triggered event", done => {
+        // GIVEN
+        const signOpObservable = buildSignOperation(mockSignerContext)({
+          account,
+          transaction: transactionEIP1559,
+          deviceId: "",
         });
+        clearSignTransactionMock.mockImplementation(() =>
+          concat(
+            of({ type: "signer.evm.transaction-checks-opt-in-triggered" }),
+            of({ type: "signer.evm.signing" }),
+            of({ type: "signer.evm.signed", value: { r: "123", s: "abc", v: "27" } }),
+          ),
+        );
 
-        it("should return the value given by the nano as is if we can't figure out parity from it", () => {
-          expect(applyEIP155("1b39", chainId)).toBe(6969);
+        // WHEN
+        const subscription = signOpObservable.subscribe({
+          next: event => {
+            if (event.type === "transaction-checks-opt-in-triggered") {
+              subscription.unsubscribe();
+              done();
+            }
+          },
+          error: err => {
+            throw err;
+          },
+          complete: () => {
+            throw new Error("no transaction-checks-opt-in-triggered event");
+          },
+        });
+      });
+
+      it("should not emit transaction-checks-opt-in-triggered event", done => {
+        // GIVEN
+        const signOpObservable = buildSignOperation(mockSignerContext)({
+          account,
+          transaction: transactionEIP1559,
+          deviceId: "",
+        });
+        clearSignTransactionMock.mockImplementation(() =>
+          concat(
+            of({ type: "signer.evm.signing" }),
+            of({ type: "signer.evm.signed", value: { r: "123", s: "abc", v: "27" } }),
+          ),
+        );
+
+        // WHEN
+        signOpObservable.subscribe({
+          next: event => {
+            if (event.type === "transaction-checks-opt-in-triggered") {
+              throw new Error("should not emit transaction-checks-opt-in-triggered event");
+            }
+          },
+          complete: () => {
+            done();
+          },
+        });
+      });
+
+      it("should emit transaction-checks-opt-out event", done => {
+        // GIVEN
+        const signOpObservable = buildSignOperation(mockSignerContext)({
+          account,
+          transaction: transactionEIP1559,
+          deviceId: "",
+        });
+        clearSignTransactionMock.mockImplementation(() =>
+          concat(
+            of({ type: "signer.evm.transaction-checks-opt-out" }),
+            of({ type: "signer.evm.signing" }),
+            of({ type: "signer.evm.signed", value: { r: "123", s: "abc", v: "27" } }),
+          ),
+        );
+
+        // WHEN
+        const subscription = signOpObservable.subscribe({
+          next: event => {
+            if (event.type === "transaction-checks-opt-out") {
+              subscription.unsubscribe();
+              done();
+            }
+          },
+          error: err => {
+            throw err;
+          },
+          complete: () => {
+            throw new Error("no transaction-checks-opt-out event");
+          },
+        });
+      });
+
+      it("should emit transaction-checks-opt-in event", done => {
+        // GIVEN
+        const signOpObservable = buildSignOperation(mockSignerContext)({
+          account,
+          transaction: transactionEIP1559,
+          deviceId: "",
+        });
+        clearSignTransactionMock.mockImplementation(() =>
+          concat(
+            of({ type: "signer.evm.transaction-checks-opt-in" }),
+            of({ type: "signer.evm.signing" }),
+            of({ type: "signer.evm.signed", value: { r: "123", s: "abc", v: "27" } }),
+          ),
+        );
+
+        // WHEN
+        const subscription = signOpObservable.subscribe({
+          next: event => {
+            if (event.type === "transaction-checks-opt-in") {
+              subscription.unsubscribe();
+              done();
+            }
+          },
+          error: err => {
+            throw err;
+          },
+          complete: () => {
+            throw new Error("no transaction-checks-opt-in-failed event");
+          },
         });
       });
     });

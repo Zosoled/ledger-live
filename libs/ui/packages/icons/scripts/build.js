@@ -21,13 +21,14 @@ interface SizeData {
     size: number;
     stroke: number;
   }
-  
+
   interface AvailableSizes {
     XS: SizeData;
     S: SizeData;
     M: SizeData;
     L: SizeData;
     XL: SizeData;
+    XXL: SizeData;
   }
   `;
 
@@ -51,6 +52,10 @@ const availableSizes = {
   XL: {
     size: 48,
     stroke: 2.5,
+  },
+  XXL: {
+    size: 70,
+    stroke: 2.8,
   },
 };
 
@@ -95,7 +100,7 @@ function reactTemplate({ template }, _, { imports, interfaces, componentName, __
     type Props = { size?: ${Object.keys(availableSizes)
       .map(key => `"${key}"`)
       .join(" | ")}; color?: string; style?: object };
-    
+
     ${interfaces}
     ${sizeInterface}
 
@@ -180,12 +185,14 @@ function reactNativeRTLTemplate(
 const convert = (svg, options, componentName, outputFile) => {
   svgr(svg, options, componentName)
     .then(result => {
-      let component = result.replace("xlinkHref=", "href=").replace("import Svg,", "import ");
-
-      component = component.replace(/fill="white"/g, 'fill="currentColor"');
-      component = component.replace(/stroke="white"/g, 'stroke="currentColor"');
-      component = component.replace(/<path/g, '<path vectorEffect="non-scaling-stroke"');
-      component = component.replace(/<Path/g, '<Path vectorEffect="non-scaling-stroke"');
+      let component = result
+        .replace("xlinkHref=", "href=")
+        .replace("import Svg,", "import ")
+        .replace(/fill="white"/g, 'fill="currentColor"')
+        .replace(/stroke="white"/g, 'stroke="currentColor"')
+        .replace(/<path/g, '<path vectorEffect="non-scaling-stroke"')
+        .replace(/<Path/g, '<Path vectorEffect="non-scaling-stroke"')
+        .replace(/id={(\d+)}/g, 'id={"$1"}');
 
       if (!options.native) {
         component = component.replace(/(<\s*\/?\s*)svg(\s*([^>]*)?\s*>)/gi, "$1Svg$2");

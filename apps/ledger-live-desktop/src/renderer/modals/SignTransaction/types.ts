@@ -4,12 +4,14 @@ import { Account, AccountLike, SignedOperation } from "@ledgerhq/types-live";
 import { Transaction, TransactionStatus } from "@ledgerhq/live-common/generated/types";
 import { Device } from "@ledgerhq/live-common/hw/actions/types";
 import { Step } from "~/renderer/components/Stepper";
+import { HOOKS_TRACKING_LOCATIONS } from "~/renderer/analytics/hooks/variables";
 export type StepId = "amount" | "summary" | "device" | "confirmation" | "warning";
 export type StepProps = {
   t: TFunction;
   transitionTo: (a: string) => void;
   openedFromAccount: boolean;
   useApp?: string;
+  dependencies?: string[];
   device: Device | undefined | null;
   account: AccountLike | undefined | null;
   parentAccount: Account | undefined | null;
@@ -30,7 +32,9 @@ export type StepProps = {
   maybeAmount?: BigNumber;
   onResetMaybeAmount: () => void;
   updateTransaction: (updater: (_: Transaction) => Transaction) => void;
-  manifestId: string;
-  manifestName: string;
+  manifestId?: string;
+  manifestName?: string;
+  isACRE?: boolean;
+  location?: HOOKS_TRACKING_LOCATIONS;
 };
 export type St = Step<StepId, StepProps>;

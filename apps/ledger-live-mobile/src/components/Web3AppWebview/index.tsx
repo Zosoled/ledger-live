@@ -14,6 +14,8 @@ export const Web3AppWebview = forwardRef<WebviewAPI, WebviewProps>(
       customHandlers,
       onStateChange,
       allowsBackForwardNavigationGestures,
+      onScroll,
+      Loader,
     },
     ref,
   ) => {
@@ -21,18 +23,21 @@ export const Web3AppWebview = forwardRef<WebviewAPI, WebviewProps>(
       return (
         <WalletAPIWebview
           ref={ref}
+          onScroll={onScroll}
           manifest={manifest}
           currentAccountHistDb={currentAccountHistDb}
           inputs={inputs}
           customHandlers={customHandlers}
           onStateChange={onStateChange}
           allowsBackForwardNavigationGestures={allowsBackForwardNavigationGestures}
+          Loader={Loader}
         />
       );
     }
     return (
       <PlatformAPIWebview
         ref={ref}
+        onScroll={onScroll}
         currentAccountHistDb={currentAccountHistDb}
         manifest={manifest}
         inputs={inputs}

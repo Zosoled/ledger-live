@@ -1,4 +1,16 @@
-import type { Api } from "@ledgerhq/coin-framework/api/index";
+import {
+  type Balance,
+  Block,
+  BlockInfo,
+  Cursor,
+  Page,
+  IncorrectTypeError,
+  type Operation,
+  type Pagination,
+  Reward,
+  Stake,
+} from "@ledgerhq/coin-framework/api/index";
+import { log } from "@ledgerhq/logs";
 import coinConfig, { type TezosConfig } from "../config";
 import {
   broadcast,
@@ -6,13 +18,16 @@ import {
   craftTransaction,
   estimateFees,
   getBalance,
-  listOperations,
   lastBlock,
+  listOperations,
   rawEncode,
 } from "../logic";
 import api from "../network/tzkt";
+import type { TezosApi, TezosFeeEstimation } from "./types";
+import { FeeEstimation, TransactionIntent } from "@ledgerhq/coin-framework/api/types";
+import { TezosOperationMode } from "../types";
 
-export function createApi(config: TezosConfig): Api {
+export function createApi(config: TezosConfig): TezosApi {
   coinConfig.setCoinConfig(() => ({ ...config, status: { type: "active" } }));
 
   return {
@@ -20,39 +35,158 @@ export function createApi(config: TezosConfig): Api {
     combine,
     craftTransaction: craft,
     estimateFees: estimate,
-    getBalance,
+    getBalance: balance,
     lastBlock,
-    listOperations,
+    listOperations: operations,
+    getBlock(_height): Promise<Block> {
+      throw new Error("getBlock is not supported");
+    },
+    getBlockInfo(_height: number): Promise<BlockInfo> {
+      throw new Error("getBlockInfo is not supported");
+    },
+    getStakes(_address: string, _cursor?: Cursor): Promise<Page<Stake>> {
+      throw new Error("getStakes is not supported");
+    },
+    getRewards(_address: string, _cursor?: Cursor): Promise<Page<Reward>> {
+      throw new Error("getRewards is not supported");
+    },
   };
 }
 
+function isTezosTransactionType(type: string): type is "send" | "delegate" | "undelegate" {
+  return ["send", "delegate", "undelegate"].includes(type);
+}
+
+async function balance(address: string): Promise<Balance[]> {
+  const value = await getBalance(address);
+  return [
+    {
+      value,
+      asset: { type: "native" },
+    },
+  ];
+}
+
 async function craft(
-  address: string,
-  transaction: {
-    recipient: string;
-    amount: bigint;
-    fee: bigint;
-  },
+  transactionIntent: TransactionIntent,
+  customFees?: FeeEstimation,
 ): Promise<string> {
+  if (!isTezosTransactionType(transactionIntent.type)) {
+    throw new IncorrectTypeError(transactionIntent.type);
+  }
+
+  // note that an estimation is always necessary to get gasLimit and storageLimit, if even using custom fees
+  const fee = await estimate(transactionIntent).then(fees => ({
+    fees: (customFees?.value ?? fees.value).toString(),
+    gasLimit: fees.parameters?.gasLimit?.toString(),
+    storageLimit: fees.parameters?.storageLimit?.toString(),
+  }));
+
   const { contents } = await craftTransaction(
-    { address },
-    { ...transaction, type: "send", fee: { fees: transaction.fee.toString() } },
+    { address: transactionIntent.sender },
+    {
+      type: transactionIntent.type,
+      recipient: transactionIntent.recipient,
+      amount: transactionIntent.amount,
+      fee,
+    },
   );
   return rawEncode(contents);
 }
 
-async function estimate(addr: string, amount: bigint): Promise<bigint> {
-  const accountInfo = await api.getAccountByAddress(addr);
-  if (accountInfo.type !== "user") throw new Error("unexpected account type");
+async function estimate(transactionIntent: TransactionIntent): Promise<TezosFeeEstimation> {
+  const senderAccountInfo = await api.getAccountByAddress(transactionIntent.sender);
+  if (senderAccountInfo.type !== "user") throw new Error("unexpected account type");
 
-  const estimatedFees = await estimateFees({
+  const {
+    estimatedFees: value,
+    gasLimit,
+    storageLimit,
+    taquitoError,
+  } = await estimateFees({
     account: {
-      address: addr,
-      revealed: accountInfo.revealed,
-      balance: BigInt(accountInfo.balance),
-      xpub: accountInfo.publicKey,
+      address: transactionIntent.sender,
+      revealed: senderAccountInfo.revealed,
+      balance: BigInt(senderAccountInfo.balance),
+      // NOTE: previously we checked for .sender.xpub
+      xpub: transactionIntent.senderPublicKey ?? senderAccountInfo.publicKey,
     },
-    transaction: { mode: "send", recipient: addr, amount: amount },
+    transaction: {
+      mode: transactionIntent.type as TezosOperationMode,
+      recipient: transactionIntent.recipient,
+      amount: transactionIntent.amount,
+    },
   });
-  return estimatedFees.estimatedFees;
+
+  if (taquitoError !== undefined) {
+    throw new Error(`Fees estimation failed: ${taquitoError}`);
+  }
+
+  return {
+    value,
+    parameters: {
+      gasLimit,
+      storageLimit,
+    },
+  };
+}
+
+type PaginationState = {
+  readonly pageSize: number;
+  readonly maxIterations: number; // a security to avoid infinite loop
+  currentIteration: number;
+  readonly minHeight: number;
+  continueIterations: boolean;
+  nextCursor?: string;
+  accumulator: Operation[];
+};
+
+async function fetchNextPage(address: string, state: PaginationState): Promise<PaginationState> {
+  const [operations, newNextCursor] = await listOperations(address, {
+    limit: state.pageSize,
+    token: state.nextCursor,
+    sort: "Ascending",
+    minHeight: state.minHeight,
+  });
+  const newCurrentIteration = state.currentIteration + 1;
+  let continueIteration = newNextCursor !== "";
+  if (newCurrentIteration >= state.maxIterations) {
+    log("coin:tezos", "(api/operations): max iterations reached", state.maxIterations);
+    continueIteration = false;
+  }
+  const accumulated = operations.concat(state.accumulator);
+  return {
+    ...state,
+    continueIterations: continueIteration,
+    currentIteration: newCurrentIteration,
+    nextCursor: newNextCursor,
+    accumulator: accumulated,
+  };
+}
+
+async function operationsFromHeight(
+  address: string,
+  start: number,
+): Promise<[Operation[], string]> {
+  const firstState: PaginationState = {
+    pageSize: 200,
+    maxIterations: 10,
+    currentIteration: 0,
+    minHeight: start,
+    continueIterations: true,
+    accumulator: [],
+  };
+
+  let state = await fetchNextPage(address, firstState);
+  while (state.continueIterations) {
+    state = await fetchNextPage(address, state);
+  }
+  return [state.accumulator, state.nextCursor || ""];
+}
+
+async function operations(
+  address: string,
+  pagination: Pagination = { minHeight: 0 },
+): Promise<[Operation[], string]> {
+  return operationsFromHeight(address, pagination.minHeight);
 }

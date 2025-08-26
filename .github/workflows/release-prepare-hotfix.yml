@@ -1,4 +1,4 @@
-name: "[Release](Hotfix) Prepare for releasing"
+name: "[Release] - Prepare & Publish Hotfix - Manual"
 
 on:
   workflow_dispatch:
@@ -7,11 +7,22 @@ on:
         description: the branch to release from
         default: hotfix
         required: true
+      tag_version:
+        description: version to hotfix (e.g. 2.91.0)
+        default: latest
+        required: false
+      application:
+        description: application (LLM | LLD)
+        required: true
+        type: choice
+        options:
+          - LLM
+          - LLD
 
 jobs:
   prepare-release:
     name: Prepare Hotfix
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       NODE_OPTIONS: "--max-old-space-size=7168"
     steps:
@@ -21,6 +32,19 @@ jobs:
         with:
           app_id: ${{ secrets.GH_BOT_APP_ID }}
           private_key: ${{ secrets.GH_BOT_PRIVATE_KEY }}
+
+      - name: Checkout composite actions
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/actions/composites
+
+      - name: Generate ref/tag version to use when running changeset status
+        uses: LedgerHQ/ledger-live/tools/actions/composites/generate-tag@develop
+        id: format-app-tag
+        with:
+          tag_version: ${{ github.event.inputs.tag_version }}
+          application: ${{ github.event.inputs.application }}
+
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
@@ -30,8 +54,11 @@ jobs:
       - name: Setup git user
         uses: LedgerHQ/ledger-live/tools/actions/composites/setup-git-user@develop
 
-      - name: Setup the toolchain
-        uses: LedgerHQ/ledger-live/tools/actions/composites/setup-toolchain@develop
+      - name: Setup the caches
+        uses: LedgerHQ/ledger-live/tools/actions/composites/setup-caches@develop
+        id: setup-caches
+        with:
+          install-proto: true
 
       - name: install dependencies
         run: pnpm i -F "ledger-live"
@@ -44,27 +71,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: pnpm changeset version
 
-      - name: commit
+      - name: git add
         run: |
           git add .
-          git commit -m "chore(hotfix): :fire: hotfix release [skip ci]"
 
-      - name: push changes
-        run: |
-          git push origin ${{ inputs.ref }}
-          git fetch origin
+      - name: commit
+        uses: planetscale/ghcommit-action@v0.2.9
+        with:
+          commit_message: "chore(hotfix): :fire: hotfix release [skip ci]"
+          repo: ${{ github.repository }}
+          branch: ${{ inputs.ref }}
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
 
-      - name: fetch develop and main
+      - name: pull commit
         run: |
-          git fetch origin develop main
-
-      - name: merge into main
-        run: |
-          git checkout main
-          git merge ${{ inputs.ref }} --no-ff
-          git push origin main
+          git stash
+          git pull
 
       - name: create PR to develop
+        if: ${{ github.event.inputs.tag_version == 'latest' }}
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
@@ -74,19 +100,74 @@ jobs:
           gh pr create --title ":rotating_light: Hotfix merge conflicts" -F .github/templates/hotfix-conflicts.md --base develop --head support/hotfix-merge-conflicts
 
       - name: merge into release if present
+        uses: LedgerHQ/ledger-live/tools/actions/composites/merge-branch@develop
+        continue-on-error: true
+        id: release-merge
+        if: ${{ github.event.inputs.tag_version == 'latest' }}
+        with:
+          base-branch: "release"
+          head-branch: "${{ inputs.ref }}"
+          commit-message: "Merge ${{ inputs.ref }} into release"
+          github-token: ${{ steps.generate-token.outputs.token }}
+
+      - name: create conflicts PR to release
+        if: ${{ github.event.inputs.tag_version == 'latest' && steps.release-merge.outcome == 'failure' && steps.release-merge.outputs.status == '409' }}
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
-          if git checkout release
-          then
-            if git merge ${{ github.event.inputs.ref }} --no-ff
-            then
-              git push origin release
-            else
-              git merge --abort
-              git checkout ${{ github.event.inputs.ref }}
-              git checkout -b support/hotfix-release-merge-conflicts
-              git push origin support/hotfix-release-merge-conflicts
-              gh pr create --title ":rotating_light: Hotfix Release merge conflicts" -F .github/templates/hotfix-release-conflicts.md --base release --head support/hotfix-release-merge-conflicts
-            fi
-          fi
+          git checkout ${{ github.event.inputs.ref }}
+          git checkout -b support/hotfix-release-merge-conflicts
+          git push origin support/hotfix-release-merge-conflicts
+          gh pr create --title ":rotating_light: Hotfix Release merge conflicts" -F .github/templates/hotfix-release-conflicts.md --base release --head support/hotfix-release-merge-conflicts
+
+      - name: Merge into main
+        uses: LedgerHQ/ledger-live/tools/actions/composites/merge-branch@develop
+        if: ${{ github.event.inputs.tag_version == 'latest' }}
+        with:
+          base-branch: "main"
+          head-branch: "${{ inputs.ref }}"
+          commit-message: "Merge ${{ inputs.ref }} into main"
+          github-token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Capture unknown merge fails
+        if: ${{ github.event.inputs.tag_version == 'latest' && steps.release-merge.outcome == 'failure' && steps.release-merge.outputs.status != '409' && steps.release-merge.outputs.status != '404' }}
+        run: |
+          echo "Release merge failed with status: ${{ steps.release-merge.outputs.status }}, message: ${{ steps.release-merge.outputs.message }}"
+          exit 1;
+
+  release-final:
+    name: "Prepare Hotfix > Publish packages and apps"
+    needs: prepare-release
+    uses: LedgerHQ/ledger-live/.github/workflows/release-final.yml@develop
+    with:
+      # release from main if hotfixing the latest version, otherwise from the hotfix branch
+      # For more info about why we do this, see this doc:
+      # https://ledgerhq.atlassian.net/wiki/spaces/WALLETCO/pages/4710989838/LL+Incident+Recovery+-+Hotfix+in+all+cases
+      ref: ${{ github.event.inputs.tag_version == 'latest' && 'main' || 'hotfix' }}
+      caller: release-prepare-hotfix
+    secrets: inherit
+
+  release-fail:
+    name: "Prepare Hotfix > Failure Reporting"
+    needs: release-final
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - name: post to a Slack channel
+        id: slack
+        uses: slackapi/slack-github-action@v2.0.0
+        with:
+          token: ${{ secrets.SLACK_BOT_USER_OAUTH_ACCESS_TOKEN }}
+          method: chat.postMessage
+          payload: |
+            channel: "C08JQKWS9KK"
+            text: "[Alert] Hotfix Preparation failed"
+            blocks: 
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "*Hotfix Preparation failed*"
+              - type: "section"
+                text:
+                  type: "mrkdwn"
+                  text: "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Workflow run>"

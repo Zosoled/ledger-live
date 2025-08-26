@@ -6,7 +6,7 @@ import { formatShort } from "@ledgerhq/live-common/currencies/index";
 import { Account, AccountLike } from "@ledgerhq/types-live";
 import { useTimeRange } from "~/renderer/actions/settings";
 import { counterValueCurrencySelector, discreetModeSelector } from "~/renderer/reducers/settings";
-import Chart from "~/renderer/components/Chart";
+import Chart, { GraphTrackingScreenName } from "~/renderer/components/Chart";
 import Box, { Card } from "~/renderer/components/Box";
 import FormattedVal from "~/renderer/components/FormattedVal";
 import AccountBalanceSummaryHeader from "./AccountBalanceSummaryHeader";
@@ -138,6 +138,7 @@ export default function AccountBalanceSummary({
             magnitude={chartMagnitude}
             color={chartColor}
             // TODO we need to make Date non optional in live-common
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
             data={history as Data}
             height={200}
             tickXScale={range}
@@ -150,6 +151,7 @@ export default function AccountBalanceSummary({
                   : renderTickYCryptoValue
             }
             renderTooltip={renderTooltip}
+            screenName={GraphTrackingScreenName.Account}
           />
         )}
       </Box>

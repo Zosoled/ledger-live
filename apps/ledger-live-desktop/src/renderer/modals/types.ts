@@ -56,6 +56,8 @@ export type GlobalModalData = {
   MODAL_LOTTIE_DEBUGGER: undefined;
   MODAL_WALLET_SYNC_DEBUGGER: undefined;
   MODAL_SIMPLEHASH_TOOLS: undefined;
+  MODAL_NFTS_TOOLS: undefined;
+  MODAL_BRAZE_TOOLS: undefined;
   MODAL_CREATE_LOCAL_APP: {
     manifest?: LiveAppManifest;
   };
@@ -66,7 +68,7 @@ export type GlobalModalData = {
   MODAL_SIGN_MESSAGE: SignMessageData;
   MODAL_TROUBLESHOOT_NETWORK: undefined;
   MODAL_NO_FUNDS_STAKE: {
-    account: AccountLike | undefined | null;
+    account: AccountLike;
     parentAccount?: Account | undefined | null;
     entryPoint?: "get-funds" | undefined;
   };
@@ -80,6 +82,7 @@ export type GlobalModalData = {
     collectionId: string;
     collectionName: string;
     onClose?: () => void;
+    blockchain: string;
   };
   MODAL_WEBSOCKET_BRIDGE: {
     origin?: string | undefined | null;
@@ -88,6 +91,11 @@ export type GlobalModalData = {
   MODAL_CONFIRM: ConfirmProps;
   MODAL_ERROR: ErrorProps;
   MODAL_VAULT_SIGNER: undefined;
+  MODAL_HIDE_INSCRIPTION: {
+    inscriptionName: string;
+    inscriptionId: string;
+    onClose?: () => void;
+  };
 };
 
 /**

@@ -4,6 +4,7 @@ import { getEnv } from "@ledgerhq/live-env";
 import { NotEnoughBalance } from "@ledgerhq/errors";
 import { log } from "@ledgerhq/logs";
 import "../config/configInit";
+import "../config/bridge-setup";
 import { checkLibs } from "@ledgerhq/live-common/sanityChecks";
 import { importPostOnboardingState } from "@ledgerhq/live-common/postOnboarding/actions";
 import i18n from "i18next";
@@ -29,6 +30,8 @@ import { enableGlobalTab, disableGlobalTab, isGlobalTabEnabled } from "~/config/
 import sentry from "~/sentry/renderer";
 import { setEnvOnAllThreads } from "~/helpers/env";
 import dbMiddleware from "~/renderer/middlewares/db";
+import { analyticsMiddleware } from "~/renderer/middlewares/analytics";
+import type { ReduxStore } from "~/renderer/createStore";
 import createStore from "~/renderer/createStore";
 import events from "~/renderer/events";
 import { initAccounts } from "~/renderer/actions/accounts";
@@ -50,6 +53,7 @@ import { LogEntry } from "winston";
 import { importMarketState } from "./actions/market";
 import { fetchWallet } from "./actions/wallet";
 import { fetchTrustchain } from "./actions/trustchain";
+import { registerTransportModules } from "~/renderer/live-common-setup";
 
 const rootNode = document.getElementById("react-root");
 const TAB_KEY = 9;
@@ -110,7 +114,11 @@ async function init() {
   }
   const store = createStore({
     dbMiddleware,
+    analyticsMiddleware,
   });
+  if (getEnv("PLAYWRIGHT_RUN")) {
+    (window as Window & { __STORE__?: ReduxStore }).__STORE__ = store;
+  }
   sentry(() => sentryLogsSelector(store.getState()));
   let notifiedSentryLogs = false;
   store.subscribe(() => {
@@ -200,6 +208,7 @@ async function init() {
   window.addEventListener("keydown", (e: KeyboardEvent) => {
     if (e.which === TAB_KEY) {
       if (!isGlobalTabEnabled()) enableGlobalTab();
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       logger.onTabKey(document.activeElement as HTMLElement);
     }
   });
@@ -241,6 +250,8 @@ async function init() {
       }, 500);
     });
   }
+
+  registerTransportModules(store);
 
   // expose stuff in Windows for DEBUG purpose
   window.ledger = {

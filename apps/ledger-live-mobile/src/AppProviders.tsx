@@ -2,17 +2,21 @@ import React from "react";
 import { QueryClientProvider, QueryClient } from "@tanstack/react-query";
 import { NftMetadataProvider } from "@ledgerhq/live-nft-react";
 import { getCurrencyBridge } from "@ledgerhq/live-common/bridge/index";
-import { ToastProvider } from "@ledgerhq/live-common/notifications/ToastProvider/index";
-import ButtonUseTouchableContext from "~/context/ButtonUseTouchableContext";
 import { BridgeSyncProvider } from "~/bridge/BridgeSyncContext";
 import { OnboardingContextProvider } from "~/screens/Onboarding/onboardingContext";
-import CounterValuesProvider from "~/components/CounterValuesProvider";
+import { CountervaluesMarketcapBridgedProvider } from "~/components/CountervaluesMarketcapProvider";
+import { CountervaluesBridgedProvider } from "~/components/CountervaluesProvider";
 import NotificationsProvider from "~/screens/NotificationCenter/NotificationsProvider";
 import SnackbarContainer from "~/screens/NotificationCenter/Snackbar/SnackbarContainer";
 import PostOnboardingProviderWrapped from "~/logic/postOnboarding/PostOnboardingProviderWrapped";
 import { CounterValuesStateRaw } from "@ledgerhq/live-countervalues/types";
-import { CountervaluesMarketcap } from "@ledgerhq/live-countervalues-react/index";
+import { InViewContextProvider } from "LLM/contexts/InViewContext";
 import { WalletSyncProvider } from "LLM/features/WalletSync/components/WalletSyncContext";
+import { ModularDrawerProvider } from "LLM/features/ModularDrawer";
+import { AppDataStorageProvider } from "~/hooks/storageProvider/useAppDataStorage";
+import { DeviceManagementKitProvider } from "@ledgerhq/live-dmk-mobile";
+import { useLdmkFeatureFlagInitiallyEnabled } from "@ledgerhq/live-common/hooks/useLdmkFeatureFlagInitiallyEnabled";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 
 type AppProvidersProps = {
   initialCountervalues?: CounterValuesStateRaw;
@@ -22,28 +26,34 @@ type AppProvidersProps = {
 const queryClient = new QueryClient();
 
 function AppProviders({ initialCountervalues, children }: AppProvidersProps) {
+  const dmkEnabled = useLdmkFeatureFlagInitiallyEnabled();
+
   return (
     <QueryClientProvider client={queryClient}>
       <BridgeSyncProvider>
         <WalletSyncProvider>
-          <CountervaluesMarketcap>
-            <CounterValuesProvider initialState={initialCountervalues}>
-              <ButtonUseTouchableContext.Provider value={true}>
-                <OnboardingContextProvider>
-                  <PostOnboardingProviderWrapped>
-                    <ToastProvider>
-                      <NotificationsProvider>
-                        <SnackbarContainer />
-                        <NftMetadataProvider getCurrencyBridge={getCurrencyBridge}>
-                          {children}
-                        </NftMetadataProvider>
-                      </NotificationsProvider>
-                    </ToastProvider>
-                  </PostOnboardingProviderWrapped>
-                </OnboardingContextProvider>
-              </ButtonUseTouchableContext.Provider>
-            </CounterValuesProvider>
-          </CountervaluesMarketcap>
+          <DeviceManagementKitProvider dmkEnabled={dmkEnabled}>
+            <CountervaluesMarketcapBridgedProvider>
+              <CountervaluesBridgedProvider initialState={initialCountervalues}>
+                <BottomSheetModalProvider>
+                  <AppDataStorageProvider>
+                    <OnboardingContextProvider>
+                      <PostOnboardingProviderWrapped>
+                        <NotificationsProvider>
+                          <SnackbarContainer />
+                          <NftMetadataProvider getCurrencyBridge={getCurrencyBridge}>
+                            <InViewContextProvider>
+                              <ModularDrawerProvider>{children}</ModularDrawerProvider>
+                            </InViewContextProvider>
+                          </NftMetadataProvider>
+                        </NotificationsProvider>
+                      </PostOnboardingProviderWrapped>
+                    </OnboardingContextProvider>
+                  </AppDataStorageProvider>
+                </BottomSheetModalProvider>
+              </CountervaluesBridgedProvider>
+            </CountervaluesMarketcapBridgedProvider>
+          </DeviceManagementKitProvider>
         </WalletSyncProvider>
       </BridgeSyncProvider>
     </QueryClientProvider>

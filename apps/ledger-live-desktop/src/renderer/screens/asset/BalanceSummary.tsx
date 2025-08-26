@@ -3,14 +3,14 @@ import { useSelector } from "react-redux";
 import { BigNumber } from "bignumber.js";
 import { formatShort } from "@ledgerhq/live-common/currencies/index";
 import { CryptoCurrency, Currency, TokenCurrency, Unit } from "@ledgerhq/types-cryptoassets";
-import Chart from "~/renderer/components/Chart";
+import Chart, { GraphTrackingScreenName } from "~/renderer/components/Chart";
 import Box, { Card } from "~/renderer/components/Box";
 import FormattedVal from "~/renderer/components/FormattedVal";
 import { useCurrencyPortfolio, usePortfolio } from "~/renderer/actions/portfolio";
 import AssetBalanceSummaryHeader from "./AssetBalanceSummaryHeader";
 import { discreetModeSelector } from "~/renderer/reducers/settings";
 import { Data } from "~/renderer/components/Chart/types";
-import { PortfolioRange } from "@ledgerhq/types-live";
+import { AccountLike, PortfolioRange } from "@ledgerhq/types-live";
 import PlaceholderChart from "~/renderer/components/PlaceholderChart";
 import Alert from "~/renderer/components/Alert";
 import { useTranslation } from "react-i18next";
@@ -24,7 +24,9 @@ type Props = {
   unit: Unit;
   range: PortfolioRange;
   countervalueFirst: boolean;
+  account: AccountLike;
 };
+
 export default function BalanceSummary({
   unit,
   counterValue,
@@ -32,6 +34,7 @@ export default function BalanceSummary({
   range,
   chartColor,
   currency,
+  account,
 }: Props) {
   const { t } = useTranslation();
   const portfolio = usePortfolio();
@@ -85,6 +88,7 @@ export default function BalanceSummary({
     <Card p={0} py={5}>
       <Box px={6}>
         <AssetBalanceSummaryHeader
+          account={account}
           currency={currency}
           unit={unit}
           counterValue={counterValue}
@@ -113,6 +117,7 @@ export default function BalanceSummary({
             magnitude={chartMagnitude}
             color={chartColor}
             // TODO make date non optional
+            // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
             data={history as Data}
             height={200}
             tickXScale={range}
@@ -125,6 +130,7 @@ export default function BalanceSummary({
                   : renderTickYCryptoValue
             }
             renderTooltip={renderTooltip}
+            screenName={GraphTrackingScreenName.Asset}
           />
         )}
       </Box>

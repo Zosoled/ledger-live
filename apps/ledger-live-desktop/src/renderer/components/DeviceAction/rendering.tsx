@@ -14,19 +14,21 @@ import {
   FirmwareNotRecognized,
   LockedDeviceError,
   UpdateYourApp,
+  LatestFirmwareVersionRequired,
   WrongDeviceForAccount,
+  DisconnectedDevice,
 } from "@ledgerhq/errors";
 import {
   DeviceNotOnboarded,
-  LatestFirmwareVersionRequired,
+  NoSuchAppOnProvider,
   TransactionRefusedOnDevice,
 } from "@ledgerhq/live-common/errors";
 import { DeviceModelId, getDeviceModel } from "@ledgerhq/devices";
 import { Device } from "@ledgerhq/live-common/hw/actions/types";
-import { getAccountCurrency, getMainAccount } from "@ledgerhq/live-common/account/index";
+import { getMainAccount } from "@ledgerhq/live-common/account/index";
 import { closeAllModal } from "~/renderer/actions/modals";
 import Animation from "~/renderer/animations";
-import Button from "~/renderer/components/Button";
+import Button, { Base as ButtonBase } from "~/renderer/components/Button";
 import TranslatedError from "~/renderer/components/TranslatedError";
 import Box from "~/renderer/components/Box";
 import Alert from "~/renderer/components/Alert";
@@ -56,7 +58,6 @@ import {
   Text,
   Theme,
 } from "@ledgerhq/react-ui";
-import { LockAltMedium } from "@ledgerhq/react-ui/assets/icons";
 import { withV3StyleProvider } from "~/renderer/styles/StyleProviderV3";
 import DeviceIllustration from "~/renderer/components/DeviceIllustration";
 import { Account } from "@ledgerhq/types-live";
@@ -69,6 +70,12 @@ import { CompleteExchangeError } from "@ledgerhq/live-common/exchange/error";
 import { currencySettingsLocaleSelector, SettingsState } from "~/renderer/reducers/settings";
 import { accountNameSelector, WalletState } from "@ledgerhq/live-wallet/store";
 import { isSyncOnboardingSupported } from "@ledgerhq/live-common/device/use-cases/screenSpecs";
+import NoSuchAppOnProviderErrorComponent from "./NoSuchAppOnProviderErrorComponent";
+import Image from "~/renderer/components/Image";
+import Nano from "~/renderer/images/nanoS.v4.svg";
+import { DmkError } from "@ledgerhq/live-dmk-desktop";
+import { isDmkError } from "@ledgerhq/live-common/deviceSDK/tasks/core";
+import { isDisconnectedWhileSendingApduError } from "@ledgerhq/live-dmk-desktop";
 
 export const AnimationWrapper = styled.div`
   width: 600px;
@@ -97,6 +104,7 @@ export const Wrapper = styled.div`
   justify-content: center;
   min-height: 260px;
   max-width: 100%;
+  margin: auto ${p => p.theme.space[5]}px;
 `;
 
 export const ConfirmWrapper = styled.div`
@@ -194,10 +202,29 @@ const ErrorDescription = styled(Text).attrs({
   user-select: text;
 `;
 
-const ButtonContainer = styled(Box).attrs(() => ({
+const ButtonContainer = styled(Box).attrs(({ theme }) => ({
   mt: 25,
+  horizontal: false,
+  alignItems: "center",
+  justifyContent: "center",
+  gap: `${theme.space[4]}px`,
+}))<{ stretch?: boolean }>`
+  ${({ stretch }) => stretch && "align-self: stretch;"}
+`;
+
+const ButtonGroup = styled(Box).attrs(({ theme }) => ({
   horizontal: true,
-}))``;
+  alignItems: "stretch",
+  justifyContent: "center",
+  gap: `${theme.space[4]}px`,
+}))`
+  align-self: stretch;
+
+  ${ButtonBase} {
+    flex: 1 0 0;
+    justify-content: center;
+  }
+`;
 
 const TroubleshootingWrapper = styled.div`
   margin-top: auto;
@@ -245,6 +272,11 @@ const EllipsesTextStyled = styled(Text)`
   flex-shrink: 1;
   display: inline-block;
   max-width: 100%;
+`;
+
+const ButtonFooter = styled(Footer)`
+  width: 100%;
+  margin-top: 46px;
 `;
 
 // these are not components because we want reconciliation to not remount the sub elements
@@ -632,7 +664,7 @@ export const renderLockedDeviceError = ({
   return (
     <Wrapper id="error-locked-device">
       <ErrorBody
-        Icon={LockAltMedium}
+        Icon={IconsLegacy.LockAltMedium}
         title={t("errors.LockedDeviceError.title")}
         description={
           productName
@@ -679,8 +711,8 @@ export const DeviceNotOnboardedErrorComponent = withV3StyleProvider(
       <Wrapper id="error-device-not-onboarded">
         <ErrorBody
           top={device ? <DeviceIllustration size={120} deviceId={device.modelId} /> : null}
-          title={t("errors.DeviceNotOnboardedError.title")}
-          description={t("errors.DeviceNotOnboardedError.description")}
+          title={t("errors.DeviceNotOnboardedDAError.title")}
+          description={t("errors.DeviceNotOnboardedDAError.description")}
           buttons={
             <ButtonV3
               variant="main"
@@ -689,10 +721,10 @@ export const DeviceNotOnboardedErrorComponent = withV3StyleProvider(
               Icon={IconsLegacy.ArrowRightMedium}
             >
               {productName
-                ? t("errors.DeviceNotOnboardedError.goToOnboardingButtonWithProductName", {
+                ? t("errors.DeviceNotOnboardedDAError.goToOnboardingButtonWithProductName", {
                     productName,
                   })
-                : t("errors.DeviceNotOnboardedError.goToOnboardingButton")}
+                : t("errors.DeviceNotOnboardedDAError.goToOnboardingButton")}
             </ButtonV3>
           }
         />
@@ -751,15 +783,20 @@ export const renderError = ({
   device,
   inlineRetry = true,
   withDescription = true,
+  learnMoreLink,
+  learnMoreTextKey,
   Icon,
+  stretch,
 }: {
-  error: Error | ErrorConstructor;
+  error: Error | ErrorConstructor | DmkError;
   t: TFunction;
   withOpenManager?: boolean;
   onRetry?: (() => void) | null | undefined;
   withExportLogs?: boolean;
   list?: boolean;
   supportLink?: string;
+  learnMoreLink?: string;
+  learnMoreTextKey?: string;
   buyLedger?: string;
   warning?: boolean;
   info?: boolean;
@@ -769,6 +806,7 @@ export const renderError = ({
   device?: Device | null;
   inlineRetry?: boolean;
   withDescription?: boolean;
+  stretch?: boolean;
   Icon?: (props: { color?: string | undefined; size?: number | undefined }) => JSX.Element;
 }) => {
   let tmpError = error;
@@ -781,17 +819,27 @@ export const renderError = ({
   } else if (tmpError instanceof FirmwareNotRecognized) {
     return <FirmwareNotRecognizedErrorComponent onRetry={onRetry} />;
   } else if (tmpError instanceof CompleteExchangeError) {
-    if (tmpError.message === "User refused") {
+    if (tmpError.title === "userRefused") {
       tmpError = new TransactionRefusedOnDevice();
     }
+  } else if (tmpError instanceof NoSuchAppOnProvider) {
+    return (
+      <NoSuchAppOnProviderErrorComponent
+        error={tmpError}
+        productName={getDeviceModel(device?.modelId as DeviceModelId)?.productName}
+        learnMoreLink={learnMoreLink}
+        learnMoreTextKey={learnMoreTextKey}
+      />
+    );
+  } else if (isDisconnectedWhileSendingApduError(tmpError)) {
+    tmpError = new DisconnectedDevice();
   }
-
   // if no supportLink is provided, we fallback on the related url linked to
   // tmpError name, if any
-  const supportLinkUrl = supportLink ?? urls.errors[error?.name];
+  const supportLinkUrl = supportLink ?? urls.errors[isDmkError(error) ? error._tag : error?.name];
 
   return (
-    <Wrapper id={`error-${error.name}`}>
+    <Wrapper id={`error-${isDmkError(error) ? error._tag : error.name}`}>
       <ErrorBody
         Icon={
           Icon
@@ -805,7 +853,11 @@ export const renderError = ({
         title={<TranslatedError error={tmpError as unknown as Error} noLink />}
         description={
           withDescription && (
-            <TranslatedError error={tmpError as unknown as Error} field="description" />
+            <TranslatedError
+              dataTestId="error-description-deviceAction"
+              error={tmpError as unknown as Error}
+              field="description"
+            />
           )
         }
         list={
@@ -816,7 +868,7 @@ export const renderError = ({
           ) : undefined
         }
       />
-      <ButtonContainer>
+      <ButtonContainer stretch={stretch}>
         {managerAppName || requireFirmwareUpdate ? (
           <OpenManagerButton
             appName={managerAppName}
@@ -825,31 +877,32 @@ export const renderError = ({
           />
         ) : (
           <>
+            <ButtonGroup>
+              {withExportLogs ? (
+                <ExportLogsButton
+                  title={t("settings.exportLogs.title")}
+                  small={false}
+                  primary={false}
+                  outlineGrey
+                />
+              ) : null}
+              {withOpenManager ? (
+                <OpenManagerButton mt={0} />
+              ) : onRetry && inlineRetry ? (
+                <Button primary onClick={onRetry}>
+                  {t("common.retry")}
+                </Button>
+              ) : null}
+              {withOnboardingCTA ? <OpenOnboardingBtn /> : null}
+              {buyLedger ? (
+                <LinkWithExternalIcon
+                  label={t("common.buyLedger")}
+                  onClick={() => openURL(buyLedger)}
+                />
+              ) : null}
+            </ButtonGroup>
             {supportLinkUrl ? (
               <ExternalLinkButton label={t("common.getSupport")} url={supportLinkUrl} />
-            ) : null}
-            {withExportLogs ? (
-              <ExportLogsButton
-                title={t("settings.exportLogs.title")}
-                small={false}
-                primary={false}
-                outlineGrey
-                mx={1}
-              />
-            ) : null}
-            {withOpenManager ? (
-              <OpenManagerButton mt={0} ml={withExportLogs ? 4 : 0} />
-            ) : onRetry && inlineRetry ? (
-              <Button primary ml={withExportLogs ? 4 : 0} onClick={onRetry}>
-                {t("common.retry")}
-              </Button>
-            ) : null}
-            {withOnboardingCTA ? <OpenOnboardingBtn /> : null}
-            {buyLedger ? (
-              <LinkWithExternalIcon
-                label={t("common.buyLedger")}
-                onClick={() => openURL(buyLedger)}
-              />
             ) : null}
           </>
         )}
@@ -870,6 +923,7 @@ export const renderInWrongAppForAccount = ({
     error: new WrongDeviceForAccount(""),
     withExportLogs: true,
     onRetry,
+    stretch: true,
   });
 
 export const renderConnectYourDevice = ({
@@ -888,13 +942,7 @@ export const renderConnectYourDevice = ({
   <Wrapper>
     <Header />
     <AnimationWrapper>
-      <Animation
-        animation={getDeviceAnimation(
-          modelId,
-          type,
-          unresponsive ? "enterPinCode" : "plugAndPinCode",
-        )}
-      />
+      <Animation animation={getDeviceAnimation(modelId, type, "enterPinCode")} />
     </AnimationWrapper>
     <Footer>
       <Title>
@@ -910,6 +958,74 @@ export const renderConnectYourDevice = ({
         </TroubleshootingWrapper>
       ) : null}
     </Footer>
+  </Wrapper>
+);
+
+const OpenSwapBtn = () => {
+  const { setDrawer } = useContext(context);
+  const dispatch = useDispatch();
+
+  const onClick = () => {
+    setTrackingSource("device action open swap button");
+    dispatch(closePlatformAppDrawer());
+    setDrawer(undefined);
+  };
+
+  return (
+    <ButtonV3
+      variant="main"
+      outline
+      size="large"
+      width="calc(100% - 80px)"
+      ml="40px"
+      mr="40px"
+      onClick={onClick}
+    >
+      <Trans i18nKey={"swap.wrongDevice.changeProvider"} />
+    </ButtonV3>
+  );
+};
+
+export const HardwareUpdate = ({
+  i18nKeyTitle,
+  i18nKeyDescription,
+  i18nKeyValues,
+}: {
+  i18nKeyTitle: string;
+  i18nKeyDescription: string;
+  i18nKeyValues?: Record<string, string>;
+}) => (
+  <Wrapper>
+    <Header>
+      <Image resource={Nano} alt="NanoS" mb="40px"></Image>
+    </Header>
+    <Flex alignItems="center" flexDirection="column" rowGap="16px" mr="40px" ml="40px">
+      <Title variant="body" color="palette.text.shade100">
+        <Trans i18nKey={i18nKeyTitle} values={i18nKeyValues} />
+      </Title>
+      <Text variant="body" color="palette.text.shade60" textAlign="center">
+        <Trans i18nKey={i18nKeyDescription} values={i18nKeyValues} />
+      </Text>
+    </Flex>
+    <ButtonFooter>
+      <ButtonContainer width="100%">
+        <ButtonV3
+          variant="main"
+          size="large"
+          width="calc(100% - 80px)"
+          ml="40px"
+          mr="40px"
+          onClick={() => {
+            openURL("https://shop.ledger.com/pages/hardware-wallet");
+          }}
+        >
+          <Trans i18nKey={"swap.wrongDevice.cta"} />
+        </ButtonV3>
+      </ButtonContainer>
+      <ButtonContainer width="100%">
+        <OpenSwapBtn />
+      </ButtonContainer>
+    </ButtonFooter>
   </Wrapper>
 );
 
@@ -995,8 +1111,8 @@ export const renderSwapDeviceConfirmation = ({
   stateSettings: SettingsState;
   walletState: WalletState;
 }) => {
-  const sourceAccountCurrency = getAccountCurrency(exchange.fromAccount);
-  const targetAccountCurrency = getAccountCurrency(exchange.toAccount);
+  const sourceAccountCurrency = exchange.fromCurrency;
+  const targetAccountCurrency = exchange.toCurrency;
   const sourceAccountName =
     accountNameSelector(walletState, {
       accountId: exchange.fromAccount.id,
@@ -1118,16 +1234,14 @@ export const renderSwapDeviceConfirmation = ({
               <Text fontWeight="medium" color="palette.text.shade40" fontSize="14px">
                 <Trans i18nKey={`DeviceAction.swap2.${key}`} />
               </Text>
-              <DeviceSwapSummaryValueStyled>{value}</DeviceSwapSummaryValueStyled>
+              <DeviceSwapSummaryValueStyled data-testid={key}>{value}</DeviceSwapSummaryValueStyled>
             </Fragment>
           ))}
         </DeviceSwapSummaryStyled>
         {renderVerifyUnwrapped({ modelId, type })}
       </ConfirmWrapper>
       <Separator />
-      <Flex width="100%" mb={3}>
-        <DrawerFooter provider={exchangeRate.provider} />
-      </Flex>
+      <DrawerFooter provider={exchangeRate.provider} />
     </>
   );
 };

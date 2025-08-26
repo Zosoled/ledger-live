@@ -11,12 +11,14 @@ import ExternalLink from "../ExternalLink";
 import { openURL } from "~/renderer/linking";
 import { urls } from "~/config/urls";
 import { useErrorLinks } from "./hooks/useErrorLinks";
+import { isDmkError } from "@ledgerhq/live-dmk-desktop";
 
 type Props = {
   error: Error | undefined | null;
   field?: "title" | "description" | "list";
   noLink?: boolean;
   fallback?: React.ReactNode;
+  dataTestId?: string;
 };
 
 type ErrorListProps = {
@@ -33,7 +35,13 @@ function ErrorList({ translation }: ErrorListProps) {
   );
 }
 
-export function TranslatedError({ error, fallback, field = "title", noLink }: Props): JSX.Element {
+export function TranslatedError({
+  error,
+  fallback,
+  field = "title",
+  noLink,
+  dataTestId,
+}: Props): JSX.Element {
   const { t } = useTranslation();
 
   const errorName = error?.name;
@@ -65,7 +73,25 @@ export function TranslatedError({ error, fallback, field = "title", noLink }: Pr
     }
   }, [isValidError, error]);
 
-  if (!error || !isValidError) return <></>;
+  if (!error || !isValidError) {
+    // NOTE: Temporary handling of DMK errors
+    if (isDmkError(error)) {
+      const translatedKey = `errors.${error._tag}.${field}`;
+      const translated = t(translatedKey);
+      if (translated !== translatedKey) {
+        return <Text>{translated}</Text>;
+      } else {
+        const message =
+          field === "title"
+            ? error._tag
+            : (error?.originalError as Error)?.message ?? error.message ?? error._tag;
+
+        return <Text>{t(`errors.generic.${field}`, { message })}</Text>;
+      }
+    }
+
+    return <></>;
+  }
 
   if (!translation) {
     if (fallback) return <>{fallback}</>;
@@ -80,7 +106,9 @@ export function TranslatedError({ error, fallback, field = "title", noLink }: Pr
 
   return (
     <>
-      <Trans i18nKey={translationKey} components={{ ...links }} values={args} />
+      <span data-testid={dataTestId}>
+        <Trans i18nKey={translationKey} components={{ ...links }} values={args} />
+      </span>
 
       {urls.errors[error.name] && !noLink && (
         <>

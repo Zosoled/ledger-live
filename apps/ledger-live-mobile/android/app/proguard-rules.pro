@@ -15,7 +15,6 @@
 -keep class com.facebook.hermes.unicode.** { *; }
 -keep class com.facebook.jni.** { *; }
 
--keep class com.adjust.sdk.** { *; }
 -keep class com.google.android.gms.common.ConnectionResult {
     int SUCCESS;
 }
@@ -27,3 +26,7 @@
     boolean isLimitAdTrackingEnabled();
 }
 -keep public class com.android.installreferrer.** { *; }
+
+-keep class com.brentvatne.** { *; }
+-keep class com.yqritc.** { *; }
+-keep class com.google.android.exoplayer2.** { *; }

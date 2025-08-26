@@ -1,23 +1,22 @@
-import { test as base, Page, ElectronApplication, ChromiumBrowserContext } from "@playwright/test";
+import { test as base, Page, ElectronApplication } from "@playwright/test";
 import fsPromises from "fs/promises";
+import merge from "lodash/merge";
 import * as path from "path";
 import { OptionalFeatureMap } from "@ledgerhq/types-live";
-import { getEnv, setEnv } from "@ledgerhq/live-env";
-import { startSpeculos, stopSpeculos, specs } from "../utils/speculos";
 
 import { Application } from "tests/page";
-import { generateUUID, safeAppendFile } from "tests/utils/fileUtils";
+import { safeAppendFile } from "tests/utils/fileUtils";
 import { launchApp } from "tests/utils/electronUtils";
 import { captureArtifacts } from "tests/utils/allureUtils";
-import { Currency } from "tests/enum/Currency";
+import { randomUUID } from "crypto";
 
 type TestFixtures = {
   lang: string;
   theme: "light" | "dark" | "no-preference" | undefined;
-  speculosCurrency: Currency;
-  userdata: string;
+  userdata?: string;
+  settings: Record<string, unknown>;
   userdataDestinationPath: string;
-  userdataOriginalFile: string;
+  userdataOriginalFile?: string;
   userdataFile: string;
   env: Record<string, string>;
   electronApp: ElectronApplication;
@@ -27,21 +26,16 @@ type TestFixtures = {
   app: Application;
 };
 
-const IS_NOT_MOCK = process.env.MOCK == "0";
 const IS_DEBUG_MODE = !!process.env.PWDEBUG;
-if (IS_NOT_MOCK) setEnv("DISABLE_APP_VERSION_REQUIREMENTS", true);
-const BASE_PORT = 30000;
-const MAX_PORT = 65535;
-let portCounter = BASE_PORT; // Counter for generating unique ports
 
 export const test = base.extend<TestFixtures>({
   env: undefined,
   lang: "en-US",
   theme: "dark",
   userdata: undefined,
+  settings: { shareAnalytics: true, hasSeenAnalyticsOptInPrompt: true },
   featureFlags: undefined,
   simulateCamera: undefined,
-  speculosCurrency: undefined,
 
   app: async ({ page }, use) => {
     const app = new Application(page);
@@ -49,108 +43,81 @@ export const test = base.extend<TestFixtures>({
   },
 
   userdataDestinationPath: async ({}, use) => {
-    await use(path.join(__dirname, "../artifacts/userdata", generateUUID()));
+    await use(path.join(__dirname, "../artifacts/userdata", randomUUID()));
   },
   userdataOriginalFile: async ({ userdata }, use) => {
-    await use(path.join(__dirname, "../userdata/", `${userdata}.json`));
+    await use(userdata && path.join(__dirname, "../userdata/", `${userdata}.json`));
   },
   userdataFile: async ({ userdataDestinationPath }, use) => {
     const fullFilePath = path.join(userdataDestinationPath, "app.json");
     await use(fullFilePath);
   },
+
   electronApp: async (
     {
       lang,
       theme,
-      userdata,
       userdataDestinationPath,
       userdataOriginalFile,
+      settings,
       env,
       featureFlags,
       simulateCamera,
-      speculosCurrency,
     },
     use,
-    testInfo,
   ) => {
     // create userdata path
     await fsPromises.mkdir(userdataDestinationPath, { recursive: true });
 
-    if (userdata) {
-      await fsPromises.copyFile(userdataOriginalFile, `${userdataDestinationPath}/app.json`);
-    }
+    const fileUserData = userdataOriginalFile
+      ? await fsPromises.readFile(userdataOriginalFile, { encoding: "utf-8" }).then(JSON.parse)
+      : {};
 
-    let device: any | undefined;
+    const userData = merge({ data: { settings } }, fileUserData);
+    await fsPromises.writeFile(`${userdataDestinationPath}/app.json`, JSON.stringify(userData));
 
-    if (IS_NOT_MOCK && speculosCurrency) {
-      // Ensure the portCounter stays within the valid port range
-      if (portCounter > MAX_PORT) {
-        portCounter = BASE_PORT;
-      }
-      const speculosPort = portCounter++;
-      setEnv(
-        "SPECULOS_PID_OFFSET",
-        (speculosPort - BASE_PORT) * 1000 + parseInt(process.env.TEST_WORKER_INDEX || "0") * 100,
-      );
-      device = await startSpeculos(
-        testInfo.title.replace(/ /g, "_"),
-        specs[speculosCurrency.deviceLabel.replace(/ /g, "_")],
-      );
-      setEnv("SPECULOS_API_PORT", device?.ports.apiPort?.toString());
-    }
+    // default environment variables
+    env = Object.assign(
+      {
+        ...process.env,
+        VERBOSE: true,
+        MOCK: true,
+        MOCK_COUNTERVALUES: true,
+        HIDE_DEBUG_MOCK: true,
+        CI: process.env.CI || undefined,
+        PLAYWRIGHT_RUN: true,
+        CRASH_ON_INTERNAL_CRASH: true,
+        LEDGER_MIN_HEIGHT: 768,
+        FEATURE_FLAGS: JSON.stringify(featureFlags),
+      },
+      env,
+    );
 
-    try {
-      // default environment variables
-      env = Object.assign(
-        {
-          ...process.env,
-          VERBOSE: true,
-          MOCK: IS_NOT_MOCK ? undefined : true,
-          MOCK_COUNTERVALUES: true,
-          HIDE_DEBUG_MOCK: true,
-          CI: process.env.CI || undefined,
-          PLAYWRIGHT_RUN: true,
-          CRASH_ON_INTERNAL_CRASH: true,
-          LEDGER_MIN_HEIGHT: 768,
-          FEATURE_FLAGS: JSON.stringify(featureFlags),
-          MANAGER_DEV_MODE: IS_NOT_MOCK ? true : undefined,
-          SPECULOS_API_PORT: IS_NOT_MOCK ? getEnv("SPECULOS_API_PORT")?.toString() : undefined,
-          DISABLE_TRANSACTION_BROADCAST:
-            process.env.ENABLE_TRANSACTION_BROADCAST == "1" || !IS_NOT_MOCK ? undefined : 1,
-        },
-        env,
-      );
+    // launch app
+    const windowSize = { width: 1024, height: 768 };
 
-      // launch app
-      const windowSize = { width: 1024, height: 768 };
+    const electronApp: ElectronApplication = await launchApp({
+      env,
+      lang,
+      theme,
+      userdataDestinationPath,
+      simulateCamera,
+      windowSize,
+    });
 
-      const electronApp: ElectronApplication = await launchApp({
-        env,
-        lang,
-        theme,
-        userdataDestinationPath,
-        simulateCamera,
-        windowSize,
-      });
+    await use(electronApp);
 
-      await use(electronApp);
-
-      // close app
-      await electronApp.close();
-    } finally {
-      if (device) {
-        await stopSpeculos(device);
-      }
-    }
+    // close app
+    await electronApp.close();
   },
   page: async ({ electronApp }, use, testInfo) => {
     // app is ready
     const page = await electronApp.firstWindow();
     // we need to give enough time for the playwright app to start. when the CI is slow, 30s was apprently not enough.
-    page.setDefaultTimeout(99000);
+    page.setDefaultTimeout(120000);
 
     if (process.env.PLAYWRIGHT_CPU_THROTTLING_RATE) {
-      const client = await (page.context() as ChromiumBrowserContext).newCDPSession(page);
+      const client = await page.context().newCDPSession(page);
       await client.send("Emulation.setCPUThrottlingRate", {
         rate: parseInt(process.env.PLAYWRIGHT_CPU_THROTTLING_RATE),
       });

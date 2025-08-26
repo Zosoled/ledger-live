@@ -1,11 +1,14 @@
+import { findSubAccountById, isTokenAccount } from "@ledgerhq/coin-framework/account/index";
 import { SignerContext } from "@ledgerhq/coin-framework/signer";
 import type { Account, AccountBridge, DeviceId, SignOperationEvent } from "@ledgerhq/types-live";
-import { Address, beginCell, external, storeMessage } from "@ton/core";
+import { Address, beginCell, external, storeMessage, toNano } from "@ton/core";
 import { WalletContractV4 } from "@ton/ton";
+import BigNumber from "bignumber.js";
 import { Observable } from "rxjs";
 import { fetchAccountInfo } from "./bridge/bridgeHelpers/api";
+import { TOKEN_TRANSFER_MAX_FEE } from "./constants";
 import type { TonSigner } from "./signer";
-import type { TonCell, TonOperation, Transaction } from "./types";
+import type { TonAccount, TonCell, TonOperation, Transaction } from "./types";
 import { buildTonTransaction, getLedgerTonPath } from "./utils";
 
 const packTransaction = (account: Account, needsInit: boolean, signature: TonCell): string => {
@@ -27,13 +30,15 @@ const packTransaction = (account: Account, needsInit: boolean, signature: TonCel
  * Sign Transaction with Ledger hardware
  */
 export const buildSignOperation =
-  (signerContext: SignerContext<TonSigner>): AccountBridge<Transaction>["signOperation"] =>
+  (
+    signerContext: SignerContext<TonSigner>,
+  ): AccountBridge<Transaction, TonAccount>["signOperation"] =>
   ({
     account,
     transaction,
     deviceId,
   }: {
-    account: Account;
+    account: TonAccount;
     transaction: Transaction;
     deviceId: DeviceId;
   }): Observable<SignOperationEvent> =>
@@ -43,7 +48,7 @@ export const buildSignOperation =
         const address = account.freshAddress;
         const accountInfo = await fetchAccountInfo(address);
 
-        const tonTx = buildTonTransaction(transaction, accountInfo.seqno);
+        const tonTx = buildTonTransaction(transaction, accountInfo.seqno, account);
 
         const ledgerPath = getLedgerTonPath(account.freshAddressPath);
 
@@ -84,11 +89,17 @@ export const buildSignOperation =
     });
 
 export const buildOptimisticOperation = (
-  account: Account,
+  account: TonAccount,
   transaction: Transaction,
 ): TonOperation => {
-  const { recipient, amount, fees, comment } = transaction;
+  const { recipient, amount, fees, comment, useAllAmount, subAccountId } = transaction;
   const { id: accountId } = account;
+
+  const subAccount = findSubAccountById(account, subAccountId ?? "");
+  const tokenTransfer = Boolean(subAccount && isTokenAccount(subAccount));
+  const value = tokenTransfer
+    ? BigNumber(toNano(TOKEN_TRANSFER_MAX_FEE).toString())
+    : amount.plus(fees);
 
   const op: TonOperation = {
     id: "",
@@ -97,7 +108,7 @@ export const buildOptimisticOperation = (
     senders: [account.freshAddress],
     recipients: [recipient],
     accountId,
-    value: amount.plus(fees),
+    value,
     fee: fees,
     blockHash: null,
     blockHeight: null,
@@ -106,9 +117,33 @@ export const buildOptimisticOperation = (
       // we don't know yet, will be patched in final operation
       lt: "",
       explorerHash: "",
-      comment: comment,
+      comment,
     },
   };
+  if (tokenTransfer && subAccount) {
+    op.subOperations = [
+      {
+        id: "",
+        hash: "",
+        type: "OUT",
+        value: useAllAmount ? subAccount.balance : amount,
+        fee: fees,
+        blockHash: null,
+        blockHeight: null,
+        senders: [account.freshAddress],
+        recipients: [recipient],
+        accountId: subAccount.id,
+        date: new Date(),
+        extra: {
+          lt: "",
+          explorerHash: "",
+          comment,
+        },
+        contract: subAccount.token.contractAddress,
+      },
+    ];
+  }
+
   return op;
 };
 

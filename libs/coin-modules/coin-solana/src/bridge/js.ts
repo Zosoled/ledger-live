@@ -1,10 +1,14 @@
 import { makeLRUCache, minutes } from "@ledgerhq/live-network/cache";
 import { log } from "@ledgerhq/logs";
-import { cached, Config, getChainAPI, queued } from "../api";
-import { traced } from "../api/traced";
+import { cached, Config, getChainAPI, queued } from "../network";
+import { traced } from "../network/traced";
 import { makeBridges } from "./bridge";
 import { SignerContext } from "@ledgerhq/coin-framework/signer";
 import { SolanaSigner } from "../signer";
+import { CoinConfig } from "@ledgerhq/coin-framework/config";
+import solanaCoinConfig, { SolanaCoinConfig } from "../config";
+import { setCryptoAssetsStoreGetter } from "../cryptoAssetsStore";
+import { CryptoAssetsStoreGetter } from "@ledgerhq/types-live";
 
 const httpRequestLogger = (url: string, options: any) => {
   log("network", url, {
@@ -21,7 +25,8 @@ const getAPI = makeLRUCache(
 );
 
 const getQueuedAPI = makeLRUCache(
-  (config: Config) => getAPI(config).then(api => queued(api, 500)),
+  (config: Config) =>
+    getAPI(config).then(api => queued(api, solanaCoinConfig.getCoinConfig().queuedInterval)),
   config => config.endpoint,
   minutes(1000),
 );
@@ -32,7 +37,13 @@ const getQueuedAndCachedAPI = makeLRUCache(
   minutes(1000),
 );
 
-export function createBridges(signerContext: SignerContext<SolanaSigner>) {
+export function createBridges(
+  signerContext: SignerContext<SolanaSigner>,
+  coinConfig: CoinConfig<SolanaCoinConfig>,
+  cryptoAssetsStoreGetter: CryptoAssetsStoreGetter,
+) {
+  solanaCoinConfig.setCoinConfig(coinConfig);
+  setCryptoAssetsStoreGetter(cryptoAssetsStoreGetter);
   return makeBridges({
     getAPI,
     getQueuedAPI,

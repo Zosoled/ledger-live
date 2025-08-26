@@ -47,23 +47,37 @@ describe("useLocalizedUrl", () => {
 
     setLocaleMockWithURL("zh", urls.ledgerValidator);
     expect(localizedUrl).toEqual("https://www.ledger.com/zh-hans/staking");
+
+    setLocaleMockWithURL("th", urls.ledgerValidator);
+    expect(localizedUrl).toEqual("https://www.ledger.com/staking");
+
+    setLocaleMockWithURL("en", urls.ledgerValidator);
+    expect(localizedUrl).toEqual("https://www.ledger.com/staking");
   });
 
-  test("LEDGER_SUPPORT", () => {
+  test("LEDGER_BASE", () => {
+    setLocaleMockWithURL("fr", urls.faq);
+    expect(localizedUrl).toEqual("https://support.ledger.com/fr");
+
+    setLocaleMockWithURL("pt", urls.faq);
+    expect(localizedUrl).toEqual("https://support.ledger.com/pt-br");
+
+    setLocaleMockWithURL("zh", urls.faq);
+    expect(localizedUrl).toEqual("https://support.ledger.com/zh-cn");
+  });
+
+  test("LEDGER_SUPPORT_SALESFORCE", () => {
     setLocaleMockWithURL("fr", urls.troubleshootingUSB);
-    expect(localizedUrl).toEqual(
-      "https://support.ledger.com/hc/fr-fr/articles/115005165269?utm_source=ledger_live_desktop&utm_medium=self_referral&utm_content=error",
-    );
+    expect(localizedUrl).toEqual("https://support.ledger.com/fr/article/115005165269-zd");
 
     setLocaleMockWithURL("en", urls.troubleshootingUSB);
-    expect(localizedUrl).toEqual(
-      "https://support.ledger.com/hc/en-us/articles/115005165269?utm_source=ledger_live_desktop&utm_medium=self_referral&utm_content=error",
-    );
+    expect(localizedUrl).toEqual("https://support.ledger.com/article/115005165269-zd");
 
     setLocaleMockWithURL("zh", urls.troubleshootingUSB);
-    expect(localizedUrl).toEqual(
-      "https://support.ledger.com/hc/zh-cn/articles/115005165269?utm_source=ledger_live_desktop&utm_medium=self_referral&utm_content=error",
-    );
+    expect(localizedUrl).toEqual("https://support.ledger.com/zh-cn/article/115005165269-zd");
+
+    setLocaleMockWithURL("th", urls.troubleshootingUSB);
+    expect(localizedUrl).toEqual("https://support.ledger.com/article/115005165269-zd");
   });
 
   test("SHOP", () => {
@@ -80,6 +94,16 @@ describe("useLocalizedUrl", () => {
     setLocaleMockWithURL("pt", urls.banners.blackfriday);
     expect(localizedUrl).toEqual(
       "https://shop.ledger.com/pt-br/pages/black-friday?utm_source=ledger_live_desktop&utm_medium=self_referral&utm_content=banner_carousel",
+    );
+
+    setLocaleMockWithURL("th", urls.banners.blackfriday);
+    expect(localizedUrl).toEqual(
+      "https://shop.ledger.com/pages/black-friday?utm_source=ledger_live_desktop&utm_medium=self_referral&utm_content=banner_carousel",
+    );
+
+    setLocaleMockWithURL("en", urls.banners.blackfriday);
+    expect(localizedUrl).toEqual(
+      "https://shop.ledger.com/pages/black-friday?utm_source=ledger_live_desktop&utm_medium=self_referral&utm_content=banner_carousel",
     );
   });
 

@@ -1,5 +1,11 @@
-import { Address } from "@ton/core";
-import { TonComment } from "../../types";
+import { Address, toNano } from "@ton/core";
+import { setCoinConfig } from "../../config";
+import {
+  TOKEN_TRANSFER_FORWARD_AMOUNT,
+  TOKEN_TRANSFER_MAX_FEE,
+  TOKEN_TRANSFER_QUERY_ID,
+} from "../../constants";
+import { TonComment, TonPayloadFormat, TonPayloadJettonTransfer } from "../../types";
 import {
   addressesAreEqual,
   buildTonTransaction,
@@ -8,7 +14,12 @@ import {
   getTransferExpirationTime,
   isAddressValid,
 } from "../../utils";
-import { transaction as baseTransaction } from "../fixtures/common.fixtures";
+import mockServer, { API_TON_ENDPOINT } from "../fixtures/api.fixtures";
+import {
+  account,
+  transaction as baseTransaction,
+  jettonTransaction,
+} from "../fixtures/common.fixtures";
 
 describe("TON addresses", () => {
   const addr = {
@@ -66,6 +77,47 @@ test("TON Comments are valid", () => {
   expect(commentIsValid(msg(true, ""))).toBe(false);
 });
 
+describe("TON transfers", () => {
+  const commentPayload: TonPayloadFormat = {
+    type: "comment",
+    text: "",
+  };
+
+  const transferPayload: TonPayloadFormat = {
+    type: "jetton-transfer",
+    queryId: null,
+    amount: BigInt(0),
+    destination: new Address(0, Buffer.alloc(32)),
+    responseDestination: new Address(0, Buffer.alloc(32)),
+    customPayload: null,
+    forwardAmount: BigInt(0),
+    forwardPayload: null,
+    knownJetton: null,
+  };
+
+  const nftPayload: TonPayloadFormat = {
+    type: "nft-transfer",
+    queryId: null,
+    newOwner: new Address(0, Buffer.alloc(32)),
+    responseDestination: new Address(0, Buffer.alloc(32)),
+    customPayload: null,
+    forwardAmount: BigInt(0),
+    forwardPayload: null,
+  };
+
+  test("Check if the transaction is jetton transfer", () => {
+    /**
+     * Checks if the given payload is a jetton transfer.
+     */
+    const isJettonTransfer = (payload: TonPayloadFormat): boolean =>
+      payload.type === "jetton-transfer";
+
+    expect(isJettonTransfer(commentPayload)).toBe(false);
+    expect(isJettonTransfer(transferPayload)).toBe(true);
+    expect(isJettonTransfer(nftPayload)).toBe(false);
+  });
+});
+
 describe("Get TON paths", () => {
   const correctPath = ["44'/607'/0'/0'/0'/0'", "m/44'/607'/0'/0'/0'/0'"];
   const wrongPaths = [
@@ -90,10 +142,27 @@ describe("Get TON paths", () => {
 });
 
 describe("Build TON transaction", () => {
+  beforeAll(() => {
+    setCoinConfig(() => ({
+      status: {
+        type: "active",
+      },
+      infra: {
+        API_TON_ENDPOINT: API_TON_ENDPOINT,
+        KNOWN_JETTONS: [],
+      },
+    }));
+    mockServer.listen();
+  });
+
+  afterAll(() => {
+    mockServer.close();
+  });
+
   const seqno = 22;
 
   test("Build TON transaction with an specific amount", () => {
-    const tonTransaction = buildTonTransaction(baseTransaction, seqno);
+    const tonTransaction = buildTonTransaction(baseTransaction, seqno, account);
 
     // Convert the Address to string to compare
     expect({ ...tonTransaction, to: tonTransaction.to.toString() }).toEqual({
@@ -107,10 +176,12 @@ describe("Build TON transaction", () => {
   });
 
   test("Build TON transaction when useAllAmount is true and there is a comment", () => {
-    const transaction = { ...baseTransaction };
-    transaction.useAllAmount = true;
-    transaction.comment.text = "valid coment";
-    const tonTransaction = buildTonTransaction(transaction, seqno);
+    const transaction = {
+      ...baseTransaction,
+      comment: { text: "valid comment", isEncrypted: false },
+      useAllAmount: true,
+    };
+    const tonTransaction = buildTonTransaction(transaction, seqno, account);
 
     // Convert the Address to string to compare
     expect({ ...tonTransaction, to: tonTransaction.to.toString() }).toEqual({
@@ -121,6 +192,48 @@ describe("Build TON transaction", () => {
       timeout: getTransferExpirationTime(),
       sendMode: 128,
       payload: { type: "comment", text: transaction.comment.text },
+    });
+  });
+
+  test("Build jetton transaction with an specific amount", () => {
+    const jettonTransfer = buildTonTransaction(jettonTransaction, seqno, account);
+
+    // Convert the Addresses to string to compare
+    expect({
+      ...jettonTransfer,
+      to: jettonTransfer.to.toString(),
+      payload: undefined,
+    }).toStrictEqual({
+      to: Address.parse(account.subAccounts?.[0].jettonWallet ?? "").toString(),
+      seqno,
+      amount: toNano(TOKEN_TRANSFER_MAX_FEE),
+      bounce: true,
+      timeout: getTransferExpirationTime(),
+      sendMode: 3,
+      payload: undefined,
+    });
+
+    expect(jettonTransfer.payload?.type).toStrictEqual("jetton-transfer");
+
+    expect({
+      ...jettonTransfer.payload,
+      destination: (jettonTransfer.payload as TonPayloadJettonTransfer).destination.toString(),
+      responseDestination: (
+        jettonTransfer.payload as TonPayloadJettonTransfer
+      ).responseDestination.toString(),
+      queryId: (jettonTransfer.payload as TonPayloadJettonTransfer).queryId?.toString(),
+      amount: (jettonTransfer.payload as TonPayloadJettonTransfer).amount.toString(),
+      forwardAmount: (jettonTransfer.payload as TonPayloadJettonTransfer).forwardAmount.toString(),
+    }).toStrictEqual({
+      type: "jetton-transfer",
+      queryId: TOKEN_TRANSFER_QUERY_ID.toString(),
+      amount: jettonTransaction.amount.toFixed(),
+      destination: Address.parse(jettonTransaction.recipient).toString(),
+      responseDestination: Address.parse(account.freshAddress).toString(),
+      customPayload: null,
+      forwardAmount: TOKEN_TRANSFER_FORWARD_AMOUNT.toString(),
+      forwardPayload: null,
+      knownJetton: null,
     });
   });
 });

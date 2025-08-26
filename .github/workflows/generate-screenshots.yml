@@ -1,4 +1,4 @@
-name: "@Desktop • Generate Screenshots"
+name: "[Desktop] - Generate Screenshots  - Manual"
 run-name: "@Desktop • Generate Screenshots triggered by ${{ inputs.login }} ${{ inputs.ref && format('on branch {0}', inputs.ref) || format('on PR {0}', inputs.number) }}"
 
 on:
@@ -28,6 +28,11 @@ permissions:
 
 jobs:
   generate-screenshots-linux:
+    permissions:
+      id-token: write
+      # Give the default GITHUB_TOKEN write permission to commit and push the
+      # added or changed files to the repository.
+      contents: write
     env:
       NODE_OPTIONS: "--max-old-space-size=7168"
       FORCE_COLOR: 3
@@ -77,11 +82,12 @@ jobs:
       - uses: LedgerHQ/ledger-live/tools/actions/composites/update-snapshots-desktop@develop
         id: update-snapshots
         with:
-          os: ubuntu-latest
+          os: ubuntu-22.04
+          token: ${{ secrets.GITHUB_TOKEN }}
 
   report-start:
     name: Report start
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     if: inputs.commentId != ''
     steps:
       - name: generate token
@@ -91,7 +97,7 @@ jobs:
           app_id: ${{ secrets.GH_BOT_APP_ID }}
           private_key: ${{ secrets.GH_BOT_PRIVATE_KEY }}
       - name: report start
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           result-encoding: string
@@ -115,7 +121,7 @@ jobs:
     needs: ["generate-screenshots-linux", "report-start"]
     if: ${{ !cancelled() }}
     name: Report end
-    runs-on: "ubuntu-latest"
+    runs-on: ubuntu-22.04
     steps:
       - name: generate token
         id: generate-token
@@ -124,7 +130,7 @@ jobs:
           app_id: ${{ secrets.GH_BOT_APP_ID }}
           private_key: ${{ secrets.GH_BOT_PRIVATE_KEY }}
       - name: report jobs status
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ steps.generate-token.outputs.token }}
           result-encoding: string

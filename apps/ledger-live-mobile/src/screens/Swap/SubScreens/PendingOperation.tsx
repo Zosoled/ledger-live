@@ -1,43 +1,43 @@
-import React, { useCallback, useMemo } from "react";
-import { StyleSheet, View } from "react-native";
 import { useTheme } from "@react-navigation/native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import React, { useCallback, useEffect } from "react";
 import { Trans } from "react-i18next";
+import { StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { getAccountCurrency } from "@ledgerhq/live-common/account/index";
-import { useSelector } from "react-redux";
-import LText from "~/components/LText";
+import { TrackScreen } from "~/analytics";
 import Button from "~/components/Button";
+import LText from "~/components/LText";
+import { ScreenName } from "~/const";
 import IconCheck from "~/icons/Check";
 import IconClock from "~/icons/Clock";
 import { rgba } from "../../../colors";
-import { TrackScreen } from "~/analytics";
+import { useSyncAllAccounts } from "../LiveApp/hooks/useSyncAllAccounts";
 import { PendingOperationParamList } from "../types";
-import { flattenAccountsSelector } from "~/reducers/accounts";
-import { ScreenName } from "~/const";
 
 export function PendingOperation({ route, navigation }: PendingOperationParamList) {
   const { colors } = useTheme();
-  const { swapId, provider, toAccountId, fromAccountId } = route.params.swapOperation;
-  const accounts = useSelector(flattenAccountsSelector);
-  const fromAccount = useMemo(
-    () => accounts.find(a => a.id === fromAccountId),
-    [accounts, fromAccountId],
-  );
-  const toAccount = useMemo(
-    () => accounts.find(a => a.id === toAccountId),
-    [accounts, toAccountId],
-  );
+  const { swapId, provider, toCurrency, fromCurrency } = route.params.swapOperation;
 
-  const sourceCurrency = fromAccount && getAccountCurrency(fromAccount);
-  const targetCurrency = toAccount && getAccountCurrency(toAccount);
+  const syncAccounts = useSyncAllAccounts();
+
+  useEffect(() => {
+    syncAccounts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const onComplete = useCallback(() => {
-    navigation.navigate(ScreenName.SwapOperationDetails, {
-      swapOperation: route.params.swapOperation,
-      fromPendingOperation: true,
+    navigation.reset({
+      index: 1,
+      routes: [
+        {
+          name: ScreenName.SwapTab,
+        },
+        {
+          name: ScreenName.SwapHistory,
+        },
+      ],
     });
-  }, [navigation, route.params.swapOperation]);
+  }, [navigation]);
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
@@ -45,8 +45,8 @@ export function PendingOperation({ route, navigation }: PendingOperationParamLis
         category="Swap Form"
         name="Confirmation Success"
         providerName={provider}
-        targetCurrency={targetCurrency}
-        sourceCurrency={sourceCurrency?.id}
+        targetCurrency={toCurrency}
+        sourceCurrency={fromCurrency?.id}
       />
       <View style={styles.wrapper}>
         <View style={styles.content}>
@@ -56,7 +56,7 @@ export function PendingOperation({ route, navigation }: PendingOperationParamLis
               <IconClock color={colors.grey} size={14} />
             </View>
           </View>
-          <LText secondary style={styles.title}>
+          <LText secondary style={styles.title} testID="swap-success-title">
             <Trans i18nKey={"transfer.swap.pendingOperation.title"} />
           </LText>
           <View style={styles.label}>
@@ -69,10 +69,10 @@ export function PendingOperation({ route, navigation }: PendingOperationParamLis
             </LText>
           </View>
           <LText style={styles.description} color="grey">
-            {targetCurrency ? (
+            {toCurrency ? (
               <Trans
                 i18nKey={"transfer.swap.pendingOperation.description"}
-                values={{ targetCurrency: targetCurrency.name }}
+                values={{ targetCurrency: toCurrency.name }}
               />
             ) : null}
           </LText>
@@ -82,7 +82,7 @@ export function PendingOperation({ route, navigation }: PendingOperationParamLis
         <Button
           event="SwapDone"
           type="primary"
-          title={<Trans i18nKey={"transfer.swap.pendingOperation.cta"} />}
+          title={<Trans i18nKey={"transfer.swap.history.button"} />}
           onPress={onComplete}
         />
       </View>

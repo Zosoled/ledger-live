@@ -1,46 +1,15 @@
-import { BigNumber } from "bignumber.js";
 import { waitFor, act, renderHook } from "@testing-library/react";
-import { isThresholdValid, useNftGalleryFilter } from "../useNftGalleryFilter";
-import { NFTs } from "@ledgerhq/coin-framework/mocks/fixtures/nfts";
-import { encodeNftId } from "@ledgerhq/coin-framework/nft/nftId";
+import { useNftGalleryFilter } from "../useNftGalleryFilter";
+
 import { SimpleHashResponse } from "@ledgerhq/live-nft/api/types";
 import { notifyManager } from "@tanstack/react-query";
 
-import { wrapper } from "../../tools/helperTests";
+import { generateNftsOwned, wrapper } from "../../tools/helperTests";
 
 jest.setTimeout(30000);
 
 // invoke callback instantly
 notifyManager.setScheduler(cb => cb());
-
-type FakeNFTRaw = {
-  id: string;
-  tokenId: string;
-  amount: BigNumber;
-  contract: string;
-  standard: "ERC721";
-  currencyId: string;
-  metadata: undefined;
-};
-const generateNftsOwned = () => {
-  const nfts: FakeNFTRaw[] = [];
-
-  NFTs.forEach(nft => {
-    for (let i = 1; i <= 20; i++) {
-      nfts.push({
-        id: encodeNftId("foo", nft.collection.contract, String(i), "ethereum"),
-        tokenId: String(i),
-        amount: new BigNumber(0),
-        contract: nft.collection.contract,
-        standard: "ERC721" as const,
-        currencyId: "ethereum",
-        metadata: undefined,
-      });
-    }
-  });
-
-  return nfts;
-};
 
 // TODO better way to make ProtoNFT[] collection
 const nftsOwned = generateNftsOwned();
@@ -98,6 +67,8 @@ describe("useNftGalleryFilter", () => {
           nftsOwned,
           chains,
           threshold: 80,
+          enabled: true,
+          staleTime: 1000 * 60 * 10,
         }),
       {
         wrapper,
@@ -122,14 +93,5 @@ describe("useNftGalleryFilter", () => {
     //   expect(result.current.nfts).toBe(expected.slice(0, pagedBy * n));
     // }
     // expect(result.current.nfts).toEqual(expected);
-  });
-
-  test("Threshold validity", async () => {
-    expect(isThresholdValid(101)).toBe(false);
-    expect(isThresholdValid(-1)).toBe(false);
-    expect(isThresholdValid("-1")).toBe(false);
-    expect(isThresholdValid("40")).toBe(true);
-    expect(isThresholdValid("101")).toBe(false);
-    expect(isThresholdValid("Not a number")).toBe(false);
   });
 });

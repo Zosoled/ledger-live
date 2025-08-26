@@ -1,5 +1,6 @@
 import { isConfirmedOperation } from "@ledgerhq/coin-framework/operation";
 import { RecipientRequired } from "@ledgerhq/errors";
+import { Text } from "@ledgerhq/native-ui";
 import { getAccountCurrency, getMainAccount } from "@ledgerhq/live-common/account/helpers";
 import { getAccountBridge } from "@ledgerhq/live-common/bridge/index";
 import {
@@ -13,11 +14,11 @@ import { useDebounce } from "@ledgerhq/live-common/hooks/useDebounce";
 import { getStuckAccountAndOperation } from "@ledgerhq/live-common/operation";
 import { Operation } from "@ledgerhq/types-live";
 import QrCode from "@ledgerhq/icons-ui/native/QrCode";
-import { useTheme } from "@react-navigation/native";
+import { useNavigation, useTheme } from "@react-navigation/native";
 import invariant from "invariant";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
-import { StyleSheet, View } from "react-native";
+import { Linking, Platform, StyleSheet, View } from "react-native";
 import SafeAreaView from "~/components/SafeAreaView";
 import { useSelector } from "react-redux";
 import { TrackScreen, track } from "~/analytics";
@@ -27,26 +28,41 @@ import CancelButton from "~/components/CancelButton";
 import { EditOperationCard } from "~/components/EditOperationCard";
 import GenericErrorBottomModal from "~/components/GenericErrorBottomModal";
 import KeyboardView from "~/components/KeyboardView";
-import LText from "~/components/LText";
 import NavigationScrollView from "~/components/NavigationScrollView";
 import RetryButton from "~/components/RetryButton";
 import { SendFundsNavigatorStackParamList } from "~/components/RootNavigator/types/SendFundsNavigator";
 import { BaseComposite, StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
+import TranslatedError from "~/components/TranslatedError";
 import { ScreenName } from "~/const";
 import { accountScreenSelector } from "~/reducers/accounts";
 import { currencySettingsForAccountSelector } from "~/reducers/settings";
 import type { State } from "~/reducers/types";
+import { MemoTagDrawer } from "LLM/features/MemoTag/components/MemoTagDrawer";
+import { useMemoTagInput } from "LLM/features/MemoTag/hooks/useMemoTagInput";
+import { hasMemoDisclaimer } from "LLM/features/MemoTag/utils/hasMemoTag";
 import DomainServiceRecipientRow from "./DomainServiceRecipientRow";
 import RecipientRow from "./RecipientRow";
+import perFamilySendSelectRecipient from "../../generated/SendSelectRecipient";
+import {
+  getTokenExtensions,
+  hasProblematicExtension,
+} from "@ledgerhq/live-common/families/solana/token";
+import { urls } from "~/utils/urls";
+import LText from "~/components/LText";
+import SupportLinkError from "~/components/SupportLinkError";
 
 const withoutHiddenError = (error: Error): Error | null =>
   error instanceof RecipientRequired ? null : error;
 
-type Props = BaseComposite<
+type Navigation = BaseComposite<
   StackNavigatorProps<SendFundsNavigatorStackParamList, ScreenName.SendSelectRecipient>
 >;
+type Props = Pick<Navigation, "route">;
 
-export default function SendSelectRecipient({ navigation, route }: Props) {
+const openSplTokenExtensionsArticle = () => Linking.openURL(urls.solana.splTokenExtensions);
+
+export default function SendSelectRecipient({ route }: Props) {
+  const navigation = useNavigation<Navigation["navigation"]>();
   const { colors } = useTheme();
   const { t } = useTranslation();
   const { account, parentAccount } = useSelector(accountScreenSelector(route));
@@ -129,6 +145,17 @@ export default function SendSelectRecipient({ navigation, route }: Props) {
     [account, parentAccount, setTransaction, transaction],
   );
 
+  const memoTag = useMemoTagInput(
+    mainAccount.currency.family,
+    useCallback(
+      patch => {
+        const bridge = getAccountBridge(account, parentAccount);
+        setTransaction(bridge.updateTransaction(transaction, patch(transaction)));
+      },
+      [account, parentAccount, setTransaction, transaction],
+    ),
+  );
+
   const [bridgeErr, setBridgeErr] = useState(bridgeError);
   useEffect(() => setBridgeErr(bridgeError), [bridgeError]);
 
@@ -146,8 +173,28 @@ export default function SendSelectRecipient({ navigation, route }: Props) {
     setTransaction(bridge.updateTransaction(transaction, {}));
   }, [setTransaction, account, parentAccount, transaction]);
 
-  const onPressContinue = useCallback(async () => {
-    // ERC721 transactions are always sending 1 NFT, so amount step is unecessary
+  const [memoTagDrawerState, setMemoTagDrawerState] = useState<MemoTagDrawerState>(
+    MemoTagDrawerState.INITIAL,
+  );
+  const [focusMemoInput, setFocusMemoInput] = useState(false);
+
+  const handleMemoTagDrawerClose = useCallback(
+    () => setMemoTagDrawerState(MemoTagDrawerState.SHOWN),
+    [],
+  );
+
+  const onPressContinue = useCallback(() => {
+    if (
+      memoTag?.isEmpty &&
+      memoTagDrawerState === MemoTagDrawerState.INITIAL &&
+      hasMemoDisclaimer(currency)
+    ) {
+      return setMemoTagDrawerState(MemoTagDrawerState.SHOWING);
+    }
+
+    track("SendRecipientContinue");
+
+    // ERC721 transactions are always sending 1 NFT, so amount step is unnecessary
     if (shouldSkipAmount) {
       return navigation.navigate(ScreenName.SendSummary, {
         ...route.params,
@@ -180,6 +227,9 @@ export default function SendSelectRecipient({ navigation, route }: Props) {
     navigation,
     parentAccount?.id,
     route.params,
+    memoTag?.isEmpty,
+    memoTagDrawerState,
+    currency,
   ]);
 
   if (!account || !transaction) return null;
@@ -192,7 +242,27 @@ export default function SendSelectRecipient({ navigation, route }: Props) {
       !isConfirmedOperation(op, mainAccount, currencySettings.confirmationsNb),
   );
 
+  const specific =
+    perFamilySendSelectRecipient[
+      mainAccount.currency.family as keyof typeof perFamilySendSelectRecipient
+    ];
+  const CustomRecipientAlert =
+    specific && "StepRecipientCustomAlert" in specific ? specific.StepRecipientCustomAlert : null;
+  const customSendRecipientCanNext =
+    specific && "sendRecipientCanNext" in specific ? specific.sendRecipientCanNext : null;
+
+  const customValidationSuccess = customSendRecipientCanNext?.(status) ?? true;
+  const isContinueDisabled =
+    !customValidationSuccess ||
+    debouncedBridgePending ||
+    !!status.errors.recipient ||
+    memoTag?.isDebouncePending ||
+    !!memoTag?.error ||
+    !!status.errors.sender;
+
   const stuckAccountAndOperation = getStuckAccountAndOperation(account, mainAccount);
+  const extensions = getTokenExtensions(account);
+
   return (
     <>
       <SafeAreaView
@@ -235,6 +305,24 @@ export default function SendSelectRecipient({ navigation, route }: Props) {
             ]}
             keyboardShouldPersistTaps="handled"
           >
+            {status.errors.sender ? (
+              <View style={[styles.senderErrorBox]}>
+                <LText testID="send-sender-error-title" color="alert">
+                  <TranslatedError error={status.errors.sender} field="title" />
+                </LText>
+                <LText
+                  testID="send-sender-error-description"
+                  style={[styles.warningBox]}
+                  color="alert"
+                >
+                  <TranslatedError error={status.errors.sender} field="description" />
+                </LText>
+                <View style={[styles.senderLinkErrorBox]}>
+                  <SupportLinkError error={status.errors.sender} type="alert" />
+                </View>
+              </View>
+            ) : null}
+
             <Button
               event="SendRecipientQR"
               type="tertiary"
@@ -252,7 +340,7 @@ export default function SendSelectRecipient({ navigation, route }: Props) {
                   },
                 ]}
               />
-              <LText color="grey">{<Trans i18nKey="common.or" />}</LText>
+              <Text color="neutral.c70">{t("common.or")}</Text>
               <View
                 style={[
                   styles.separatorLine,
@@ -283,32 +371,71 @@ export default function SendSelectRecipient({ navigation, route }: Props) {
                 error={error}
               />
             )}
+
+            {CustomRecipientAlert && (
+              <View style={styles.customRecipientAlertContainer}>
+                <CustomRecipientAlert status={status} />
+              </View>
+            )}
+
+            {memoTag?.Input && (
+              <View style={styles.memoTagInputContainer}>
+                <memoTag.Input
+                  testID="memo-tag-input"
+                  placeholder={t("send.summary.memo.title")}
+                  autoFocus={focusMemoInput}
+                  onChange={memoTag.handleChange}
+                />
+                <Text mt={4} pl={2} color="alert">
+                  <TranslatedError error={memoTag.error} />
+                </Text>
+              </View>
+            )}
+
             {isSomeIncomingTxPending ? (
               <View style={styles.pendingIncomingTxWarning}>
                 <Alert type="warning">{t("send.pendingTxWarning")}</Alert>
               </View>
             ) : null}
-            {(!isDomainResolutionEnabled || !isCurrencySupported) &&
-            transaction.recipient &&
-            !(error || warning) ? (
+            {
               <View style={styles.infoBox}>
                 <Alert type="primary">{t("send.recipient.verifyAddress")}</Alert>
               </View>
+            }
+            {extensions && hasProblematicExtension(extensions) ? (
+              <Alert testID="spl-2022-problematic-extension" type="warning">
+                <Trans i18nKey="send.spl2022.splExtensionsWarning">
+                  <Text
+                    onPress={openSplTokenExtensionsArticle}
+                    style={styles.spl2022LinkLabel}
+                    variant="bodyLineHeight"
+                    fontWeight="semiBold"
+                  />
+                </Trans>
+              </Alert>
             ) : null}
           </NavigationScrollView>
           <View style={styles.container}>
             <Button
               testID="recipient-continue-button"
-              event="SendRecipientContinue"
               type="primary"
               title={<Trans i18nKey="common.continue" />}
-              disabled={debouncedBridgePending || !!status.errors.recipient}
+              disabled={isContinueDisabled}
               pending={debouncedBridgePending}
               onPress={onPressContinue}
             />
           </View>
         </KeyboardView>
       </SafeAreaView>
+
+      <MemoTagDrawer
+        open={memoTagDrawerState === MemoTagDrawerState.SHOWING}
+        onClose={handleMemoTagDrawerClose}
+        onModalHide={
+          () => requestAnimationFrame(() => setFocusMemoInput(true)) // Focus memo input after drawer finishes animating
+        }
+        onNext={onPressContinue}
+      />
 
       <GenericErrorBottomModal
         error={bridgeErr}
@@ -328,6 +455,28 @@ export default function SendSelectRecipient({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
+  senderErrorBox: {
+    marginTop: 8,
+    marginBottom: 8,
+    ...Platform.select({
+      android: {
+        marginLeft: 6,
+        marginBottom: 6,
+      },
+    }),
+  },
+  warningBox: {
+    marginTop: 8,
+    ...Platform.select({
+      android: {
+        marginLeft: 6,
+      },
+    }),
+  },
+  senderLinkErrorBox: {
+    display: "flex",
+    alignItems: "flex-start",
+  },
   root: {
     flex: 1,
   },
@@ -336,8 +485,15 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     backgroundColor: "transparent",
   },
+  customRecipientAlertContainer: {
+    marginTop: 8,
+  },
+  memoTagInputContainer: {
+    marginTop: 32,
+  },
   infoBox: {
     marginTop: 24,
+    paddingBottom: 24,
   },
   pendingIncomingTxWarning: {
     marginBottom: 8,
@@ -360,4 +516,13 @@ const styles = StyleSheet.create({
   buttonRight: {
     marginLeft: 8,
   },
+  spl2022LinkLabel: {
+    textDecorationLine: "underline",
+  },
 });
+
+enum MemoTagDrawerState {
+  INITIAL,
+  SHOWING,
+  SHOWN,
+}

@@ -31,6 +31,10 @@ export type WalletState = {
 export type ExportedWalletState = {
   walletSyncState: WSState;
   nonImportedAccountInfos: NonImportedAccountInfo[];
+  accountsData: {
+    accountNames: Array<[string, string]>;
+    starredAccountIds: string[];
+  };
 };
 
 export const initialState: WalletState = {
@@ -79,7 +83,9 @@ export const handlers: WalletHandlers = {
     const accountNames = new Map();
     const starredAccountIds = new Set<string>();
     accountsUserData.forEach(accountUserData => {
-      accountNames.set(accountUserData.id, accountUserData.name);
+      if (accountUserData.name) {
+        accountNames.set(accountUserData.id, accountUserData.name);
+      }
       for (const starredId of accountUserData.starredIds) {
         starredAccountIds.add(starredId);
       }
@@ -119,11 +125,10 @@ export const handlers: WalletHandlers = {
   ADD_ACCOUNTS: (state, { payload: { allAccounts, editedNames } }) => {
     const accountNames = new Map(state.accountNames);
     for (const account of allAccounts) {
-      const name =
-        editedNames.get(account.id) ||
-        accountNames.get(account.id) ||
-        getDefaultAccountName(account);
-      accountNames.set(account.id, name);
+      const name = editedNames.get(account.id) || accountNames.get(account.id);
+      if (name && name !== getDefaultAccountName(account)) {
+        accountNames.set(account.id, name);
+      }
     }
     return { ...state, accountNames };
   },
@@ -168,7 +173,15 @@ export const initAccounts = (accounts: Account[], accountsUserData: AccountUserD
  */
 export const importWalletState = (payload: Partial<ExportedWalletState>) => ({
   type: "IMPORT_WALLET_SYNC",
-  payload,
+  payload: {
+    ...payload,
+    ...(payload?.accountsData?.accountNames
+      ? { accountNames: new Map(payload.accountsData.accountNames) }
+      : {}),
+    ...(payload?.accountsData?.starredAccountIds
+      ? { starredAccountIds: new Set(payload.accountsData.starredAccountIds) }
+      : {}),
+  },
 });
 
 export const walletSyncUpdate = (data: DistantState | null, version: number) => ({
@@ -189,7 +202,7 @@ export const accountNameSelector = (
 ): string | undefined => state.accountNames.get(accountId);
 
 export const accountNameWithDefaultSelector = (state: WalletState, account: AccountLike): string =>
-  state.accountNames.get(account.id) || getDefaultAccountName(account);
+  state?.accountNames?.get(account.id) || getDefaultAccountName(account);
 
 export const isStarredAccountSelector = (
   state: WalletState,
@@ -245,12 +258,18 @@ export const accountRawToAccountUserData = (raw: AccountRaw): AccountUserData =>
 export const exportWalletState = (state: WalletState): ExportedWalletState => ({
   walletSyncState: state.walletSyncState,
   nonImportedAccountInfos: state.nonImportedAccountInfos,
+  accountsData: {
+    accountNames: Array.from(state.accountNames),
+    starredAccountIds: Array.from(state.starredAccountIds),
+  },
 });
 
 export const walletStateExportShouldDiffer = (a: WalletState, b: WalletState): boolean => {
   return (
     a.walletSyncState !== b.walletSyncState ||
-    a.nonImportedAccountInfos !== b.nonImportedAccountInfos
+    a.nonImportedAccountInfos !== b.nonImportedAccountInfos ||
+    a.accountNames !== b.accountNames ||
+    a.starredAccountIds !== b.starredAccountIds
   );
 };
 

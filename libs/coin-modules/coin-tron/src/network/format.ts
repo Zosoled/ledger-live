@@ -1,5 +1,5 @@
 import get from "lodash/get";
-import { TrongridExtraTxInfo, TrongridTxInfo, TronTransactionInfo } from "../types";
+import { TrongridExtraTxInfo, TrongridTxInfo, TrongridTxType, TronTransactionInfo } from "../types";
 import { TransactionTronAPI, Trc20API } from "./types";
 import BigNumber from "bignumber.js";
 import { log } from "@ledgerhq/logs";
@@ -12,29 +12,46 @@ export const encode58Check = (hex: string): string => bs58check.encode(Buffer.fr
 
 export const formatTrongridTrc20TxResponse = (tx: Trc20API): TrongridTxInfo | null | undefined => {
   try {
-    const { from, to, block_timestamp, detail, value, transaction_id, token_info } = tx;
-    const type = "TriggerSmartContract";
+    const { from, to, block_timestamp, detail, value, transaction_id, token_info, type } = tx;
     const txID = transaction_id;
-    const date = new Date(block_timestamp);
-    const tokenId = token_info.address ?? undefined;
-    const formattedValue = value ? new BigNumber(value) : new BigNumber(0);
+    let txType: TrongridTxType;
+    let tokenId: string | undefined;
     const fee = tx.detail.ret[0].fee || undefined;
+    const bnFee = new BigNumber(fee || 0);
+    let formattedValue;
+
+    switch (type) {
+      case "Approval":
+        txType = "ContractApproval";
+        formattedValue = bnFee;
+        break;
+      default:
+        txType = "TriggerSmartContract";
+        tokenId = token_info.address ?? undefined;
+        formattedValue = value ? new BigNumber(value) : new BigNumber(0);
+        break;
+    }
+
+    const date = new Date(block_timestamp);
+
     const blockHeight = detail ? detail.blockNumber : undefined;
     return {
       txID,
       date,
-      type,
-      tokenId,
+      type: txType,
+      tokenId: tokenId,
+      tokenAddress: token_info.address,
+      tokenType: "trc20",
       from,
       to,
       blockHeight,
       value: formattedValue,
-      fee: new BigNumber(fee || 0),
+      fee: bnFee,
       hasFailed: false, // trc20 txs are succeeded if returned by trongrid,
     };
   } catch (e) {
-    log("tron-error", "could not parse transaction", tx);
-    return undefined;
+    log("tron-error", `could not parse transaction ${tx}`);
+    throw e;
   }
 };
 
@@ -89,6 +106,8 @@ export const formatTrongridTxResponse = (
       date,
       type,
       tokenId,
+      // TRX native is TransferContract
+      tokenType: type === "TransferAssetContract" ? "trc10" : undefined,
       from,
       to,
       value: !value.isNaN() ? value : new BigNumber(0),

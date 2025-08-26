@@ -3,12 +3,24 @@ import Button from "~/renderer/components/Button";
 import { Trans } from "react-i18next";
 import Box from "~/renderer/components/Box";
 import { useDispatch } from "react-redux";
-import { hideNftCollection } from "~/renderer/actions/settings";
-const Footer = ({ onClose, collectionId }: { onClose: () => void; collectionId: string }) => {
+import { updateNftStatus } from "~/renderer/actions/settings";
+import { SupportedBlockchain } from "@ledgerhq/live-nft/supported";
+import { NftStatus } from "@ledgerhq/live-nft/types";
+
+const Footer = ({
+  onClose,
+  collectionId,
+  blockchain,
+}: {
+  onClose: () => void;
+  collectionId: string;
+  blockchain: SupportedBlockchain;
+}) => {
   const dispatch = useDispatch();
+
   const confirmHideNftCollection = useCallback(
-    (collectionId: string) => {
-      dispatch(hideNftCollection(collectionId));
+    (collectionId: string, blockchain: SupportedBlockchain) => {
+      dispatch(updateNftStatus(blockchain, collectionId, NftStatus.blacklisted));
     },
     [dispatch],
   );
@@ -20,7 +32,7 @@ const Footer = ({ onClose, collectionId }: { onClose: () => void; collectionId: 
       <Button
         data-testid="modal-confirm-button"
         onClick={() => {
-          confirmHideNftCollection(collectionId);
+          confirmHideNftCollection(collectionId, blockchain);
           onClose();
         }}
         primary

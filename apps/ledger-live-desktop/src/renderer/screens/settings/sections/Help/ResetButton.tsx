@@ -11,11 +11,14 @@ import Button from "~/renderer/components/Button";
 import Alert from "~/renderer/components/Alert";
 import IconTriangleWarning from "~/renderer/icons/TriangleWarning";
 import { ActionModalReducer, ActionModalState, useActionModal } from "./logic";
+
 export default function ResetButton() {
   const { t } = useTranslation();
   const hardReset = useHardReset();
   const [state, actions] = useActionModal();
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const { opened, pending, fallbackOpened } = state as ActionModalState;
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const { open, close, closeFallback, handleConfirm, handleError } = actions as ActionModalReducer;
   const onConfirm = useCallback(async () => {
     if (pending) return;
@@ -30,7 +33,7 @@ export default function ResetButton() {
   }, [pending, handleConfirm, handleError, hardReset]);
   return (
     <>
-      <Button small danger onClick={open} event="HardResetIntent">
+      <Button data-testid="reset-button" small danger onClick={open} event="HardResetIntent">
         {t("common.reset")}
       </Button>
 
@@ -48,7 +51,7 @@ export default function ResetButton() {
         desc={
           <Box>
             {t("settings.hardResetModal.desc")}
-            <Alert type="warning" mt={4}>
+            <Alert data-testid="warning-message" type="warning" mt={4}>
               {t("settings.hardResetModal.warning")}
             </Alert>
           </Box>

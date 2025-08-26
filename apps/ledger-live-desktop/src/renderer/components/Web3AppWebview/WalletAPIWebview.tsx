@@ -2,7 +2,6 @@
 
 import { addPendingOperation } from "@ledgerhq/live-common/account/index";
 import { useToasts } from "@ledgerhq/live-common/notifications/ToastProvider/index";
-import { TrackFunction } from "@ledgerhq/live-common/platform/tracking";
 import {
   ExchangeType,
   UiHook,
@@ -32,49 +31,91 @@ import { track } from "~/renderer/analytics/segment";
 import SelectAccountAndCurrencyDrawer from "~/renderer/drawers/DataSelector/SelectAccountAndCurrencyDrawer";
 import { OperationDetails } from "~/renderer/drawers/OperationDetails";
 import { setDrawer } from "~/renderer/drawers/Provider";
-import { shareAnalyticsSelector } from "~/renderer/reducers/settings";
+import { mevProtectionSelector, shareAnalyticsSelector } from "~/renderer/reducers/settings";
 import { walletSelector } from "~/renderer/reducers/wallet";
 import { getStoreValue, setStoreValue } from "~/renderer/store";
-import { updateAccountWithUpdater } from "../../actions/accounts";
-import { openModal } from "../../actions/modals";
-import { flattenAccountsSelector } from "../../reducers/accounts";
+import { updateAccountWithUpdater } from "~/renderer/actions/accounts";
+import { openModal } from "~/renderer/actions/modals";
+import { flattenAccountsSelector } from "~/renderer/reducers/accounts";
 import BigSpinner from "../BigSpinner";
 import { NetworkErrorScreen } from "./NetworkError";
 import { NoAccountOverlay } from "./NoAccountOverlay";
 import { useWebviewState } from "./helpers";
 import { Loader } from "./styled";
 import { WebviewAPI, WebviewProps, WebviewTag } from "./types";
+import { HOOKS_TRACKING_LOCATIONS } from "~/renderer/analytics/hooks/variables";
+import {
+  useModularDrawerVisibility,
+  ModularDrawerLocation,
+  openAssetAndAccountDrawer,
+} from "LLD/features/ModularDrawer";
 
 const wallet = { name: "ledger-live-desktop", version: __APP_VERSION__ };
 
-function useUiHook(manifest: AppManifest, tracking: Record<string, TrackFunction>): UiHook {
+function useUiHook(manifest: AppManifest, tracking: TrackingAPI): UiHook {
   const { pushToast } = useToasts();
   const { t } = useTranslation();
   const dispatch = useDispatch();
 
+  const { isModularDrawerVisible } = useModularDrawerVisibility({
+    modularDrawerFeatureFlagKey: "lldModularDrawer",
+  });
+
+  const modularDrawerVisible = isModularDrawerVisible({
+    location: ModularDrawerLocation.LIVE_APP,
+    liveAppId: manifest.id,
+  });
+
+  const source =
+    currentRouteNameRef.current === "Platform Catalog"
+      ? "Discover"
+      : currentRouteNameRef.current ?? "Unknown";
+
+  const flow = manifest.name;
+
   return useMemo(
     () => ({
-      "account.request": ({ accounts$, currencies, onSuccess, onCancel }) => {
+      "account.request": ({ accounts$, currencies, drawerConfiguration, onSuccess, onCancel }) => {
         ipcRenderer.send("show-app", {});
-        setDrawer(
-          SelectAccountAndCurrencyDrawer,
-          {
-            currencies,
-            onAccountSelected: (account, parentAccount) => {
-              setDrawer();
-              onSuccess(account, parentAccount);
-            },
-            accounts$,
-          },
-          {
-            onRequestClose: () => {
-              setDrawer();
-              onCancel();
-            },
-          },
-        );
+
+        modularDrawerVisible
+          ? openAssetAndAccountDrawer({
+              accounts$,
+              drawerConfiguration,
+              currencies,
+              onSuccess,
+              onCancel,
+              flow,
+              source,
+            })
+          : setDrawer(
+              SelectAccountAndCurrencyDrawer,
+              {
+                currencies,
+                onAccountSelected: (account, parentAccount) => {
+                  setDrawer();
+                  onSuccess(account, parentAccount);
+                },
+                accounts$,
+                flow,
+                source,
+              },
+              {
+                onRequestClose: () => {
+                  setDrawer();
+                  onCancel();
+                },
+              },
+            );
       },
-      "account.receive": ({ account, parentAccount, accountAddress, onSuccess, onError }) => {
+      "account.receive": ({
+        account,
+        parentAccount,
+        accountAddress,
+        onSuccess,
+        onError,
+        onCancel,
+      }) => {
         ipcRenderer.send("show-app", {});
         dispatch(
           openModal("MODAL_EXCHANGE_CRYPTO_DEVICE", {
@@ -84,16 +125,19 @@ function useUiHook(manifest: AppManifest, tracking: Record<string, TrackFunction
               onSuccess(accountAddress);
             },
             onCancel: onError,
+            onClose: onCancel,
             verifyAddress: true,
           }),
         );
       },
-      "message.sign": ({ account, message, onSuccess, onError, onCancel }) => {
+      "message.sign": ({ account, message, options, onSuccess, onError, onCancel }) => {
         ipcRenderer.send("show-app", {});
         dispatch(
           openModal("MODAL_SIGN_MESSAGE", {
             account,
             message,
+            useApp: options?.hwAppId,
+            dependencies: options?.dependencies,
             onConfirmationHandler: onSuccess,
             onFailHandler: onError,
             onClose: onCancel,
@@ -101,7 +145,7 @@ function useUiHook(manifest: AppManifest, tracking: Record<string, TrackFunction
         );
       },
       "storage.get": ({ key, storeId }) => {
-        return getStoreValue(key, storeId) as string | undefined;
+        return getStoreValue(key, storeId);
       },
       "storage.set": ({ key, value, storeId }) => {
         setStoreValue(key, value, storeId);
@@ -121,12 +165,14 @@ function useUiHook(manifest: AppManifest, tracking: Record<string, TrackFunction
             stepId: canEditFees && !hasFeesProvided ? "amount" : "summary",
             transactionData: liveTx,
             useApp: options?.hwAppId,
+            dependencies: options?.dependencies,
             account,
             parentAccount,
             onResult: onSuccess,
             onCancel: onError,
             manifestId: manifest.id,
             manifestName: manifest.name,
+            location: HOOKS_TRACKING_LOCATIONS.genericDAppTransactionSend,
           }),
         );
       },
@@ -148,7 +194,7 @@ function useUiHook(manifest: AppManifest, tracking: Record<string, TrackFunction
             setDrawer(OperationDetails, {
               operationId: optimisticOperation.id,
               accountId: account.id,
-              parentId: parentAccount?.id as string | undefined | null,
+              parentId: parentAccount?.id,
             });
           },
         });
@@ -204,7 +250,7 @@ function useUiHook(manifest: AppManifest, tracking: Record<string, TrackFunction
         );
       },
     }),
-    [dispatch, manifest, pushToast, t, tracking],
+    [modularDrawerVisible, flow, source, dispatch, manifest, pushToast, t, tracking],
   );
 }
 
@@ -229,13 +275,15 @@ function useWebView(
     manifest,
     customHandlers,
     currentAccountHistDb,
-  }: Pick<WebviewProps, "manifest" | "customHandlers" | "currentAccountHistDb">,
+    inputs,
+  }: Pick<WebviewProps, "manifest" | "customHandlers" | "currentAccountHistDb" | "inputs">,
   webviewRef: RefObject<WebviewTag>,
   tracking: TrackingAPI,
   serverRef: React.MutableRefObject<WalletAPIServer | undefined>,
   customWebviewStyle?: React.CSSProperties,
 ) {
   const accounts = useSelector(flattenAccountsSelector);
+  const mevProtected = useSelector(mevProtectionSelector);
 
   const uiHook = useUiHook(manifest, tracking);
   const shareAnalytics = useSelector(shareAnalyticsSelector);
@@ -245,6 +293,7 @@ function useWebView(
     userId,
     tracking: shareAnalytics,
     wallet,
+    mevProtected,
   });
 
   const webviewHook = useMemo(() => {
@@ -287,6 +336,8 @@ function useWebView(
     postMessage: webviewHook.postMessage,
     currentAccountHistDb,
     tracking,
+    initialAccountId: inputs?.accountId?.toString(),
+    mevProtected,
   });
 
   const handleMessage = useCallback(
@@ -358,6 +409,7 @@ export const WalletAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
       onStateChange,
       hideLoader,
       webviewStyle: customWebviewStyle,
+      Loader = DefaultLoader,
     },
     ref,
   ) => {
@@ -386,11 +438,8 @@ export const WalletAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
 
     const serverRef = useRef<WalletAPIServer>();
 
-    const { webviewState, webviewRef, webviewProps, handleRefresh } = useWebviewState(
-      { manifest, inputs },
-      ref,
-      serverRef,
-    );
+    const { webviewState, webviewRef, webviewProps, handleRefresh, webviewPartition } =
+      useWebviewState({ manifest, inputs }, ref, serverRef);
     useEffect(() => {
       if (onStateChange) {
         onStateChange(webviewState);
@@ -402,6 +451,7 @@ export const WalletAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
         manifest,
         customHandlers,
         currentAccountHistDb,
+        inputs,
       },
       webviewRef,
       tracking,
@@ -444,15 +494,22 @@ export const WalletAPIWebview = forwardRef<WebviewAPI, WebviewProps>(
           // eslint-disable-next-line react/no-unknown-property
           webpreferences={`nativeWindowOpen=no${isDapp ? ", contextIsolation=no" : ""}`}
           {...webviewProps}
+          {...webviewPartition}
         />
-        {!widgetLoaded && !hideLoader ? (
-          <Loader>
-            <BigSpinner size={50} />
-          </Loader>
-        ) : null}
+        {!hideLoader ? <Loader manifest={manifest} isLoading={!widgetLoaded} /> : null}
       </>
     );
   },
 );
+
+function DefaultLoader({ isLoading }: { isLoading: boolean }) {
+  if (!isLoading) return null;
+
+  return (
+    <Loader>
+      <BigSpinner size={50} />
+    </Loader>
+  );
+}
 
 WalletAPIWebview.displayName = "WalletAPIWebview";

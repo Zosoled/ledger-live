@@ -3,7 +3,49 @@ import { Language as DeviceLanguages, languageIds } from "@ledgerhq/types-live";
 /**
  * This is the only place new language should be added.
  */
-export const LanguageIds = ["en", "fr", "de", "ru", "es", "ja", "tr", "ko", "zh", "pt"] as const;
+export const LanguageIds = [
+  "en",
+  "fr",
+  "de",
+  "ru",
+  "es",
+  "ja",
+  "tr",
+  "ko",
+  "zh",
+  "pt",
+  "th",
+] as const;
+
+export const LanguageIdsNotFeatureFlagged = [
+  "en",
+  "fr",
+  "de",
+  "ru",
+  "es",
+  "ja",
+  "tr",
+  "ko",
+  "zh",
+  "pt",
+] as const;
+
+export const OFAC_LOCALES = [
+  "fa-AF",
+  "ps-AF",
+  "uz-AF",
+  "be-BY",
+  "es-CU",
+  "fa-IR",
+  "ar-IQ",
+  "ko-KP",
+  "ru-RU",
+  "nus-SD",
+  "ar-SD",
+  "ar-SY",
+  "fr-SY",
+  "my-MM",
+];
 
 /**
  * This is the only place new locale should be added.
@@ -20,6 +62,7 @@ export const LanguageLocaleIds = {
   ru: ["ru-RU"],
   tr: ["tr-TR"],
   zh: ["zh-CN"],
+  th: ["th-TH"],
 } as const satisfies LanguageMap<readonly LanguagePrefixed[]>;
 
 /**
@@ -92,7 +135,7 @@ export const Languages = {
     label: "Deutsch",
     locales: buildLocales(LanguageLocaleIds.de),
 
-    deviceSupport: undefined,
+    deviceSupport: { label: "german", id: languageIds.german },
   },
   ja: {
     id: "ja",
@@ -113,21 +156,21 @@ export const Languages = {
     label: "Português (Brasil)",
     locales: buildLocales(LanguageLocaleIds.pt),
 
-    deviceSupport: undefined,
+    deviceSupport: { label: "brazilian", id: languageIds.brazilian },
   },
   ru: {
     id: "ru",
     label: "Русский",
     locales: buildLocales(LanguageLocaleIds.ru),
 
-    deviceSupport: undefined,
+    deviceSupport: { label: "russian", id: languageIds.russian },
   },
   tr: {
     id: "tr",
     label: "Türkçe",
     locales: buildLocales(LanguageLocaleIds.tr),
 
-    deviceSupport: undefined,
+    deviceSupport: { label: "turkish", id: languageIds.turkish },
   },
   zh: {
     id: "zh",
@@ -135,6 +178,13 @@ export const Languages = {
     locales: buildLocales(LanguageLocaleIds.zh),
 
     deviceSupport: undefined,
+  },
+  th: {
+    id: "th",
+    label: "ภาษาไทย",
+    locales: buildLocales(LanguageLocaleIds.th),
+
+    deviceSupport: { label: "thai", id: languageIds.thai },
   },
 } as const satisfies LanguageMap<LanguageDefinition>;
 

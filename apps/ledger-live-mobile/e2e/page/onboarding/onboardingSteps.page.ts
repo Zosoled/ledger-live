@@ -1,24 +1,18 @@
-import { tapByElement, getElementById, waitForElementById, tapById } from "../../helpers";
 import { ModelId } from "../../models/devices";
 import { expect } from "detox";
 
 export default class OnboardingStepsPage {
   getStartedButtonId = "onboarding-getStarted-button";
+  acceptAnalyticsButtonId = "accept-analytics-button";
   exploreWithoutDeviceButtonId = "discoverLive-exploreWithoutADevice";
-  readyToScanButtonID = "onboarding-scan-button";
-  scanAndImportAccountsPageID = "onboarding-import-accounts-title";
   discoverLiveTitle = (index: number) => `onboarding-discoverLive-${index}-title`;
   onboardingGetStartedButton = () => getElementById(this.getStartedButtonId);
+  acceptAnalyticsButton = () => getElementById(this.acceptAnalyticsButtonId);
   accessWalletButton = () => getElementById("onboarding-accessWallet");
   noLedgerYetButton = () => getElementById("onboarding-noLedgerYet");
   exploreAppButton = () => getElementById("onboarding-noLedgerYetModal-explore");
   buyLedgerButton = () => getElementById("onboarding-noLedgerYetModal-buy");
-  exploreWithoutDeviceButton = () => getElementById(this.exploreWithoutDeviceButtonId);
   connectLedgerButton = () => getElementById("Existing Wallet | Connect");
-  syncWithLedgerLiveDesktop = () => getElementById("Existing Wallet | Sync");
-  readyToScanButton = () => getElementById(this.readyToScanButtonID);
-  pairNanoButton = () => getElementById("Onboarding-PairNewNano");
-  maybeLaterButton = () => getElementById("notifications-prompt-later");
 
   setupLedger = "onboarding-setupLedger";
   selectDevice = (device: ModelId) => `onboarding-device-selection-${device}`;
@@ -36,7 +30,6 @@ export default class OnboardingStepsPage {
   existingRecoveryPhrase2Cta = "onboarding-existingRecoveryPhrase2-cta";
   deviceNotCompatibleModal = "onboarding-deviceNotCompatible-modal";
   deviceNotCompatibleClose = "onboarding-deviceNotCompatible-close";
-  devicePairedContinue = "onboarding-paired-continue";
 
   newWallet = "onboarding-useCase-newWallet";
   stepNewDeviceTitle = (index: number) => `onboarding-stepNewDevice-title${index}`;
@@ -58,6 +51,12 @@ export default class OnboardingStepsPage {
   async startOnboarding() {
     await waitForElementById(this.getStartedButtonId);
     await tapByElement(this.onboardingGetStartedButton());
+    await waitForElementById(new RegExp(`${this.setupLedger}|${this.acceptAnalyticsButtonId}`));
+    try {
+      await tapByElement(this.acceptAnalyticsButton());
+    } catch {
+      // Analytics prompt not enabled
+    }
   }
 
   // Exploring App
@@ -86,24 +85,13 @@ export default class OnboardingStepsPage {
     await tapByElement(this.connectLedgerButton());
   }
 
-  async chooseToSyncWithLedgerLiveDesktop() {
-    await tapByElement(this.syncWithLedgerLiveDesktop());
-  }
-
-  async goesThroughLedgerLiveDesktopScanning() {
-    await tapByElement(this.readyToScanButton());
-  }
-
-  async waitForScanningPage() {
-    await waitForElementById(this.scanAndImportAccountsPageID);
-  }
-
   // Setup new Ledger
   async chooseSetupLedger() {
     await tapById(this.setupLedger);
   }
 
   async chooseDevice(device: ModelId) {
+    await scrollToId(this.selectDevice(device));
     await tapById(this.selectDevice(device));
   }
 
@@ -156,13 +144,5 @@ export default class OnboardingStepsPage {
       await tapById(this.quizzCta);
     }
     await tapById(this.quizzFinalCta);
-  }
-
-  async selectPairMyNano() {
-    await tapByElement(this.pairNanoButton());
-  }
-
-  async declineNotifications() {
-    await tapByElement(this.maybeLaterButton());
   }
 }

@@ -35,7 +35,13 @@ function getEntryFromOptions<Item>(opts: Opts<Item>): EntryComponent<Item> {
     }, [onPress, item]);
 
     return (
-      <SettingsRow title={formatItem(item)} onPress={onPressAction} selected={!!selected} compact />
+      <SettingsRow
+        title={formatItem(item)}
+        onPress={onPressAction}
+        selected={!!selected}
+        compact
+        testID={`compact-settings-row-${formatItem(item)}`}
+      />
     );
   };
 
@@ -90,6 +96,7 @@ export default function makeGenericSelectScreen<Item extends { value: string; la
             renderItem={this.renderItem}
             keyExtractor={keyExtractor}
             contentContainerStyle={styles.root}
+            scrollIndicatorInsets={{ right: 1 }}
           />
         </Box>
       );

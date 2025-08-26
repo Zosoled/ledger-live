@@ -1,6 +1,6 @@
 import BigNumber from "bignumber.js";
 import { isValidClassicAddress } from "ripple-address-codec";
-import { getAccountInfo, NEW_ACCOUNT_ERROR_MESSAGE } from "../network";
+import { getAccountInfo } from "../network";
 
 export const UINT32_MAX = new BigNumber(2).pow(32).minus(1);
 
@@ -15,29 +15,42 @@ export const validateTag = (tag: BigNumber) => {
 
 export const getNextValidSequence = async (address: string) => {
   const accInfo = await getAccountInfo(address, true);
-  return accInfo.account_data.Sequence;
+  return accInfo.sequence;
 };
 
 function isRecipientValid(recipient: string): boolean {
   return isValidClassicAddress(recipient);
 }
 
+// --- 10-Seconds Cache Implementation ---
+type CacheEntry = {
+  value: boolean;
+  expiresAt: number;
+};
+
+const recipientCache = new Map<string, CacheEntry>();
+const TTL = 10 * 1000; // 10 seconds
+
 const recipientIsNew = async (recipient: string): Promise<boolean> => {
   if (!isRecipientValid(recipient)) return false;
 
   const info = await getAccountInfo(recipient);
-  if (info.error === NEW_ACCOUNT_ERROR_MESSAGE) {
-    return true;
-  }
-  return false;
+  return info.isNewAccount;
 };
 
-const cacheRecipientsNew: Record<string, boolean> = {};
-export const cachedRecipientIsNew = async (recipient: string) => {
-  if (recipient in cacheRecipientsNew) return cacheRecipientsNew[recipient];
-  cacheRecipientsNew[recipient] = await recipientIsNew(recipient);
-  return cacheRecipientsNew[recipient];
-};
-export const removeCachedRecipientIsNew = (recipient: string) => {
-  delete cacheRecipientsNew[recipient];
+export const cachedRecipientIsNew = async (recipient: string): Promise<boolean> => {
+  const now = Date.now();
+  const cached = recipientCache.get(recipient);
+
+  if (cached && now < cached.expiresAt) {
+    return cached.value;
+  }
+
+  const isNew = await recipientIsNew(recipient);
+  recipientCache.set(recipient, {
+    value: isNew,
+    expiresAt: now + TTL,
+  });
+
+  return isNew;
 };

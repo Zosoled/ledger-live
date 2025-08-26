@@ -2,7 +2,10 @@ import { Device } from "@ledgerhq/types-devices";
 import { type CLSSupportedDeviceModelId } from "@ledgerhq/live-common/device/use-cases/isCustomLockScreenSupported";
 import { ScreenName } from "~/const";
 import { CropResult } from "../../CustomImage/ImageCropper";
-import { ProcessorPreviewResult, ProcessorRawResult } from "../../CustomImage/ImageProcessor";
+import {
+  ProcessorPreviewResult,
+  ProcessorRawResult,
+} from "../../CustomImage/ImageToDeviceProcessor";
 import { GalleryNFT, ImageFileUri, ImageUrl, ImageType } from "../../CustomImage/types";
 
 type BaseParams = {
@@ -16,6 +19,7 @@ type WithMandatoryDeviceModelId = {
 type WithOptionalDeviceModelId = {
   // in some cases (deeplink, navigation from an NFT, etc), the deviceModelId is undetermined
   deviceModelId: CLSSupportedDeviceModelId | null;
+  referral?: string;
 };
 
 type PreviewPreEditAdditionalParams = (ImageUrl | ImageFileUri | GalleryNFT) & {
@@ -54,5 +58,6 @@ export type CustomImageNavigatorParamList = {
       imageType: ImageType;
       rawData: ProcessorRawResult;
       previewData: ProcessorPreviewResult;
+      referral?: string;
     };
 };

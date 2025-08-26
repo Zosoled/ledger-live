@@ -17,14 +17,20 @@ import {
   NFTStandard,
   Operation,
   OperationType,
-  SubAccount,
+  TokenAccount,
   TransactionCommon,
   MessageProperties,
+  AccountLike,
 } from "@ledgerhq/types-live";
 // FIXME: ideally we need to have <A,T,TS> parametric version of StepProps
 import { StepProps as SendStepProps } from "../modals/Send/types";
 import { StepProps as ReceiveStepProps } from "../modals/Receive/Body";
 import { StepProps as AddAccountsStepProps } from "../modals/AddAccounts";
+
+export type AddressCellProps<O extends Operation> = {
+  operation: O;
+  currency: CryptoCurrency;
+};
 
 export type AmountCellExtraProps<O extends Operation> = {
   operation: O;
@@ -56,6 +62,12 @@ export type AmountTooltipProps<O extends Operation> = {
   amount: BigNumber;
 };
 
+export type OperationDetailsPostAccountSectionProps<A extends Account, O extends Operation> = {
+  operation: O;
+  account: A;
+  type: OperationType;
+};
+
 export type OperationDetailsExtraProps<A extends Account, O extends Operation> = {
   operation: O;
   account: A;
@@ -83,6 +95,11 @@ export type LLDCoinFamily<
   O extends Operation,
 > = {
   operationDetails?: {
+    /**
+     * Replace address cell
+     */
+    addressCell?: Partial<Record<OperationType, React.ComponentType<AddressCellProps<O>>>>;
+
     /**
      * Cell amount before the amount cell in operation row
      */
@@ -116,9 +133,21 @@ export type LLDCoinFamily<
     getURLFeesInfo?: (_: { op: O; currencyId: string }) => string | null | undefined;
 
     /**
+     * Add custom component after the Account section in operation details drawer
+     */
+    OperationDetailsPostAccountSection?: React.ComponentType<
+      OperationDetailsPostAccountSectionProps<A, O>
+    >;
+
+    /**
      * Add extra info
      */
     OperationDetailsExtra?: React.ComponentType<OperationDetailsExtraProps<A, O>>;
+
+    /**
+     * Add custom component at the end in operation details drawer
+     */
+    OperationDetailsPostAlert?: React.ComponentType<OperationDetailsExtraProps<A, O>>;
   };
 
   accountActions?: {
@@ -126,7 +155,7 @@ export type LLDCoinFamily<
      * Custom Send button action on account page header
      */
     SendAction?: React.ComponentType<{
-      account: A | SubAccount;
+      account: A | TokenAccount;
       parentAccount: A | null | undefined;
       onClick: () => void;
     }>;
@@ -135,7 +164,7 @@ export type LLDCoinFamily<
      * Custom Receive button action on account page header
      */
     ReceiveAction?: React.ComponentType<{
-      account: A | SubAccount;
+      account: A | TokenAccount;
       parentAccount: A | null | undefined;
       onClick: () => void;
     }>;
@@ -145,7 +174,7 @@ export type LLDCoinFamily<
    * allow to add buttons on account page header before swap and buy button
    */
   accountHeaderManageActions?: (_: {
-    account: A | SubAccount;
+    account: A | TokenAccount;
     parentAccount: A | null | undefined;
     source?: string;
   }) => ManageAction[] | null | undefined;
@@ -157,7 +186,7 @@ export type LLDCoinFamily<
     fieldComponents?: Record<string, React.ComponentType<FieldComponentProps<A, T, TS>>>;
 
     warning?: React.ComponentType<{
-      account: A | SubAccount;
+      account: A | TokenAccount;
       parentAccount: A | null | undefined;
       transaction: T;
       status: TS;
@@ -165,10 +194,11 @@ export type LLDCoinFamily<
     }>;
 
     title?: React.ComponentType<{
-      account: A | SubAccount;
+      account: A | TokenAccount;
       parentAccount: A | null | undefined;
       transaction: T;
       status: TS;
+      device: Device;
     }>;
 
     footer?: React.ComponentType<{
@@ -180,7 +210,7 @@ export type LLDCoinFamily<
    * Allow to add component between graph and delegations / operation details section
    */
   AccountBodyHeader?: React.ComponentType<{
-    account: A | SubAccount;
+    account: A | TokenAccount;
     parentAccount: A | null | undefined;
   }>;
 
@@ -188,12 +218,12 @@ export type LLDCoinFamily<
    * Allow to add component below account body header
    */
   AccountSubHeader?: React.ComponentType<{
-    account: A | SubAccount;
+    account: A | TokenAccount;
     parentAccount: A | null | undefined;
   }>;
 
   AccountFooter?: React.ComponentType<{
-    account: A | SubAccount;
+    account: A | TokenAccount;
     parentAccount?: A | undefined | null;
     status: TS;
   }>;
@@ -216,6 +246,7 @@ export type LLDCoinFamily<
       bridgePending?: boolean;
       trackProperties?: Record<string, unknown>;
       transactionToUpdate?: T;
+      disableEditGasLimit?: boolean;
     }>;
     fields?: string[];
   };
@@ -223,7 +254,7 @@ export type LLDCoinFamily<
   /**
    * Allow to add component below recipient field
    *
-   * FIXME: account will have to be A | SubAccount
+   * FIXME: account will have to be A | TokenAccount
    */
   sendRecipientFields?: {
     component: React.ComponentType<{
@@ -238,6 +269,11 @@ export type LLDCoinFamily<
     }>;
     fields?: string[];
   };
+
+  /**
+   * Allow to disable "Continue" button on Recipient step in Send modal
+   */
+  sendRecipientCanNext?: (status: TS) => boolean;
 
   /**
    *  One time modal that is trigger only one time on a account that never send
@@ -261,7 +297,7 @@ export type LLDCoinFamily<
    * Component that change footer of graph
    */
   AccountBalanceSummaryFooter?: React.ComponentType<{
-    account: A | SubAccount;
+    account: A | TokenAccount;
     counterValue: Currency;
     discreetMode: boolean;
   }>;
@@ -278,6 +314,11 @@ export type LLDCoinFamily<
   };
 
   /**
+   * Allow to add component below the token select on Account step in Receive modal
+   */
+  StepReceiveAccountCustomAlert?: React.ComponentType<ReceiveStepProps & { account: AccountLike }>;
+
+  /**
    * Change Receive funds with this component (example: Hedera)
    */
   StepReceiveFunds?: React.ComponentType<ReceiveStepProps>;
@@ -291,6 +332,21 @@ export type LLDCoinFamily<
    * Replace Networkfees row on Summary Step
    */
   StepSummaryNetworkFeesRow?: React.ComponentType<SummaryNetworkFeesRowProps>;
+
+  /**
+   * Allow to add specific component in Send modal below the recipient address
+   */
+  StepRecipientCustomAlert?: React.ComponentType<{ status: TS }>;
+
+  /**
+   * Allow to add specific component in Send modal at the end of Summary Step
+   */
+  StepSummaryAdditionalRows?: React.ComponentType<{
+    account: A | TokenAccount;
+    parentAccount: A | null | undefined;
+    transaction: T;
+    status: TS;
+  }>;
 
   /**
    * It was for Hedera specifc, when we do not find any account it show a specific component
@@ -331,7 +387,7 @@ export type FieldComponentProps<
   T extends TransactionCommon,
   TS extends TransactionStatus,
 > = {
-  account: A | SubAccount;
+  account: A | TokenAccount;
   parentAccount: A | undefined | null;
   transaction: T;
   status: TS;

@@ -40,6 +40,14 @@ def trim_version_number(version)
   SemVer.parse(version).format "%M.%m.%p"
 end
 
+def handle_dry_run(options, action_name)
+  if options[:dry_run]
+    UI.important "🔍 DRY RUN MODE - #{action_name} will be skipped"
+    return true
+  end
+  false
+end
+
 lane :beta do |options|
   ensure_git_status_clean
 
@@ -91,21 +99,6 @@ platform :ios do
   desc "private: refresh profiles"
   private_lane :refresh_ios_profiles do
     match(
-      type: "development",
-      app_identifier: ["com.ledger.live", "com.ledger.live.dev"],
-      force: true,
-      force_for_new_devices: true,
-      include_all_certificates: true,
-      force_for_new_certificates: true,
-      generate_apple_certs: true,
-      git_url: ENV["GIT_REPO_URL"],
-      username: ENV["APPLE_ID"],
-      team_id: ENV["DEVELOPER_TEAM_ID"],
-      keychain_name: ENV["CI_KEYCHAIN_NAME"],
-      keychain_password: ENV["CI_KEYCHAIN_PASSWORD"],
-      git_basic_authorization: Base64.strict_encode64("#{ENV["GIT_REPO_USER"]}:#{ENV["GH_TOKEN"]}"),
-    )
-    match(
       type: "adhoc",
       app_identifier: ["com.ledger.live", "com.ledger.live.dev"],
       force: true,
@@ -130,6 +123,30 @@ platform :ios do
       keychain_password: ENV["CI_KEYCHAIN_PASSWORD"],
       git_basic_authorization: Base64.strict_encode64("#{ENV["GIT_REPO_USER"]}:#{ENV["GH_TOKEN"]}"),
     )
+    match(
+      type: "appstore",
+      app_identifier: "com.ledger.live.nightly",
+      force: true,
+      generate_apple_certs: true,
+      git_url: ENV["GIT_REPO_URL"],
+      username: ENV["APPLE_ID"],
+      team_id: ENV["DEVELOPER_TEAM_ID"],
+      keychain_name: ENV["CI_KEYCHAIN_NAME"],
+      keychain_password: ENV["CI_KEYCHAIN_PASSWORD"],
+      git_basic_authorization: Base64.strict_encode64("#{ENV["GIT_REPO_USER"]}:#{ENV["GH_TOKEN"]}"),
+    )
+    match(
+      type: "appstore",
+      app_identifier: "com.ledger.live.prerelease",
+      force: true,
+      generate_apple_certs: true,
+      git_url: ENV["GIT_REPO_URL"],
+      username: ENV["APPLE_ID"],
+      team_id: ENV["DEVELOPER_TEAM_ID"],
+      keychain_name: ENV["CI_KEYCHAIN_NAME"],
+      keychain_password: ENV["CI_KEYCHAIN_PASSWORD"],
+      git_basic_authorization: Base64.strict_encode64("#{ENV["GIT_REPO_USER"]}:#{ENV["GH_TOKEN"]}"),
+    )
   end
 
   desc "buid for deployment (app-store or ad-hoc)"
@@ -139,7 +156,7 @@ platform :ios do
     MY_APP_BUNDLE_ID = ENV["MY_APP_BUNDLE_ID"]
     MY_APP_ID = ENV["APP_IDENTIFIER"]
 
-    MY_PROFILE = (options[:adhoc] ? "match AdHoc #{MY_APP_BUNDLE_ID}" : "match AppStore #{MY_APP_BUNDLE_ID}")
+    MY_PROFILE = (options[:adhoc] ? "match AdHoc #{MY_APP_BUNDLE_ID} 1754305777" : "match AppStore #{MY_APP_BUNDLE_ID}")
     MY_TEAM = ENV["DEVELOPER_TEAM_ID"]
 
     if (!options[:local])
@@ -151,7 +168,9 @@ platform :ios do
 
       build_number = latest_testflight_build_number(
         version: trim_version_number(package["version"]),
-        app_identifier: "com.ledger.live"
+        # we are moving to using ENV["APP_IDENTIFIER"] but staging still overrides its own app identifier to 
+        # publish to com.ledger.live . This will be removed once we are are fully publishing to separate apps
+        app_identifier: !options[:adhoc] ? ENV["APP_IDENTIFIER"] : "com.ledger.live"
       )
 
       increment_build_number({
@@ -161,10 +180,11 @@ platform :ios do
 
       if (options[:ci])
         sh(
-          <<-SHELL
-          echo "IOS_BUILD_NUMBER=#{build_number+1}" >> $GITHUB_ENV
-          SHELL
-        )
+            <<-SHELL
+              temp_ios_build_number_assignment="IOS_BUILD_NUMBER=#{build_number+1}"
+              echo $temp_ios_build_number_assignment | tee -a $GITHUB_ENV
+            SHELL
+          )
       end
     end
 
@@ -243,6 +263,7 @@ platform :ios do
         gym(
           scheme: PROJECT_NAME,
           workspace: XCODE_WORKSPACE,
+          configuration: ENV["APP_CONFIGURATION"],
           silent: true,
           xcargs: `#{settings_to_override} -UseNewBuildSystem=YES`,
           output_directory: OUTPUT_DIRECTORY,
@@ -250,9 +271,7 @@ platform :ios do
           export_options: {
             method: export_options_method,
             signingStyle: "manual",
-            provisioningProfiles: {
-                MY_APP_ID => MY_PROFILE
-            }
+            provisioningProfiles: ENV['MATCH_PROVISIONING_PROFILE_MAPPING']
           },
         )
       end
@@ -279,9 +298,8 @@ platform :ios do
       begin
         pilot(
           skip_submission: false,
-          app_identifier: "com.ledger.live",
+          app_identifier: ENV["APP_IDENTIFIER"],
           skip_waiting_for_build_processing: true,
-          # wait_processing_timeout_duration: 1800, # 30mn
           ipa: IPA_DIRECTORY,
           changelog: "Nightly Build v#{package['version']} (#{build_number})",
           beta_app_review_info: {
@@ -290,25 +308,24 @@ platform :ios do
             notes: "test nightly builds"
           }
         )
-
-        # pilot(
-        #   distribute_only: true,
-        #   groups: ["External Nightly"],
-        #   distribute_external: true,
-        #   app_identifier: "com.ledger.live",
-        #   app_platform: 'ios',
-        #   app_version: package["version"],
-        #   build_number: get_build_number(xcodeproj: "ios/ledgerlivemobile.xcodeproj"),
-        #   notify_external_testers: true,
-        #   reject_build_waiting_for_review: !options[:ci],
-        #   skip_waiting_for_build_processing: false,
-        #   wait_processing_timeout_duration: 1800, # 30mn
-        # )
       rescue => e
         raise unless e.message.include? "Another build is in review"
 
         UI.important("Another build is already in external beta review. Skipping external beta review submission")
       end
+    elsif (options[:prerelease])
+      pilot(
+        skip_submission: false,
+        app_identifier: ENV["APP_IDENTIFIER"],
+        skip_waiting_for_build_processing: true,
+        ipa: IPA_DIRECTORY,
+        changelog: "Prerelease Build v#{package['version']} (#{build_number})",
+        beta_app_review_info: {
+          contact_email: "team-live@ledger.fr",
+          contact_first_name: "Ledger Live",
+          notes: "test prerelease builds"
+        }
+      )
     else
       pilot(
         skip_submission: true,
@@ -333,19 +350,34 @@ platform :ios do
 
   desc "ci: create testflight version"
   lane :ci_testflight do |options|
+    if options[:dry_run]
+      UI.important "🔍 DRY RUN MODE - No actual upload will be performed"
+    end
+    
     setup_ios_ci
     build(ci: true)
-    upload(ci: true)
+    
+    unless options[:dry_run]
+      upload(
+        prerelease: true,
+        ci: true
+      )
+    else
+      UI.success "✅ DRY RUN: Build completed successfully (upload skipped)"
+    end
   end
 
   desc "ci: create nightly version"
   lane :ci_nightly do |options|
     setup_ios_ci
     build(ci: true)
-    upload(
-      nightly: true,
-      ci: true
-    )
+    
+    unless handle_dry_run(options, "nightly upload")
+      upload(
+        nightly: true,
+        ci: true
+      )
+    end
   end
 
   desc "ci: create adhoc version"
@@ -453,7 +485,8 @@ platform :android do
           "android.injected.signing.key.alias" => ENV["ANDROID_KEY_ALIAS"],
           "android.injected.signing.key.password" => ENV["ANDROID_KEY_PASS"],
         },
-        project_dir: 'android/'
+        project_dir: 'android/',
+        flags: ' -Dorg.gradle.workers.max=2 -Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=750m"'
       )
     end
   end
@@ -501,27 +534,40 @@ platform :android do
   end
 
   desc "build APKs + AAB and send the AAB to the Google Play Store "
-  lane :ci_playstore do
+  lane :ci_playstore do |options|
+    if options[:dry_run]
+      UI.important "🔍 DRY RUN MODE - No actual upload will be performed"
+    end
+    
     prepare_android_internal
     build(
       type: "Release",
       ci: true,
       apk_and_aab: true
     )
-    upload(ci: true)
+    
+    unless options[:dry_run]
+      upload(ci: true)
+    else
+      UI.success "✅ DRY RUN: Build completed successfully (upload skipped)"
+    end
   end
 
   desc "build nightly version"
-  lane :ci_nightly do
+  lane :ci_nightly do |options|
     prepare_android_internal
     build(
       type: "Release",
-      ci: true
+      ci: true,
+      apk_and_aab: true
     )
-    upload(
-      nightly: true,
-      ci: true
-    )
+    
+    unless handle_dry_run(options, "nightly upload")
+      upload(
+        nightly: true,
+        ci: true
+      )
+    end
   end
 
   desc "build recover version"

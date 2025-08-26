@@ -1,25 +1,25 @@
 import React from "react";
 import { Flex, Text } from "@ledgerhq/react-ui";
 
-import { DeviceModelId, getDeviceModel } from "@ledgerhq/devices";
+import { DeviceModelId } from "@ledgerhq/devices";
 import Animation from "~/renderer/animations";
 import styled, { useTheme } from "styled-components";
 import { DeviceBlocker } from "~/renderer/components/DeviceAction/DeviceBlocker";
 import { getDeviceAnimation } from "~/renderer/components/DeviceAction/animations";
 import { useTranslation } from "react-i18next";
+import { getProductName } from "~/newArch/utils/getProductName";
 
 type Props = {
   modelId: DeviceModelId;
   isDeviceBlocker?: boolean;
 };
 
-const getProductName = (modelId: DeviceModelId) =>
-  getDeviceModel(modelId)?.productName.replace("Ledger", "").trimStart() || modelId;
-
 export default function FollowStepsOnDevice({ modelId, isDeviceBlocker }: Props) {
-  const { theme } = useTheme();
+  const { colors } = useTheme();
+  const theme = colors.palette.type;
   const { t } = useTranslation();
   const wording = getProductName(modelId);
+
   return (
     <>
       {isDeviceBlocker ? <DeviceBlocker /> : null}

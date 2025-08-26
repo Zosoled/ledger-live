@@ -4,7 +4,13 @@ import Modal from "~/renderer/components/Modal";
 import Body, { StepId } from "./Body";
 import { useDispatch, useSelector } from "react-redux";
 import { accountsSelector } from "~/renderer/reducers/accounts";
-import { openModal, closeModal } from "~/renderer/actions/modals";
+import { useTrackReceiveFlow } from "~/renderer/analytics/hooks/useTrackReceiveFlow";
+import { trackingEnabledSelector } from "~/renderer/reducers/settings";
+import { getCurrentDevice } from "~/renderer/reducers/devices";
+import { HOOKS_TRACKING_LOCATIONS } from "~/renderer/analytics/hooks/variables";
+import { ModularDrawerLocation } from "LLD/features/ModularDrawer";
+import { useOpenAssetFlow } from "LLD/features/ModularDrawer/hooks/useOpenAssetFlow";
+import { closeModal } from "~/renderer/actions/modals";
 
 type State = {
   stepId: StepId;
@@ -21,6 +27,15 @@ const ReceiveModal = () => {
   const [state, setState] = useState<State>(INITIAL_STATE);
 
   const { stepId, isAddressVerified, verifyAddressError } = state;
+
+  const device = useSelector(getCurrentDevice);
+
+  useTrackReceiveFlow({
+    location: HOOKS_TRACKING_LOCATIONS.receiveModal,
+    device,
+    verifyAddressError,
+    isTrackingEnabled: useSelector(trackingEnabledSelector),
+  });
 
   const setStepId = useCallback((newStepId: State["stepId"]) => {
     setState(prevState => ({ ...prevState, stepId: newStepId }));
@@ -51,23 +66,26 @@ const ReceiveModal = () => {
   // Making sure at least one account exists, if not, redirecting to the add account modal
   const accounts = useSelector(accountsSelector);
 
-  const dispatch = useDispatch();
   const hasAccounts = !!accounts.length;
 
+  const { openAssetFlow } = useOpenAssetFlow(
+    { location: ModularDrawerLocation.ADD_ACCOUNT },
+    "receive",
+    "MODAL_RECEIVE",
+  );
+
+  const dispatch = useDispatch();
+
   const openAddAccounts = useCallback(() => {
+    openAssetFlow(true);
     dispatch(closeModal("MODAL_RECEIVE"));
-    dispatch(
-      openModal("MODAL_ADD_ACCOUNTS", {
-        currency: null,
-      }),
-    );
-  }, [dispatch]);
+  }, [dispatch, openAssetFlow]);
 
   useEffect(() => {
     if (!hasAccounts) {
       openAddAccounts();
     }
-  }, [hasAccounts, openAddAccounts]);
+  }, [dispatch, hasAccounts, openAddAccounts, setStepId]);
 
   if (!hasAccounts) return null;
 

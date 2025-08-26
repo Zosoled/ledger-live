@@ -21,6 +21,7 @@ import {
   useSystemLanguageSelector,
 } from "~/renderer/reducers/settings";
 import ChangeDeviceLanguagePromptDrawer from "./ChangeDeviceLanguagePromptDrawer";
+import { useSupportedLanguages } from "~/renderer/hooks/useSupportedLanguages";
 
 type ChangeLangArgs = { value: Language | null; label: string };
 
@@ -28,12 +29,13 @@ type Props = {
   disableLanguagePrompt?: boolean;
 };
 
-const LanguageSelect: React.FC<Props> = ({ disableLanguagePrompt }) => {
+const LanguageSelectComponent: React.FC<Props> = ({ disableLanguagePrompt }) => {
   const useSystem = useSelector(useSystemLanguageSelector);
   const language = useSelector(languageSelector);
   const lastSeenDevice = useSelector(lastSeenDeviceSelector);
   const { t, i18n } = useTranslation();
   const dispatch = useDispatch();
+  const supportedLanguages = useSupportedLanguages().languages;
 
   const { availableLanguages: availableDeviceLanguages } = useAvailableLanguagesForDevice(
     lastSeenDevice?.deviceInfo,
@@ -53,17 +55,18 @@ const LanguageSelect: React.FC<Props> = ({ disableLanguagePrompt }) => {
 
   const languages = useMemo(
     () =>
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       [{ value: null as Language | null, label: t(`language.system`) }].concat(
-        (Object.keys(Languages) as Array<keyof typeof Languages>).map(language => {
-          return {
-            value: language,
-            label: Languages[language].label,
-          };
-        }),
+        // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+        (Object.keys(supportedLanguages) as Array<keyof typeof Languages>).map(language => ({
+          value: language,
+          label: Languages[language].label,
+        })),
       ),
-    [t],
+    [supportedLanguages, t],
   );
 
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const selectedLanguage = useMemo(
     () => (useSystem ? languages[0] : languages.find(l => l.value === language)),
     [language, languages, useSystem],
@@ -73,7 +76,9 @@ const LanguageSelect: React.FC<Props> = ({ disableLanguagePrompt }) => {
   };
 
   useEffect(() => {
-    i18n.changeLanguage(language);
+    if (i18n.language !== language) {
+      i18n.changeLanguage(language);
+    }
   }, [i18n, language]);
 
   const openDrawer = useCallback(
@@ -92,9 +97,6 @@ const LanguageSelect: React.FC<Props> = ({ disableLanguagePrompt }) => {
     },
     [lastSeenDevice, refreshDeviceInfo],
   );
-
-  const avoidEmptyValue = (language?: ChangeLangArgs | null) =>
-    language && handleChangeLanguage(language);
 
   const handleChangeLanguage = useCallback(
     (language?: ChangeLangArgs) => {
@@ -130,6 +132,11 @@ const LanguageSelect: React.FC<Props> = ({ disableLanguagePrompt }) => {
     ],
   );
 
+  const avoidEmptyValue = useCallback(
+    (language?: ChangeLangArgs | null) => language && handleChangeLanguage(language),
+    [handleChangeLanguage],
+  );
+
   return (
     <>
       <Track onUpdate event="LanguageSelect" currentRegion={selectedLanguage.value} />
@@ -145,12 +152,15 @@ const LanguageSelect: React.FC<Props> = ({ disableLanguagePrompt }) => {
         minWidth={260}
         isSearchable={false}
         onChange={avoidEmptyValue}
-        renderSelected={(item: { name: unknown } | undefined) => item && item.name}
+        renderSelected={(item: { label: string } | undefined) => item && item.label}
         value={selectedLanguage}
         options={languages}
       />
     </>
   );
 };
+
+const LanguageSelect = React.memo(LanguageSelectComponent);
+LanguageSelect.displayName = "LanguageSelect";
 
 export default LanguageSelect;

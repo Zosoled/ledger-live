@@ -21,10 +21,10 @@ import { accountsSelector } from "~/reducers/accounts";
 import { sharedSwapTracking } from "../utils";
 import { walletSelector } from "~/reducers/wallet";
 import { accountNameWithDefaultSelector } from "@ledgerhq/live-wallet/store";
+import { AddAccountContexts } from "LLM/features/Accounts/screens/AddAccount/enums";
 
 export function SelectAccount({ navigation, route: { params } }: SelectAccountParamList) {
   const { provider, target, selectableCurrencyIds, selectedCurrency } = params;
-
   const { track } = useAnalytics();
   const unfilteredAccounts = useSelector(accountsSelector);
 
@@ -146,8 +146,7 @@ export function SelectAccount({ navigation, route: { params } }: SelectAccountPa
       account: "account",
       button: "new source account",
     });
-    // @ts-expect-error navigation type is only partially declared
-    navigation.navigate(NavigatorName.AddAccounts, {
+    navigation.navigate(NavigatorName.AssetSelection, {
       screen: ScreenName.AddAccountsSelectCrypto,
       params: {
         returnToSwap: true,
@@ -156,6 +155,8 @@ export function SelectAccount({ navigation, route: { params } }: SelectAccountPa
           navigation.navigate(ScreenName.SwapSelectAccount, params);
         },
         analyticsPropertyFlow: "swap",
+        context: AddAccountContexts.AddAccounts,
+        sourceScreenName: ScreenName.SwapSelectAccount,
       },
     });
   }, [navigation, params, selectableCurrencyIds, track]);

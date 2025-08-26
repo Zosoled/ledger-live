@@ -4,6 +4,7 @@ import { fetchNftsFromSimpleHash } from "@ledgerhq/live-nft/api/simplehash";
 import { ProtoNFT } from "@ledgerhq/types-live";
 import { NFTS_QUERY_KEY } from "../queryKeys";
 import { NftGalleryFilterResult, HookProps } from "./types";
+import { hashProtoNFT } from "./helpers";
 
 /**
  * useNftGalleryFilter() will apply a spam filtering on top of existing NFT data.
@@ -17,6 +18,8 @@ export function useNftGalleryFilter({
   nftsOwned,
   chains,
   threshold,
+  enabled,
+  staleTime,
 }: HookProps): NftGalleryFilterResult {
   const queryResult = useInfiniteQuery({
     queryKey: [NFTS_QUERY_KEY.SpamFilter, addresses, chains],
@@ -24,13 +27,16 @@ export function useNftGalleryFilter({
       fetchNftsFromSimpleHash({ addresses, chains, cursor: pageParam, threshold }),
     initialPageParam: undefined,
     getNextPageParam: lastPage => lastPage.next_cursor,
-    enabled: addresses.length > 0,
+    enabled: enabled && addresses.length > 0,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    staleTime: staleTime ?? 1000 * 60 * 10,
   });
 
   // for performance, we hashmap the list of nfts by hash.
   const nftsWithProperties = useMemo(
     () =>
-      new Map(nftsOwned.map(obj => [hashProtoNFT(obj.contract, obj.tokenId, obj.currencyId), obj])),
+      new Map(nftsOwned.map(obj => [hashProtoNFT(obj.contract, obj.currencyId, obj.tokenId), obj])),
     [nftsOwned],
   );
 
@@ -39,7 +45,7 @@ export function useNftGalleryFilter({
     if (queryResult.data) {
       for (const page of queryResult.data.pages) {
         for (const nft of page.nfts) {
-          const hash = hashProtoNFT(nft.contract_address, nft.token_id, nft.chain);
+          const hash = hashProtoNFT(nft.contract_address, nft.chain, nft.token_id);
           const existing = nftsWithProperties.get(hash);
           if (existing) {
             nfts.push(existing);
@@ -51,12 +57,4 @@ export function useNftGalleryFilter({
   }, [queryResult, nftsWithProperties]);
 
   return out;
-}
-
-function hashProtoNFT(contract: string, tokenId: string, currencyId: string): string {
-  return `${contract}|${tokenId}|${currencyId}`;
-}
-
-export function isThresholdValid(threshold?: string | number): boolean {
-  return Number(threshold) >= 0 && Number(threshold) <= 100;
 }

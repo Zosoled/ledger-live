@@ -5,7 +5,7 @@ import { formatCurrencyUnit, getCurrencyColor } from "@ledgerhq/live-common/curr
 import { getMaxDelegationAvailable } from "@ledgerhq/live-common/families/cosmos/logic";
 import { useLedgerFirstShuffledValidatorsCosmosFamily } from "@ledgerhq/live-common/families/cosmos/react";
 import { CosmosAccount, CosmosValidatorItem } from "@ledgerhq/live-common/families/cosmos/types";
-import cosmosBase from "@ledgerhq/live-common/families/cosmos/chain/cosmosBase";
+import cosmosBase from "@ledgerhq/coin-cosmos/chain/cosmosBase";
 import { AccountLike } from "@ledgerhq/types-live";
 import { Text } from "@ledgerhq/native-ui";
 import { useTheme } from "@react-navigation/native";
@@ -31,6 +31,9 @@ import { StackNavigatorProps } from "~/components/RootNavigator/types/helpers";
 import { CosmosDelegationFlowParamList } from "./types";
 import Config from "react-native-config";
 import { useAccountUnit } from "~/hooks/useAccountUnit";
+import TranslatedError from "~/components/TranslatedError";
+import { AddressesSanctionedError } from "@ledgerhq/coin-framework/sanction/errors";
+import SupportLinkError from "~/components/SupportLinkError";
 
 type Props = StackNavigatorProps<
   CosmosDelegationFlowParamList,
@@ -102,11 +105,11 @@ export default function DelegationSummary({ navigation, route }: Props) {
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [route.params, updateTransaction, bridge, setTransaction, chosenValidator]);
+  }, [route.params, updateTransaction, setTransaction, chosenValidator]);
 
   const [rotateAnim] = useState(() => new Animated.Value(0));
   useEffect(() => {
-    if (!Config.MOCK) {
+    if (!Config.DETOX) {
       Animated.loop(
         Animated.sequence([
           Animated.timing(rotateAnim, {
@@ -244,6 +247,17 @@ export default function DelegationSummary({ navigation, route }: Props) {
         </View>
       </View>
       <View style={styles.footer}>
+        {status.errors.sender && status.errors.sender instanceof AddressesSanctionedError ? (
+          <>
+            <Text color="alert">
+              <TranslatedError error={status.errors.sender} />
+            </Text>
+            <Text color="alert">
+              <TranslatedError error={status.errors.sender} field="description" />
+            </Text>
+            <SupportLinkError error={status.errors.sender} type="alert" />
+          </>
+        ) : null}
         <Button
           event="SummaryContinue"
           type="primary"

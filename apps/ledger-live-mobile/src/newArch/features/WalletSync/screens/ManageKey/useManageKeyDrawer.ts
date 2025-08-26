@@ -1,31 +1,29 @@
 import { useNavigation } from "@react-navigation/native";
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
 import { StackNavigatorNavigation } from "~/components/RootNavigator/types/helpers";
 import { WalletSyncNavigatorStackParamList } from "~/components/RootNavigator/types/WalletSyncNavigator";
-import { ScreenName } from "~/const";
-import { logDrawer } from "~/newArch/components/QueuedDrawer/utils/logDrawer";
+import { NavigatorName, ScreenName } from "~/const";
+import { logDrawer } from "LLM/components/QueuedDrawer/utils/logDrawer";
 import { useDestroyTrustchain } from "../../hooks/useDestroyTrustchain";
 import { UseMutationResult } from "@tanstack/react-query";
 import { useDispatch, useSelector } from "react-redux";
 import { setWallectSyncManageKeyDrawer } from "~/actions/walletSync";
 import { manageKeyDrawerSelector } from "~/reducers/walletSync";
+import { track } from "~/analytics";
+import { AnalyticsButton, AnalyticsPage } from "../../hooks/useLedgerSyncAnalytics";
+import { NavigationProps } from "~/screens/AccountSettings";
 
 const messageLog = "Follow Steps on device";
-
-export enum Scene {
-  Manage,
-  Confirm,
-}
 
 export type HookResult = {
   isDrawerVisible: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
   handleClose: () => void;
-  onClickDelete: () => void;
-  scene: Scene;
   onClickConfirm: () => Promise<void>;
   deleteMutation: UseMutationResult<void, Error, void, unknown>;
+  handleCancel: () => void;
+  onCreateKey: () => void;
 };
 
 export const useManageKeyDrawer = () => {
@@ -34,10 +32,6 @@ export const useManageKeyDrawer = () => {
   const isDrawerVisible = useSelector(manageKeyDrawerSelector);
 
   const dispatch = useDispatch();
-
-  const [scene, setScene] = useState(Scene.Manage);
-
-  const onClickDelete = () => setScene(Scene.Confirm);
 
   const openDrawer = useCallback(() => {
     dispatch(setWallectSyncManageKeyDrawer(true));
@@ -51,26 +45,50 @@ export const useManageKeyDrawer = () => {
   }, [dispatch]);
 
   const navigation = useNavigation<StackNavigatorNavigation<WalletSyncNavigatorStackParamList>>();
+  const baseNavigation = useNavigation<NavigationProps["navigation"]>();
 
   const handleClose = () => {
     closeDrawer();
-    setScene(Scene.Manage);
+
+    track("button_clicked", {
+      button: AnalyticsButton.Close,
+      page: AnalyticsPage.ManageBackup,
+    });
+  };
+
+  const handleCancel = () => {
+    closeDrawer();
+    track("button_clicked", {
+      button: AnalyticsButton.Keep,
+      page: AnalyticsPage.ConfirmDeleteBackup,
+    });
   };
 
   const onClickConfirm = async () => {
+    track("button_clicked", {
+      button: AnalyticsButton.Delete,
+      page: AnalyticsPage.ConfirmDeleteBackup,
+    });
+
     await deleteMutation.mutateAsync();
     closeDrawer();
     navigation.navigate(ScreenName.WalletSyncManageKeyDeleteSuccess);
+  };
+
+  const onCreateKey = () => {
+    baseNavigation.navigate(NavigatorName.WalletSync, {
+      screen: ScreenName.WalletSyncActivationProcess,
+    });
   };
 
   return {
     isDrawerVisible,
     openDrawer,
     closeDrawer,
-    handleClose,
-    onClickDelete,
-    scene,
     onClickConfirm,
     deleteMutation,
+    handleCancel,
+    handleClose,
+    onCreateKey,
   };
 };

@@ -12,34 +12,28 @@ import { GradientHover } from "~/renderer/drawers/OperationDetails/styledCompone
 import IconCheck from "~/renderer/icons/Check";
 import IconClock from "~/renderer/icons/Clock";
 import { openURL } from "~/renderer/linking";
-import { colors } from "~/renderer/styles/theme";
 import { track } from "~/renderer/analytics/segment";
 import {
   getSwapProvider,
   AdditionalProviderConfig,
 } from "@ledgerhq/live-common/exchange/providers/swap";
+import { IconWrapper, WrapperClock } from "../../../shared/shared-styles";
 
-const IconWrapper = styled(Box)`
-  background: ${colors.lightGreen};
-  color: ${colors.positiveGreen};
-  width: 50px;
-  height: 50px;
-  border-radius: 25px;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-`;
 const Pill = styled(Text)`
   user-select: text;
   border-radius: 4px;
   background: ${p => p.theme.colors.palette.text.shade10};
   padding: 3px 6px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
 `;
 const SwapIdWrapper = styled(Box).attrs(p => ({
   ff: "Inter",
   color: p.color || "palette.text.shade80",
   fontSize: 4,
   relative: true,
+  maxWidth: "100%",
 }))`
   padding-top: 24px;
 
@@ -58,16 +52,6 @@ const SwapIdWrapper = styled(Box).attrs(p => ({
     color: ${p => p.theme.colors.palette.text.shade100};
   }
 }
-`;
-const WrapperClock = styled(Box).attrs(() => ({
-  bg: "palette.background.paper",
-  color: "palette.text.shade60",
-}))`
-  border-radius: 50%;
-  position: absolute;
-  bottom: -2px;
-  right: -2px;
-  padding: 2px;
 `;
 
 const SwapCompleted = ({
@@ -99,7 +83,7 @@ const SwapCompleted = ({
       flow: "swap",
       button: "FeedbackForm",
     });
-    openURL("https://ledger.typeform.com/to/FIHc3fk2");
+    openURL("https://form.typeform.com/to/FIHc3fk2#source=desktop");
   };
 
   const SwapPill = ({ swapId }: { swapId: string }) => (
@@ -121,10 +105,23 @@ const SwapCompleted = ({
           <IconClock size={16} />
         </WrapperClock>
       </IconWrapper>
-      <Text mt={4} color="palette.text.shade100" ff="Inter|SemiBold" fontSize={5}>
+      <Text
+        mt={4}
+        color="palette.text.shade100"
+        data-testid="swap-completed-message"
+        ff="Inter|SemiBold"
+        fontSize={5}
+      >
         <Trans i18nKey={`swap2.exchangeDrawer.completed.title`} />
       </Text>
-      <Text mt={13} textAlign="center" color="palette.text.shade50" ff="Inter|Regular" fontSize={4}>
+      <Text
+        mt={13}
+        textAlign="center"
+        color="palette.text.shade50"
+        data-testid="swap-completed-description"
+        ff="Inter|Regular"
+        fontSize={4}
+      >
         <Trans
           i18nKey={`swap2.exchangeDrawer.completed.description`}
           values={{
@@ -155,7 +152,7 @@ const SwapCompleted = ({
             provider: getProviderName(provider),
           }}
         >
-          <FakeLink onClick={openProviderSupport}>
+          <FakeLink onClick={openProviderSupport} style={{ alignItems: "baseline" }}>
             <span
               style={{
                 marginRight: 4,

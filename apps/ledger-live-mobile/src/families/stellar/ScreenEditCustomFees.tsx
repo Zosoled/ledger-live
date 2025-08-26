@@ -52,12 +52,13 @@ function StellarEditCustomFees({ navigation, route }: NavigationProps) {
     setCustomFee(BigNumber(customFee || 0));
     const bridge = getAccountBridge(account, parentAccount);
     const { currentNavigation } = route.params;
-    // @ts-expect-error ask your mom about it
+    // @ts-expect-error: Type mismatch due to dynamic navigation params
     navigation.navigate(currentNavigation, {
       ...route.params,
       accountId: account.id,
       transaction: bridge.updateTransaction(transaction, {
         fees: BigNumber(customFee || 0),
+        customFees: { parameters: { fees: BigNumber(customFee || 0) } },
       }),
     });
   }, [customFee, account, parentAccount, route.params, navigation, transaction]);

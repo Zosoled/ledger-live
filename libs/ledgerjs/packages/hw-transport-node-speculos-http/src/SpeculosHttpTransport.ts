@@ -53,7 +53,7 @@ export default class SpeculosHttpTransport extends Transport {
   static open = (opts: SpeculosHttpTransportOpts): Promise<SpeculosHttpTransport> =>
     new Promise((resolve, reject) => {
       const instance = axios.create({
-        baseURL: `http://localhost:${opts.apiPort || "5000"}`,
+        baseURL: `${opts.baseURL || "http://localhost"}:${opts.apiPort || "5000"}`,
         timeout: opts.timeout,
       });
 
@@ -66,9 +66,16 @@ export default class SpeculosHttpTransport extends Transport {
         .then(response => {
           response.data.on("data", chunk => {
             log("speculos-event", chunk.toString());
-            const split = chunk.toString().replace("data: ", "");
-            const json = JSON.parse(split);
-            transport.automationEvents.next(json);
+            chunk
+              .toString()
+              .split("\n")
+              .forEach(line => {
+                if (line.startsWith("data: ")) {
+                  const jsonStr = line.slice("data: ".length);
+                  const json = JSON.parse(jsonStr);
+                  transport.automationEvents.next(json);
+                }
+              });
           });
           response.data.on("close", () => {
             log("speculos-event", "close");

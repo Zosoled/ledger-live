@@ -10,7 +10,6 @@ import {
   DangerouslyOverrideStatePayload,
   SettingsDismissBannerPayload,
   SettingsHideEmptyTokenAccountsPayload,
-  SettingsHideNftCollectionPayload,
   SettingsImportDesktopPayload,
   SettingsImportPayload,
   SettingsSetHasInstalledAnyAppPayload,
@@ -41,7 +40,6 @@ import {
   SettingsSetSwapSelectableCurrenciesPayload,
   SettingsSetThemePayload,
   SettingsShowTokenPayload,
-  SettingsUnhideNftCollectionPayload,
   SettingsUpdateCurrencyPayload,
   SettingsActionTypes,
   SettingsSetWalletTabNavigatorLastVisitedTabPayload,
@@ -69,6 +67,12 @@ import {
   SettingsClearDismissedContentCardsPayload,
   SettingsAddStarredMarketcoinsPayload,
   SettingsRemoveStarredMarketcoinsPayload,
+  SettingsSetFromLedgerSyncOnboardingPayload,
+  SettingsSetHasBeenRedirectedToPostOnboardingPayload,
+  SettingsSetMevProtectionPayload,
+  SettingsUpdateNftCollectionStatus,
+  SettingsSetSelectedTabPortfolioAssetsPayload,
+  SettingsSetIsRebornPayload,
 } from "./types";
 import { ImageType } from "~/components/CustomImage/types";
 
@@ -139,12 +143,11 @@ export const blacklistToken = createAction<SettingsBlacklistTokenPayload>(
   SettingsActionTypes.BLACKLIST_TOKEN,
 );
 export const showToken = createAction<SettingsShowTokenPayload>(SettingsActionTypes.SHOW_TOKEN);
-export const hideNftCollection = createAction<SettingsHideNftCollectionPayload>(
-  SettingsActionTypes.HIDE_NFT_COLLECTION,
+export const updateNftStatus = createAction<SettingsUpdateNftCollectionStatus>(
+  SettingsActionTypes.UPDATE_NFT_COLLECTION_STATUS,
 );
-export const unhideNftCollection = createAction<SettingsUnhideNftCollectionPayload>(
-  SettingsActionTypes.UNHIDE_NFT_COLLECTION,
-);
+export const resetNftStatus = createAction(SettingsActionTypes.RESET_NFT_COLLECTION_STATUS);
+
 export const dismissBanner = createAction<SettingsDismissBannerPayload>(
   SettingsActionTypes.SETTINGS_DISMISS_BANNER,
 );
@@ -218,6 +221,9 @@ export const setSensitiveAnalytics = createAction<SettingsSetSensitiveAnalyticsP
 export const setOnboardingHasDevice = createAction<SettingsSetOnboardingHasDevicePayload>(
   SettingsActionTypes.SET_ONBOARDING_HAS_DEVICE,
 );
+export const setIsReborn = createAction<SettingsSetIsRebornPayload>(
+  SettingsActionTypes.SET_IS_REBORN,
+);
 export const setOnboardingType = createAction<SettingsSetOnboardingTypePayload>(
   SettingsActionTypes.SET_ONBOARDING_TYPE,
 );
@@ -259,9 +265,15 @@ export const dangerouslyOverrideState = createAction<DangerouslyOverrideStatePay
   SettingsActionTypes.DANGEROUSLY_OVERRIDE_STATE,
 );
 
+/* NB: Protect is the former codename for Ledger Recover */
 export const setHasBeenUpsoldProtect = createAction<SettingsSetHasBeenUpsoldProtectPayload>(
   SettingsActionTypes.SET_HAS_BEEN_UPSOLD_PROTECT,
 );
+
+export const setHasBeenRedirectedToPostOnboarding =
+  createAction<SettingsSetHasBeenRedirectedToPostOnboardingPayload>(
+    SettingsActionTypes.SET_HAS_BEEN_REDIRECTED_TO_POST_ONBOARDING,
+  );
 
 export const setGeneralTermsVersionAccepted = createAction<SettingsSetGeneralTermsVersionAccepted>(
   SettingsActionTypes.SET_GENERAL_TERMS_VERSION_ACCEPTED,
@@ -281,6 +293,10 @@ export const setDismissedContentCard = createAction<SettingsSetDismissedContentC
   SettingsActionTypes.SET_DISMISSED_CONTENT_CARD,
 );
 
+export const setFromLedgerSyncOnboarding = createAction<SettingsSetFromLedgerSyncOnboardingPayload>(
+  SettingsActionTypes.SET_LEDGER_SYNC_ONBOARDING,
+);
+
 export const clearDismissedContentCards = createAction<SettingsClearDismissedContentCardsPayload>(
   SettingsActionTypes.CLEAR_DISMISSED_CONTENT_CARDS,
 );
@@ -291,6 +307,15 @@ export const addStarredMarketCoins = createAction<SettingsAddStarredMarketcoinsP
 export const removeStarredMarketCoins = createAction<SettingsRemoveStarredMarketcoinsPayload>(
   SettingsActionTypes.REMOVE_STARRED_MARKET_COINS,
 );
+
+export const setMevProtection = createAction<SettingsSetMevProtectionPayload>(
+  SettingsActionTypes.SET_MEV_PROTECTION,
+);
+
+export const setSelectedTabPortfolioAssets =
+  createAction<SettingsSetSelectedTabPortfolioAssetsPayload>(
+    SettingsActionTypes.SET_SELECTED_TAB_PORTFOLIO_ASSETS,
+  );
 
 type PortfolioRangeOption = {
   key: PortfolioRange;

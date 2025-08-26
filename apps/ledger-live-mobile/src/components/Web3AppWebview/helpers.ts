@@ -8,9 +8,10 @@ import {
   useWalletAPIServer,
   CurrentAccountHistDB,
   useManifestCurrencies,
+  useCacheBustedLiveApps,
 } from "@ledgerhq/live-common/wallet-api/react";
 import { useDappCurrentAccount, useDappLogic } from "@ledgerhq/live-common/wallet-api/useDappLogic";
-import { Operation, SignedOperation } from "@ledgerhq/types-live";
+import type { AccountLike, Operation, Account } from "@ledgerhq/types-live";
 import type { Transaction } from "@ledgerhq/live-common/generated/types";
 import trackingWrapper from "@ledgerhq/live-common/wallet-api/tracking";
 import type { Device } from "@ledgerhq/live-common/hw/actions/types";
@@ -26,16 +27,24 @@ import { WebviewAPI, WebviewProps, WebviewState } from "./types";
 import prepareSignTransaction from "./liveSDKLogic";
 import { StackNavigatorNavigation } from "../RootNavigator/types/helpers";
 import { BaseNavigatorStackParamList } from "../RootNavigator/types/BaseNavigator";
-import { trackingEnabledSelector } from "../../reducers/settings";
-import deviceStorage from "../../logic/storeWrapper";
+import { mevProtectionSelector, trackingEnabledSelector } from "../../reducers/settings";
+import storage from "LLM/storage";
 import { track } from "../../analytics";
 import getOrCreateUser from "../../user";
-import * as bridge from "../../../e2e/bridge/client";
+import { sendWalletAPIResponse } from "../../../e2e/bridge/client";
 import Config from "react-native-config";
 import { currentRouteNameRef } from "../../analytics/screenRefs";
 import { walletSelector } from "~/reducers/wallet";
-import { WebViewOpenWindowEvent } from "react-native-webview/lib/WebViewTypes";
+import { CacheMode, WebViewOpenWindowEvent } from "react-native-webview/lib/WebViewTypes";
 import { Linking } from "react-native";
+import { useCacheBustedLiveAppsDB } from "~/screens/Platform/v2/hooks";
+import {
+  ModularDrawerLocation,
+  useModularDrawerController,
+  useModularDrawerVisibility,
+} from "LLM/features/ModularDrawer";
+import { OpenModularDrawerFunction } from "LLM/features/ModularDrawer/types";
+import { LiveAppManifest } from "@ledgerhq/live-common/platform/types";
 
 export function useWebView(
   {
@@ -65,7 +74,7 @@ export function useWebView(
 
   const { webviewProps, webviewRef } = useWebviewState(
     {
-      manifest: manifest as AppManifest,
+      manifest: manifest satisfies AppManifest,
       inputs,
     },
     ref,
@@ -74,8 +83,23 @@ export function useWebView(
   );
 
   const accounts = useSelector(flattenAccountsSelector);
+  const mevProtected = useSelector(mevProtectionSelector);
 
-  const uiHook = useUiHook();
+  const { isModularDrawerVisible } = useModularDrawerVisibility({
+    modularDrawerFeatureFlagKey: "llmModularDrawer",
+  });
+  const modularDrawerVisible = isModularDrawerVisible({
+    location: ModularDrawerLocation.LIVE_APP,
+    liveAppId: manifest.id,
+  });
+
+  const { openDrawer: openModularDrawer } = useModularDrawerController();
+
+  const uiHook = useUiHook({
+    isModularDrawerVisible: modularDrawerVisible,
+    openModularDrawer,
+    manifest,
+  });
   const trackingEnabled = useSelector(trackingEnabledSelector);
   const userId = useGetUserId();
   const config = useConfig({
@@ -83,13 +107,13 @@ export function useWebView(
     userId,
     tracking: trackingEnabled,
     wallet,
+    mevProtected,
   });
 
   const webviewHook = useMemo(() => {
     return {
       reload: () => {
         const webview = safeGetRefValue(webviewRef);
-
         webview.reload();
       },
       // TODO: wallet-api-server lifecycle is not perfect and will try to send messages before a ref is available. Some additional thinkering is needed here.
@@ -116,7 +140,7 @@ export function useWebView(
     server,
   } = useWalletAPIServer({
     walletState,
-    manifest: manifest as AppManifest,
+    manifest: manifest satisfies AppManifest,
     accounts,
     tracking,
     config,
@@ -124,6 +148,11 @@ export function useWebView(
     uiHook,
     customHandlers,
   });
+  const [cacheBustedLiveAppsDb, setCacheBustedLiveAppsDbState] = useCacheBustedLiveAppsDB();
+  const { edit, getLatest } = useCacheBustedLiveApps([
+    cacheBustedLiveAppsDb,
+    setCacheBustedLiveAppsDbState,
+  ]);
 
   useEffect(() => {
     serverRef.current = server;
@@ -138,6 +167,8 @@ export function useWebView(
     uiHook,
     postMessage: webviewHook.postMessage,
     tracking,
+    initialAccountId: inputs?.accountId?.toString(),
+    mevProtected,
   });
 
   const onMessage = useCallback(
@@ -147,7 +178,7 @@ export function useWebView(
           const msg = JSON.parse(e.nativeEvent.data);
 
           if (Config.MOCK && msg.type === "e2eTest") {
-            bridge.sendWalletAPIResponse(msg.payload);
+            sendWalletAPIResponse(msg.payload);
           } else if (msg.type === "dapp") {
             onDappMessage(msg);
           } else {
@@ -163,22 +194,53 @@ export function useWebView(
 
   const onOpenWindow = useCallback((event: WebViewOpenWindowEvent) => {
     const { targetUrl } = event.nativeEvent;
-    Linking.canOpenURL(targetUrl).then(supported => {
-      if (supported) {
-        Linking.openURL(targetUrl);
-      } else {
-        console.error(`Don't know how to open URI: ${targetUrl}`);
-      }
-    });
+    // Don't use canOpenURL as we cannot check unknown apps on the phone
+    // Without listing everything in plist and android manifest
+    Linking.openURL(targetUrl);
   }, []);
+
+  useEffect(() => {
+    if (webviewRef && webviewRef.current && manifest.cacheBustingId !== undefined) {
+      const latestCacheBustedId = getLatest(manifest.id);
+      const init = getLatest("init");
+      // checking for init, which is set in INITIAL_PLATFORM_STATE
+      // makes sure we're not just getting the default value, undefined
+      if (
+        init &&
+        manifest.cacheBustingId > (latestCacheBustedId || 0) &&
+        webviewRef.current.clearCache
+      ) {
+        // save the latest cacheBustedId to the DiscoverDB
+        // to avoid clearingCache everytime this liveApp is loaded
+        edit(manifest.id, manifest.cacheBustingId);
+        webviewRef.current.clearCache(true);
+        webviewRef.current.reload();
+      }
+    }
+  }, [manifest.id, manifest.cacheBustingId, webviewRef, getLatest, edit]);
+
+  const webviewCacheOptions = useMemo(() => {
+    if (manifest.nocache) {
+      return {
+        cacheEnabled: false,
+        cacheMode: "LOAD_NO_CACHE" as CacheMode,
+        incognito: true,
+      };
+    } else {
+      return {};
+    }
+  }, [manifest.nocache]);
 
   return {
     onLoadError,
     onMessage,
     onOpenWindow,
+    webviewCacheOptions,
     webviewProps,
     webviewRef,
     noAccounts,
+    isModularDrawerVisible: modularDrawerVisible,
+    openModularDrawer,
   };
 }
 
@@ -209,15 +271,23 @@ export function useWebviewState(
   const { theme } = useTheme();
 
   const source = useMemo(
-    () => ({
-      uri: currentURI,
-      headers: getClientHeaders({
+    () => {
+      const headers = getClientHeaders({
         client: "ledger-live-mobile",
         theme,
-      }),
-    }),
+      });
+      if (manifest.nocache !== undefined) {
+        headers["Cache-Control"] = "no-cache, no-store, must-revalidate";
+        headers["Pragma"] = "no-cache";
+        headers["Expires"] = "0";
+      }
+      return {
+        uri: currentURI,
+        headers,
+      };
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [currentURI],
+    [currentURI, manifest.id, manifest.nocache],
   );
 
   useImperativeHandle(
@@ -226,7 +296,6 @@ export function useWebviewState(
       return {
         reload: () => {
           const webview = safeGetRefValue(webviewRef);
-
           webview.reload();
         },
         goBack: () => {
@@ -318,35 +387,60 @@ export function useWebviewState(
   };
 }
 
-function useUiHook(): UiHook {
+export interface Props {
+  isModularDrawerVisible: boolean;
+  openModularDrawer?: OpenModularDrawerFunction;
+  manifest: LiveAppManifest;
+}
+
+function useUiHook({ isModularDrawerVisible, openModularDrawer, manifest }: Props): UiHook {
   const navigation = useNavigation();
   const [device, setDevice] = useState<Device>();
+
+  const source =
+    currentRouteNameRef.current === "Platform Catalog"
+      ? "Discover"
+      : currentRouteNameRef.current ?? "Unknown";
+
+  const flow = manifest.name;
 
   return useMemo(
     () => ({
       "account.request": ({ accounts$, currencies, onSuccess, onCancel }) => {
-        if (currencies.length === 1) {
-          navigation.navigate(NavigatorName.RequestAccount, {
-            screen: ScreenName.RequestAccountsSelectAccount,
-            params: {
-              accounts$,
-              currency: currencies[0],
-              allowAddAccount: true,
-              onSuccess,
-            },
-            onClose: onCancel,
+        if (isModularDrawerVisible) {
+          openModularDrawer?.({
+            source: source,
+            flow: flow,
+            currencies,
+            enableAccountSelection: true,
+            onAccountSelected: (account: AccountLike, parentAccount?: Account | undefined) =>
+              onSuccess(account, parentAccount),
+            accounts$,
           });
         } else {
-          navigation.navigate(NavigatorName.RequestAccount, {
-            screen: ScreenName.RequestAccountsSelectCrypto,
-            params: {
-              accounts$,
-              currencies,
-              allowAddAccount: true,
-              onSuccess,
-            },
-            onClose: onCancel,
-          });
+          if (currencies.length === 1) {
+            navigation.navigate(NavigatorName.RequestAccount, {
+              screen: ScreenName.RequestAccountsSelectAccount,
+              params: {
+                accounts$,
+                currency: currencies[0],
+                allowAddAccount: true,
+                onSuccess,
+              },
+              onClose: onCancel,
+            });
+          } else {
+            navigation.navigate(NavigatorName.RequestAccount, {
+              screen: ScreenName.RequestAccountsSelectCrypto,
+              params: {
+                accounts$,
+                currencies,
+                allowAddAccount: true,
+                onSuccess,
+              },
+              onClose: onCancel,
+            });
+          }
         }
       },
       "account.receive": ({
@@ -365,23 +459,27 @@ function useUiHook(): UiHook {
           onError,
         });
       },
-      "message.sign": ({ account, message, onSuccess, onError, onCancel }) => {
+      "message.sign": ({ account, message, options, onSuccess, onError, onCancel }) => {
         navigation.navigate(NavigatorName.SignMessage, {
-          screen: ScreenName.SignSummary,
+          screen:
+            message.standard === "EIP712" ? ScreenName.SignSelectDevice : ScreenName.SignSummary,
           params: {
             message,
             accountId: account.id,
+            appName: options?.hwAppId,
+            dependencies: options?.dependencies,
             onConfirmationHandler: onSuccess,
             onFailHandler: onError,
           },
           onClose: onCancel,
         });
       },
-      "storage.get": async ({ key, storeId }) => {
-        return (await deviceStorage.get(`${storeId}-${key}`)) as string;
+      "storage.get": async ({ key, storeId }): Promise<string> => {
+        const value = await storage.get(`${storeId}-${key}`);
+        return typeof value === "string" ? value : "";
       },
       "storage.set": ({ key, value, storeId }) => {
-        deviceStorage.save(`${storeId}-${key}`, value);
+        storage.save(`${storeId}-${key}`, value);
       },
       "transaction.sign": ({
         account,
@@ -398,30 +496,15 @@ function useUiHook(): UiHook {
           params: {
             currentNavigation: ScreenName.SignTransactionSummary,
             nextNavigation: ScreenName.SignTransactionSelectDevice,
-            transaction: tx as Transaction,
+            transaction: tx,
             accountId: account.id,
             parentId: parentAccount ? parentAccount.id : undefined,
             appName: options?.hwAppId,
-            onSuccess: ({
-              signedOperation,
-              transactionSignError,
-            }: {
-              signedOperation: SignedOperation;
-              transactionSignError: Error;
-            }) => {
-              if (transactionSignError) {
-                onError(transactionSignError);
-              } else {
-                onSuccess(signedOperation);
-
-                const n =
-                  navigation.getParent<StackNavigatorNavigation<BaseNavigatorStackParamList>>() ||
-                  navigation;
-                n.pop();
-              }
-            },
+            dependencies: options?.dependencies,
+            onSuccess,
             onError,
           },
+          onError,
         });
       },
       "transaction.broadcast": () => {},
@@ -472,7 +555,7 @@ function useUiHook(): UiHook {
               exchangeType: exchangeParams.exchangeType,
               provider: exchangeParams.provider,
               exchange: exchangeParams.exchange,
-              transaction: exchangeParams.transaction as Transaction,
+              transaction: exchangeParams.transaction satisfies Transaction,
               binaryPayload: exchangeParams.binaryPayload,
               signature: exchangeParams.signature,
               feesStrategy: exchangeParams.feesStrategy,
@@ -483,7 +566,7 @@ function useUiHook(): UiHook {
                 onCancel(result.error);
               }
               if (result.operation) {
-                onSuccess(result.operation.id);
+                onSuccess(result.operation.hash);
               }
               setDevice(undefined);
               const n =
@@ -495,7 +578,7 @@ function useUiHook(): UiHook {
         });
       },
     }),
-    [navigation, device],
+    [isModularDrawerVisible, openModularDrawer, source, flow, navigation, device],
   );
 }
 
@@ -528,8 +611,17 @@ export function useSelectAccount({
   currentAccountHistDb?: CurrentAccountHistDB;
 }) {
   const currencies = useManifestCurrencies(manifest);
-  const { setCurrentAccountHist } = useDappCurrentAccount(currentAccountHistDb);
+  const { setCurrentAccountHist, setCurrentAccount, currentAccount } =
+    useDappCurrentAccount(currentAccountHistDb);
   const navigation = useNavigation();
+
+  const onSelectAccountSuccess = useCallback(
+    (account: AccountLike) => {
+      setCurrentAccountHist(manifest.id, account);
+      setCurrentAccount(account);
+    },
+    [manifest.id, setCurrentAccountHist, setCurrentAccount],
+  );
 
   const onSelectAccount = useCallback(() => {
     if (currencies.length === 1) {
@@ -538,9 +630,7 @@ export function useSelectAccount({
         params: {
           currency: currencies[0],
           allowAddAccount: true,
-          onSuccess: account => {
-            setCurrentAccountHist(manifest.id, account);
-          },
+          onSuccess: onSelectAccountSuccess,
         },
       });
     } else {
@@ -549,13 +639,11 @@ export function useSelectAccount({
         params: {
           currencies,
           allowAddAccount: true,
-          onSuccess: account => {
-            setCurrentAccountHist(manifest.id, account);
-          },
+          onSuccess: onSelectAccountSuccess,
         },
       });
     }
-  }, [manifest.id, currencies, navigation, setCurrentAccountHist]);
+  }, [currencies, navigation, onSelectAccountSuccess]);
 
-  return { onSelectAccount };
+  return { onSelectAccount, currentAccount, currencies, onSelectAccountSuccess };
 }

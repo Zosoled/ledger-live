@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { TableRow, TableCell } from "../../components/Table";
 import { Page, useMarketActions } from "../../hooks/useMarketActions";
 import { formatPercentage, formatPrice } from "../../utils";
+import { useGetStakeLabelLocaleBased } from "~/renderer/hooks/useGetStakeLabelLocaleBased";
 
 const CryptoCurrencyIconWrapper = styled.div`
   height: 32px;
@@ -60,6 +61,7 @@ export const MarketRow = memo<Props>(function MarketRowItem({
 
   const { onBuy, onStake, onSwap, availableOnBuy, availableOnSwap, availableOnStake } =
     useMarketActions({ currency, page: Page.Market, currenciesAll });
+  const earnStakeLabelCoin = useGetStakeLabelLocaleBased();
 
   const onCurrencyClick = useCallback(() => {
     if (currency) {
@@ -83,6 +85,7 @@ export const MarketRow = memo<Props>(function MarketRowItem({
   const hasActions =
     currency?.internalCurrency && (availableOnBuy || availableOnSwap || availableOnStake);
 
+  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
   const currentPriceChangePercentage = currency?.priceChangePercentage[range as KeysPriceChange];
 
   return (
@@ -160,7 +163,7 @@ export const MarketRow = memo<Props>(function MarketRowItem({
                     variant="color"
                     onClick={e => onStake(e)}
                   >
-                    {t("accounts.contextMenu.stake")}
+                    {earnStakeLabelCoin}
                   </Button>
                 )}
               </Flex>

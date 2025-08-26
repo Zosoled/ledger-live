@@ -8,6 +8,7 @@ import { CheckSpamScoreResult } from "@ledgerhq/live-nft-react/hooks/types";
 import { Result } from "../components/Result";
 import { LedgerAPI4xx } from "@ledgerhq/errors";
 import { SimpleHashResponse } from "@ledgerhq/live-nft/api/types";
+import { createOptions } from "../helper";
 
 export type HookResult = {
   checkSpamScore: CheckSpamScoreResult;
@@ -68,10 +69,11 @@ export default function SpamScore(props: HookResult) {
       if (error instanceof LedgerAPI4xx) {
         return t("settings.developer.debugSimpleHash.debugCheckSpamScore.error");
       }
+      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
       return (error as Error).message;
     };
 
-    const getScore = (data?: SimpleHashResponse) => data?.nfts[0].collection.spam_score;
+    const getScore = (data?: SimpleHashResponse) => data?.nfts[0]?.collection.spam_score ?? 100;
 
     const text = checkSpamScore.isError
       ? getErrorText(checkSpamScore.error)
@@ -104,10 +106,7 @@ export default function SpamScore(props: HookResult) {
         title={t("settings.developer.debugSimpleHash.debugRefreshMetadata.chainId")}
         desc={t("settings.developer.debugSimpleHash.debugRefreshMetadata.chainIdDesc")}
         value={{ label: chainId, value: chainId }}
-        options={[
-          { label: "Ethereum", value: "ethereum" },
-          { label: "Polygon", value: "polygon" },
-        ]}
+        options={createOptions()}
         onChange={handleChainIdChange}
       />
     </Flex>

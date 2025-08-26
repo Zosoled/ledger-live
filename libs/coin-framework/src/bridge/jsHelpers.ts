@@ -1,3 +1,4 @@
+import bippath from "bip32-path";
 import isEqual from "lodash/isEqual";
 import { BigNumber } from "bignumber.js";
 import { Observable, Observer, from } from "rxjs";
@@ -179,6 +180,7 @@ export const makeSync =
     T extends TransactionCommon = TransactionCommon,
     A extends Account = Account,
     U extends TransactionStatusCommon = TransactionStatusCommon,
+    O extends Operation = Operation,
     R extends AccountRaw = AccountRaw,
   >({
     getAccountShape,
@@ -188,7 +190,7 @@ export const makeSync =
     getAccountShape: GetAccountShape<A>;
     postSync?: (initial: A, synced: A) => A;
     shouldMergeOps?: boolean;
-  }): AccountBridge<T, A, U, R>["sync"] =>
+  }): AccountBridge<T, A, U, O, R>["sync"] =>
   (initial, syncConfig): Observable<AccountUpdater<A>> =>
     new Observable((o: Observer<(acc: A) => A>) => {
       async function main() {
@@ -308,7 +310,7 @@ export const makeScanAccounts =
     buildIterateResult?: IterateResultBuilder;
     getAddressFn: GetAddressFn;
   }): CurrencyBridge["scanAccounts"] =>
-  ({ currency, deviceId, syncConfig }): Observable<ScanAccountEvent> =>
+  ({ currency, deviceId, syncConfig, scheme }): Observable<ScanAccountEvent> =>
     new Observable((o: Observer<{ type: "discovered"; account: Account }>) => {
       if (buildIterateResult === undefined) {
         buildIterateResult = defaultIterateResultBuilder(getAddressFn);
@@ -383,7 +385,7 @@ export const makeScanAccounts =
           account.balanceHistoryCache = generateHistoryFromOperations(account);
         }
 
-        if (!account.used) {
+        if (accountShape.used === undefined) {
           account.used = !isAccountEmpty(account);
         }
 
@@ -423,7 +425,12 @@ export const makeScanAccounts =
 
       async function main() {
         try {
-          const derivationModes = getDerivationModesForCurrency(currency);
+          let derivationModes: DerivationMode[] = [];
+          if (scheme === null || scheme === undefined) {
+            derivationModes = getDerivationModesForCurrency(currency);
+          } else {
+            derivationModes = [scheme];
+          }
 
           for (const derivationMode of derivationModes) {
             if (finished) break;
@@ -520,30 +527,32 @@ export function makeAccountBridgeReceive<A extends Account = Account>(
   }: {
     injectGetAddressParams?: (account: A) => any;
   } = {},
-): (
-  account: A,
-  option: {
-    verify?: boolean;
-    deviceId: string;
-    subAccountId?: string;
-  },
-) => Observable<{
-  address: string;
-  path: string;
-}> {
-  return (account, { verify, deviceId }) => {
+) {
+  return (
+    account: A,
+    {
+      verify,
+      deviceId,
+      path,
+    }: {
+      verify?: boolean;
+      deviceId: string;
+      subAccountId?: string;
+      path?: string;
+    },
+  ) => {
     const arg = {
       verify,
       currency: account.currency,
       derivationMode: account.derivationMode,
-      path: account.freshAddressPath,
+      path: path || account.freshAddressPath,
       ...(injectGetAddressParams && injectGetAddressParams(account)),
     };
     return from(
       getAddressFn(deviceId, arg).then(r => {
         const accountAddress = account.freshAddress;
 
-        if (r.address !== accountAddress) {
+        if (verify && r.address !== accountAddress) {
           throw new WrongDeviceForAccount();
         }
 
@@ -553,8 +562,28 @@ export function makeAccountBridgeReceive<A extends Account = Account>(
   };
 }
 
-// Default trivial implem for updateTransaction, that keeps reference stability (for React)
-export function defaultUpdateTransaction<T extends TransactionCommon>(t: T, patch: Partial<T>): T {
+/**
+ * Default trivial implem for updateTransaction, that keeps reference stability (for React)
+ */
+export function updateTransaction<T extends TransactionCommon>(t: T, patch: Partial<T>): T {
   const patched = { ...t, ...patch };
   return isEqual(t, patched) ? t : patched;
+}
+
+/**
+ * Default trivial implem for getSerializedAddressParameters
+ */
+export function getSerializedAddressParameters(account: Account): Buffer {
+  return bip32asBuffer(account.freshAddressPath);
+}
+
+export function bip32asBuffer(path: string): Buffer {
+  const pathElements = !path ? [] : bippath.fromString(path).toPathArray();
+
+  const buffer = Buffer.alloc(1 + pathElements.length * 4);
+  buffer[0] = pathElements.length;
+  pathElements.forEach((element, index) => {
+    buffer.writeUInt32BE(element, 1 + 4 * index);
+  });
+  return buffer;
 }

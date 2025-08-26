@@ -1,8 +1,7 @@
 import React, { useState } from "react";
 import { Button, Flex, Switch, Text } from "@ledgerhq/native-ui";
-import { Camera } from "expo-camera";
+import { CameraView, CameraType } from "expo-camera";
 import { useIsFocused } from "@react-navigation/native";
-import { CameraType } from "expo-camera/build/Camera.types";
 import RequiresCameraPermissions from "~/components/RequiresCameraPermissions";
 import CameraPermissionContext from "~/components/RequiresCameraPermissions/CameraPermissionContext";
 
@@ -26,8 +25,8 @@ const CameraPermissions: React.FC<Record<string, never>> = () => {
             {({ permissionGranted }) =>
               permissionGranted ? (
                 isFocused ? (
-                  <Camera
-                    type={CameraType.back}
+                  <CameraView
+                    facing={"back" as CameraType}
                     style={{
                       height: 200,
                       width: 200,

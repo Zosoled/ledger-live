@@ -1,47 +1,80 @@
 import { Box, Flex, Text, Icons, InfiniteLoader, Alert } from "@ledgerhq/native-ui";
-import React, { useCallback } from "react";
+import React, { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Option, OptionProps } from "./Option";
 import styled from "styled-components";
 import {
   AnalyticsButton,
   AnalyticsPage,
-  useWalletSyncAnalytics,
-} from "../../hooks/useWalletSyncAnalytics";
+  useLedgerSyncAnalytics,
+} from "../../hooks/useLedgerSyncAnalytics";
 import { Separator } from "../../components/Separator";
 import { TouchableOpacity } from "react-native";
-import { TrustchainNotFound } from "../../hooks/useGetMembers";
 import ManageKeyDrawer from "../ManageKey/ManageKeyDrawer";
 import { useManageKeyDrawer } from "../ManageKey/useManageKeyDrawer";
 import ManageInstanceDrawer from "../ManageInstances/ManageInstancesDrawer";
 import { useManageInstancesDrawer } from "../ManageInstances/useManageInstanceDrawer";
+import ActivationDrawer from "../Activation/ActivationDrawer";
+import { Steps } from "../../types/Activation";
+import { TrackScreen } from "~/analytics";
+import { AlertLedgerSyncDown } from "../../components/AlertLedgerSyncDown";
+import { useLedgerSyncStatus } from "../../hooks/useLedgerSyncStatus";
+import { TrustchainNotFound } from "@ledgerhq/ledger-key-ring-protocol/errors";
+import { useCustomTimeOut } from "../../hooks/useCustomTimeOut";
+import { useDispatch } from "react-redux";
+import { blockPasswordLock } from "~/actions/appstate";
+import { isNoTrustchainError } from "../../utils/errors";
 
 const WalletSyncManage = () => {
   const { t } = useTranslation();
 
   const manageKeyHook = useManageKeyDrawer();
   const manageInstancesHook = useManageInstancesDrawer();
+  const { error: ledgerSyncError, isError: isLedgerSyncError } = useLedgerSyncStatus();
 
-  const { data, isLoading, isError, error } = manageInstancesHook.memberHook;
+  const {
+    data,
+    isLoading,
+    isError,
+    error: manageInstancesError,
+    isFetching,
+    isFetchedAfterMount,
+    isPending,
+  } = manageInstancesHook.memberHook;
 
-  const { onClickTrack } = useWalletSyncAnalytics();
+  const { onClickTrack } = useLedgerSyncAnalytics();
+  const dispatch = useDispatch();
 
-  const goToManageBackup = useCallback(() => {
-    manageKeyHook.openDrawer();
-    onClickTrack({ button: AnalyticsButton.ManageKey, page: AnalyticsPage.WalletSyncActivated });
-  }, [manageKeyHook, onClickTrack]);
+  const [isSyncDrawerOpen, setIsSyncDrawerOpen] = useState(false);
 
   const goToSync = () => {
-    //dispatch(setFlow({ flow: Flow.Synchronize, step: Step.SynchronizeMode }));
+    manageInstancesHook.checkInstances();
+    dispatch(blockPasswordLock(true));
+    setIsSyncDrawerOpen(true);
+    onClickTrack({ button: AnalyticsButton.Synchronize, page: AnalyticsPage.LedgerSyncSettings });
+  };
 
-    onClickTrack({ button: AnalyticsButton.Synchronize, page: AnalyticsPage.WalletSyncActivated });
+  const closeSyncDrawer = () => {
+    setIsSyncDrawerOpen(false);
+    dispatch(blockPasswordLock(false));
+  };
+
+  const goToManageBackup = () => {
+    manageKeyHook.openDrawer();
+    onClickTrack({
+      button: AnalyticsButton.ManageKey,
+      page: AnalyticsPage.LedgerSyncSettings,
+      hasFlow: false,
+    });
   };
 
   const goToManageInstances = () => {
+    manageInstancesHook.checkInstances();
     manageInstancesHook.openDrawer();
     onClickTrack({
-      button: AnalyticsButton.ManageSynchronizations,
-      page: AnalyticsPage.WalletSyncActivated,
+      button: AnalyticsButton.ManageInstances,
+      page: AnalyticsPage.LedgerSyncSettings,
+      hasFlow: false,
     });
   };
 
@@ -62,66 +95,94 @@ const WalletSyncManage = () => {
     },
   ];
 
-  function getError(error: Error) {
-    // if (error instanceof UnavailableServerError) { DO SOMETHING}
+  const error = useMemo(
+    () => ledgerSyncError || manageInstancesError,
+    [ledgerSyncError, manageInstancesError],
+  );
 
-    return <Alert type="error" title={error.message} />;
-  }
+  const getTopContent = () => {
+    if (error && !isNoTrustchainError(error)) {
+      if (isLedgerSyncError) {
+        return <AlertLedgerSyncDown />;
+      }
+      return <Alert type="error" title={error.message} />;
+    } else {
+      return <Separator />;
+    }
+  };
+
+  const hasError = isLedgerSyncError || isError;
+
+  const queryFetching = isPending || isFetching;
+  // the following checks if the instance has been deleted from another device to avoid a blink
+  // in dev on a real device it will blink since it's laggy
+  const unsynchronizedInstance = !data && !isFetchedAfterMount;
+
+  const forcedTimeLoaderOver = useCustomTimeOut(500);
+  const shouldDisplayLoader = !forcedTimeLoaderOver || unsynchronizedInstance || queryFetching;
 
   return (
     <Box height="100%" paddingX="16px">
-      {/* <TrackPage category={AnalyticsPage.WalletSyncSettings} /> */}
+      <TrackScreen category={AnalyticsPage.LedgerSyncSettings} />
+      {shouldDisplayLoader ? (
+        <Flex justifyContent="center" alignItems="center" height="100%">
+          <InfiniteLoader size={64} />
+        </Flex>
+      ) : (
+        <>
+          {getTopContent()}
+          {Options.map((props, index) => (
+            <Option
+              {...props}
+              key={index}
+              disabled={
+                props.id === "manageKey"
+                  ? hasError && error instanceof TrustchainNotFound
+                    ? false
+                    : hasError
+                  : hasError
+              }
+            />
+          ))}
 
-      {isError ? getError(error) : <Separator />}
+          <InstancesRow disabled={hasError} onPress={isError ? undefined : goToManageInstances}>
+            <Container
+              flexDirection="row"
+              justifyContent="space-between"
+              paddingTop={24}
+              alignItems="center"
+              disabled={hasError}
+            >
+              {isLoading ? (
+                <InfiniteLoader size={16} />
+              ) : (
+                <Text fontWeight="semiBold" variant="large" color="neutral.c100" flex={1}>
+                  {isError
+                    ? t("walletSync.walletSyncActivated.synchronizedInstances.error")
+                    : t("walletSync.walletSyncActivated.synchronizedInstances.title", {
+                        count: data?.length,
+                      })}
+                </Text>
+              )}
 
-      {Options.map((props, index) => (
-        <Option
-          {...props}
-          key={index}
-          disabled={
-            props.id === "manageKey"
-              ? isError && error instanceof TrustchainNotFound
-                ? false
-                : isError
-              : isError
-          }
-        />
-      ))}
+              <Flex flexDirection="row" alignItems="center" justifyContent="center">
+                <Text variant="body" color="primary.c80" mr={2}>
+                  {t("walletSync.walletSyncActivated.synchronizedInstances.cta")}
+                </Text>
+                <Icons.ChevronRight size="M" color="neutral.c70" />
+              </Flex>
+            </Container>
+          </InstancesRow>
 
-      <InstancesRow disabled={isError} onPress={isError ? undefined : goToManageInstances}>
-        <Container
-          flexDirection="row"
-          justifyContent="space-between"
-          paddingTop={24}
-          alignItems="center"
-          disabled={isError}
-        >
-          {isLoading ? (
-            <InfiniteLoader size={16} />
-          ) : (
-            <Text fontWeight="semiBold" variant="large" color="neutral.c100">
-              {isError
-                ? t("walletSync.walletSyncActivated.synchronizedInstances.error")
-                : t("walletSync.walletSyncActivated.synchronizedInstances.title", {
-                    count: data?.length,
-                  })}
-            </Text>
-          )}
-
-          <Flex flexDirection="row" alignItems="center" justifyContent="center">
-            <Text variant="body" color="primary.c80" mr={2}>
-              {t("walletSync.walletSyncActivated.synchronizedInstances.cta")}
-            </Text>
-            <Icons.ChevronRight size="M" color="neutral.c70" />
-          </Flex>
-        </Container>
-      </InstancesRow>
-
-      {/**
-       * DRAWERS
-       */}
-      <ManageKeyDrawer {...manageKeyHook} />
-      <ManageInstanceDrawer {...manageInstancesHook} />
+          <ActivationDrawer
+            startingStep={Steps.QrCodeMethod}
+            isOpen={isSyncDrawerOpen}
+            handleClose={closeSyncDrawer}
+          />
+          <ManageKeyDrawer {...manageKeyHook} />
+          <ManageInstanceDrawer {...manageInstancesHook} />
+        </>
+      )}
     </Box>
   );
 };

@@ -11,7 +11,7 @@ import debounce from "lodash/debounce";
 import SafeAreaView from "~/components/SafeAreaView";
 import { Flex, InfiniteLoader, Text } from "@ledgerhq/native-ui";
 import { useSelector } from "react-redux";
-import { ScreenName } from "~/const";
+import { NavigatorName, ScreenName } from "~/const";
 import { track, TrackScreen } from "~/analytics";
 import FilteredSearchBar from "~/components/FilteredSearchBar";
 import BigCurrencyRow from "~/components/BigCurrencyRow";
@@ -22,6 +22,9 @@ import { getEnv } from "@ledgerhq/live-env";
 import { findAccountByCurrency } from "~/logic/deposit";
 
 import { useGroupedCurrenciesByProvider } from "@ledgerhq/live-common/deposit/index";
+import { LoadingBasedGroupedCurrencies, LoadingStatus } from "@ledgerhq/live-common/deposit/type";
+import { AddAccountContexts } from "LLM/features/Accounts/screens/AddAccount/enums";
+import { useAssets } from "LLM/features/ModularDrawer/hooks/useAssets";
 
 const SEARCH_KEYS = getEnv("CRYPTO_ASSET_SEARCH_KEYS");
 
@@ -50,7 +53,23 @@ export default function AddAccountsSelectCrypto({ navigation, route }: Props) {
   const { t } = useTranslation();
   const accounts = useSelector(flattenAccountsSelector);
 
-  const { currenciesByProvider, sortedCryptoCurrencies } = useGroupedCurrenciesByProvider();
+  const { result, loadingStatus: providersLoadingStatus } = useGroupedCurrenciesByProvider(
+    true,
+  ) as LoadingBasedGroupedCurrencies;
+  const { currenciesByProvider, sortedCryptoCurrencies } = result;
+
+  const goToDeviceSelection = useCallback(
+    (currency: CryptoCurrency) => {
+      navigation.replace(NavigatorName.DeviceSelection, {
+        screen: ScreenName.SelectDevice,
+        params: {
+          currency,
+          context: AddAccountContexts.ReceiveFunds,
+        },
+      });
+    },
+    [navigation],
+  );
 
   const onPressItem = useCallback(
     (curr: CryptoCurrency | TokenCurrency) => {
@@ -84,25 +103,21 @@ export default function AddAccountsSelectCrypto({ navigation, route }: Props) {
           currency,
         });
       } else {
-        // If we didn't find any account of the parent currency then we add one
-        navigation.navigate(ScreenName.ReceiveAddAccountSelectDevice, {
-          currency,
-          createTokenAccount: isToken || undefined,
-        });
+        goToDeviceSelection(currency);
       }
     },
-    [currenciesByProvider, accounts, navigation, filterCurrencyIds],
+    [currenciesByProvider, accounts, navigation, filterCurrencyIds, goToDeviceSelection],
   );
 
   useEffect(() => {
     if (paramsCurrency) {
       const selectedCurrency = findCryptoCurrencyByKeyword(paramsCurrency.toUpperCase());
 
-      if (selectedCurrency) {
+      if (selectedCurrency && providersLoadingStatus === LoadingStatus.Success) {
         onPressItem(selectedCurrency);
       }
     }
-  }, [onPressItem, paramsCurrency]);
+  }, [onPressItem, paramsCurrency, providersLoadingStatus]);
 
   const debounceTrackOnSearchChange = debounce((newQuery: string) => {
     track("asset_searched", { page: "Choose a crypto to secure", asset: newQuery });
@@ -123,13 +138,47 @@ export default function AddAccountsSelectCrypto({ navigation, route }: Props) {
     [onPressItem],
   );
 
-  const list = useMemo(
-    () =>
-      filterCurrencyIdsSet
-        ? sortedCryptoCurrencies.filter(crypto => filterCurrencyIdsSet.has(crypto.id))
-        : sortedCryptoCurrencies,
-    [filterCurrencyIdsSet, sortedCryptoCurrencies],
+  // This fix an issue we had with provider of crypto.
+  // As we have it for the MAD I use the same hook
+  // In the future the MAD will replace this so it's fine to do it this way
+  const filteredCurrencies = useMemo(() => {
+    if (!filterCurrencyIdsSet) return sortedCryptoCurrencies;
+    return sortedCryptoCurrencies.filter(currency => filterCurrencyIdsSet.has(currency.id));
+  }, [sortedCryptoCurrencies, filterCurrencyIdsSet]);
+
+  const { availableAssets } = useAssets(
+    filteredCurrencies,
+    currenciesByProvider,
+    sortedCryptoCurrencies,
   );
+
+  const renderListView = useCallback(() => {
+    switch (providersLoadingStatus) {
+      case LoadingStatus.Success:
+        return availableAssets.length > 0 ? (
+          <Flex flex={1} ml={6} mr={6} mt={3}>
+            <FilteredSearchBar
+              keys={SEARCH_KEYS}
+              list={availableAssets}
+              renderList={renderList}
+              renderEmptySearch={renderEmptyList}
+              onSearchChange={debounceTrackOnSearchChange}
+            />
+          </Flex>
+        ) : (
+          renderEmptyList()
+        );
+      case LoadingStatus.Error:
+        // TODO: in an improvement feature, when the network fetch status is on error, implement a clean error message with a retry CTA
+        return renderEmptyList();
+      default:
+        return (
+          <Flex flex={1} mt={6}>
+            <InfiniteLoader testID="loader" />
+          </Flex>
+        );
+    }
+  }, [providersLoadingStatus, availableAssets, renderList, debounceTrackOnSearchChange]);
 
   return (
     <SafeAreaView edges={["left", "right"]} isFlex>
@@ -137,21 +186,7 @@ export default function AddAccountsSelectCrypto({ navigation, route }: Props) {
       <Text variant="h4" fontWeight="semiBold" mx={6} testID="receive-header-step1-title">
         {t("transfer.receive.selectCrypto.title")}
       </Text>
-      {list.length > 0 ? (
-        <Flex flex={1} ml={6} mr={6} mt={3}>
-          <FilteredSearchBar
-            keys={SEARCH_KEYS}
-            list={list}
-            renderList={renderList}
-            renderEmptySearch={renderEmptyList}
-            onSearchChange={debounceTrackOnSearchChange}
-          />
-        </Flex>
-      ) : (
-        <Flex flex={1} mt={6}>
-          <InfiniteLoader />
-        </Flex>
-      )}
+      {renderListView()}
     </SafeAreaView>
   );
 }

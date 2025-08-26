@@ -5,11 +5,13 @@ import {
   makeSync,
 } from "@ledgerhq/coin-framework/bridge/jsHelpers";
 import getAddressWrapper from "@ledgerhq/coin-framework/bridge/getAddressWrapper";
-import { StartSpan, makeGetAccountShape, postSync } from "../synchronisation";
+import { makeGetAccountShape, postSync } from "../synchronisation";
 import { assignFromAccountRaw, assignToAccountRaw } from "../serialization";
 import { BitcoinAccount, Transaction, TransactionStatus } from "../types";
+import formatters from "../formatters";
 import { getTransactionStatus } from "../getTransactionStatus";
 import { estimateMaxSpendable } from "../estimateMaxSpendable";
+import { getSerializedAddressParameters } from "../exchange";
 import { prepareTransaction } from "../prepareTransaction";
 import { updateTransaction } from "../updateTransaction";
 import { createTransaction } from "../createTransaction";
@@ -21,10 +23,10 @@ import { broadcast } from "../broadcast";
 import { perCoinLogic } from "../logic";
 import resolver from "../hw-getAddress";
 
-function buildCurrencyBridge(signerContext: SignerContext, perfLogger: PerfLogger) {
+function buildCurrencyBridge(signerContext: SignerContext) {
   const getAddress = resolver(signerContext);
   const scanAccounts = makeScanAccounts<BitcoinAccount>({
-    getAccountShape: makeGetAccountShape(signerContext, perfLogger.startSpan),
+    getAccountShape: makeGetAccountShape(signerContext),
     getAddressFn: getAddressWrapper(getAddress),
   });
 
@@ -35,10 +37,11 @@ function buildCurrencyBridge(signerContext: SignerContext, perfLogger: PerfLogge
   };
 }
 
-function buildAccountBridge(signerContext: SignerContext, perfLogger: PerfLogger) {
+function buildAccountBridge(signerContext: SignerContext) {
   const sync = makeSync<Transaction, BitcoinAccount, TransactionStatus>({
-    getAccountShape: makeGetAccountShape(signerContext, perfLogger.startSpan),
+    getAccountShape: makeGetAccountShape(signerContext),
     postSync,
+    shouldMergeOps: false,
   });
 
   const getAddress = resolver(signerContext);
@@ -76,22 +79,16 @@ function buildAccountBridge(signerContext: SignerContext, perfLogger: PerfLogger
     broadcast: wrappedBroadcast,
     assignFromAccountRaw,
     assignToAccountRaw,
+    formatAccountSpecifics: formatters.formatAccountSpecifics,
+    getSerializedAddressParameters,
   };
 }
 
-export type PerfLogger = {
-  startSpan: StartSpan;
-};
-
-export function createBridges(
-  signerContext: SignerContext,
-  perfLogger: PerfLogger,
-  coinConfig: CoinConfig,
-) {
+export function createBridges(signerContext: SignerContext, coinConfig: CoinConfig) {
   setCoinConfig(coinConfig);
 
   return {
-    currencyBridge: buildCurrencyBridge(signerContext, perfLogger),
-    accountBridge: buildAccountBridge(signerContext, perfLogger),
+    currencyBridge: buildCurrencyBridge(signerContext),
+    accountBridge: buildAccountBridge(signerContext),
   };
 }

@@ -7,6 +7,7 @@ import TranslatedError from "~/components/TranslatedError";
 import SupportLinkError from "~/components/SupportLinkError";
 import LText from "~/components/LText";
 import Alert from "~/components/Alert";
+import { urls } from "~/utils/urls";
 
 type BasicErrorsProps = {
   error: Error | undefined | null;
@@ -14,10 +15,18 @@ type BasicErrorsProps = {
   domainError: DomainServiceResponseError | null;
   domainErrorHandled: boolean;
   isForwardResolution: boolean;
+  noLink?: boolean;
 };
 
 export const BasicErrorsView = memo(
-  ({ error, warning, domainError, domainErrorHandled, isForwardResolution }: BasicErrorsProps) => {
+  ({
+    error,
+    warning,
+    domainError,
+    domainErrorHandled,
+    isForwardResolution,
+    noLink,
+  }: BasicErrorsProps) => {
     // if no error or warning to show, ignore
     if (!error && !warning) return null;
 
@@ -30,17 +39,20 @@ export const BasicErrorsView = memo(
           <LText
             style={[styles.warningBox]}
             color={error ? "alert" : warning ? "orange" : "darkBlue"}
+            testID="send-recipient-error"
           >
             <TranslatedError error={error || warning} />
           </LText>
-          <View
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-            }}
-          >
-            <SupportLinkError error={error} type="alert" />
-          </View>
+          {noLink ? null : (
+            <View
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+              }}
+            >
+              <SupportLinkError error={error} type="alert" />
+            </View>
+          )}
         </>
       );
     }
@@ -63,7 +75,7 @@ export const DomainErrorsView = memo(({ domainError, isForwardResolution }: Doma
         title={t("send.recipient.domainService.invalidDomain.title")}
         type="warning"
         learnMoreKey="common.learnMore"
-        learnMoreUrl="https://support.ledger.com/hc/articles/9710787581469?docs=true"
+        learnMoreUrl={urls.domainService}
       >
         <LText>{t("send.recipient.domainService.invalidDomain.description")}</LText>
       </Alert>

@@ -21,9 +21,9 @@ import { initSwap, getExchangeRates } from "@ledgerhq/live-common/exchange/swap/
 import { getAccountBridge } from "@ledgerhq/live-common/bridge/index";
 import { formatCurrencyUnit } from "@ledgerhq/live-common/currencies/index";
 import invariant from "invariant";
-import { Account, SignedOperation, SubAccount } from "@ledgerhq/types-live";
+import { Account, SignedOperation, TokenAccount } from "@ledgerhq/types-live";
 
-type SwapJobOpts = ScanCommonOpts & {
+export type SwapJobOpts = ScanCommonOpts & {
   amount: string;
   useAllAmount: boolean;
   useFloat: boolean;
@@ -49,14 +49,14 @@ const exec = async (opts: SwapJobOpts) => {
       },
     ],
     {
-      argv: opts._unknown.map((a, i) => (i % 2 ? a : a.replace("_2", ""))),
+      argv: opts._unknown.map((a: string, i: number) => (i % 2 ? a : a.replace("_2", ""))),
     },
   ) as ScanCommonOpts & { tokenId: string };
 
   console.log("• Open the source currency app");
   await delay(8000);
   let fromParentAccount: Account | null = null;
-  let fromAccount: Account | SubAccount | undefined = await firstValueFrom(
+  let fromAccount: Account | TokenAccount | undefined = await firstValueFrom(
     scan(opts).pipe(take(1)),
   );
   invariant(fromAccount, `✖ No account found, is the right currency app open?`);
@@ -104,7 +104,7 @@ const exec = async (opts: SwapJobOpts) => {
   console.log("• Open the destination currency app");
   await delay(8000);
   let toParentAccount: Account | null = null;
-  let toAccount: Account | SubAccount | undefined = await firstValueFrom(
+  let toAccount: Account | TokenAccount | undefined = await firstValueFrom(
     scan(secondAccountOpts).pipe(take(1)),
   );
 
@@ -169,8 +169,10 @@ const exec = async (opts: SwapJobOpts) => {
   const exchange: ExchangeSwap = {
     fromAccount,
     fromParentAccount,
+    fromCurrency: fromAccount.type === "TokenAccount" ? fromAccount.token : fromAccount.currency,
     toAccount,
     toParentAccount,
+    toCurrency: toAccount.type === "TokenAccount" ? toAccount.token : toAccount.currency,
   };
 
   const exchangeRates = await getExchangeRates({ exchange, transaction });

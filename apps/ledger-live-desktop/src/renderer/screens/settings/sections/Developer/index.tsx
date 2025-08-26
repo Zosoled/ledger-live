@@ -14,8 +14,8 @@ import RunLocalAppButton from "./RunLocalAppButton";
 import FeatureFlagsSettings from "./FeatureFlagsSettings";
 import EnableLearnPageStagingUrlToggle from "./EnableLearnPageStagingUrlToggle";
 import OnboardingAppInstallDebugButton from "./OnboardingAppInstallDebug";
-import EnableStagingNftMetadataServiceToggle from "./EnableStagingNftMetadataServiceToggle";
 import ExchangeDeveloperMode from "./ExchangeDeveloperMode";
+import ExchangeTestPartnerMode from "./ExchangeTestPartnerMode";
 import LottieTester from "../Experimental/LottieTester";
 import StorylyTester from "../Experimental/StorylyTester";
 import PostOnboardingHubTester from "../Experimental/PostOnboardingHubTester";
@@ -23,6 +23,15 @@ import AllowDebugReactQueryToggle from "./AllowDebugReactQueryToggle";
 import { FeatureToggle } from "@ledgerhq/live-common/featureFlags/index";
 import WalletSyncTester from "./WalletSync/WalletSyncTester";
 import SimpleHashTools from "./SimpleHashTools/SimpleHashTools";
+import MockAppUpdate from "./MockAppUpdate";
+import EnableAnalyticsConsole from "./EnableAnalyticsConsole";
+import BrazeTools from "./BrazeTools";
+import { RecoverUpsellRow } from "./RecoverUpsellRow";
+import NftsTools from "./NftsTools";
+import CustomCALRefInput from "./CustomCALRefInput";
+import ModularDrawerDevTool from "./ModularDrawer";
+import { MockAccountGeneratorSection } from "./GenerateMockAccounts";
+import CustomLockScreenTester from "./CustomLockScreenTester";
 
 const Default = () => {
   const { t } = useTranslation();
@@ -49,8 +58,22 @@ const Default = () => {
         <AllowExperimentalAppsToggle />
       </Row>
 
+      <Row
+        title={t("settings.developer.mockAppUpdate")}
+        desc={t("settings.developer.mockAppUpdateDesc")}
+      >
+        <MockAppUpdate />
+      </Row>
+
       <Row title={t("settings.developer.catalogUrl")} desc={t("settings.developer.catalogUrlDesc")}>
         <CatalogProviderInput />
+      </Row>
+
+      <Row
+        title={t("settings.developer.customCALRef")}
+        desc={t("settings.developer.customCALRefDesc")}
+      >
+        <CustomCALRefInput />
       </Row>
 
       <Row
@@ -59,7 +82,14 @@ const Default = () => {
       >
         <EnablePlatformDevToolsToggle />
       </Row>
+      <Row
+        title={t("settings.developer.analyticsConsole.title")}
+        desc={t("settings.developer.analyticsConsole.desc")}
+      >
+        <EnableAnalyticsConsole />
+      </Row>
       <RunLocalAppButton />
+      <CustomLockScreenTester />
       <CustomLockScreenToggle />
       <FeatureFlagsSettings />
       <Row
@@ -68,12 +98,8 @@ const Default = () => {
       >
         <EnableLearnPageStagingUrlToggle />
       </Row>
-      <Row
-        title={t("settings.developer.enableStagingNftMetadataService")}
-        desc={t("settings.developer.enableStagingNftMetadataServiceDesc")}
-      >
-        <EnableStagingNftMetadataServiceToggle />
-      </Row>
+      <RecoverUpsellRow />
+
       <Row
         title={t("settings.developer.openOnboardingAppInstallDebug")}
         desc={t("settings.developer.openOnboardingAppInstallDebugDesc")}
@@ -86,12 +112,19 @@ const Default = () => {
         <StorylyTester />
       </FeatureToggle>
       <ExchangeDeveloperMode />
-
+      <ExchangeTestPartnerMode />
       <FeatureToggle featureId="lldWalletSync">
         <WalletSyncTester />
       </FeatureToggle>
 
-      <SimpleHashTools />
+      <FeatureToggle featureId="llNftSupport">
+        <FeatureToggle featureId="nftsFromSimplehash">
+          <SimpleHashTools />
+        </FeatureToggle>
+        <NftsTools />
+      </FeatureToggle>
+
+      <BrazeTools />
 
       {__DEV__ && (
         <Row
@@ -101,6 +134,8 @@ const Default = () => {
           <AllowDebugReactQueryToggle />
         </Row>
       )}
+      <ModularDrawerDevTool />
+      <MockAccountGeneratorSection />
     </Body>
   );
 };
